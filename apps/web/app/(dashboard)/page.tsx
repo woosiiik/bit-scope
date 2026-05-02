@@ -1,0 +1,968 @@
+/**
+ * 통합 포트폴리오 대시보드 메인 페이지
+ *
+ * 등록된 모든 거래소의 자산을 통합하여 표시한다.
+ * - 총 평가금액, 총 투자금액, 총 손익, 총 수익률 요약 카드
+ * - 자산 분포 도넛 차트 (코인별 비중, 거래소별 비중)
+ * - 거래소별/통합 보유 코인 테이블 (정렬, 필터 지원)
+ * - 거래소별 로딩 상태 개별 표시
+ * - 자동 갱신(기본 30초) 및 수동 새로고침
+ * - 특정 코인 선택 시 거래소별 보유 상세 비교
+ *
+ * @see 요구사항 2.1~2.11 (통합 포트폴리오 대시보드)
+ * @see 요구사항 2.7 (자산 분포를 도넛/파이 차트로 시각화)
+ * @see 요구사항 9.5 (스켈레톤 UI / 로딩 인디케이터)
+ * @see 요구사항 9.7 (숫자 데이터 포맷)
+ * @see 요구사항 9.8 (수익 녹색/손실 빨간색 색상 구분)
+ */
+
+'use client';
+
+import { useCallback, useMemo } from 'react';
+import {
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  ArrowLeft,
+} from 'lucide-react';
+import { useAccount } from 'wagmi';
+import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS } from '@bitscope/shared';
+import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/i18n-context';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  FormattedCurrency,
+  FormattedPercent,
+  FormattedPrice,
+  FormattedQuantity,
+  ProfitLossIndicator,
+} from '@/components/ui/formatted-number';
+import { DashboardSkeleton, CardSkeleton, TableRowSkeleton } from '@/components/ui/skeleton';
+import { ErrorDisplay, ExchangeErrorBadge } from '@/components/ui/error-display';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { AssetDistributionCharts } from '@/components/charts';
+import { getAssetDistribution } from '@/lib/portfolio/aggregator';
+import { usePortfolioStore } from '@/store/portfolio-store';
+
+// ===== 대시보드 메인 페이지 =====
+
+export default function DashboardPage() {
+  const { address } = useAccount();
+  const { t } = useTranslation();
+  const walletAddress = address ?? '';
+
+  const portfolio = usePortfolio({
+    walletAddress,
+    enabled: !!walletAddress,
+  });
+
+  // 자산 분포 데이터 계산 (차트용)
+  const aggregatedPortfolio = usePortfolioStore((s) => s.aggregatedPortfolio);
+  const assetDistribution = useMemo(() => {
+    if (!aggregatedPortfolio) return null;
+    return getAssetDistribution(aggregatedPortfolio);
+  }, [aggregatedPortfolio]);
+
+  // 초기 로딩 시 스켈레톤 표시
+  if (portfolio.isInitialLoading) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  // 모든 거래소 에러 시 전체 오류 화면
+  if (portfolio.isAllError && !portfolio.isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4 md:p-6">
+        <ErrorDisplay
+          title={t.errors.general.title}
+          message={t.errors.general.message}
+          onRetry={portfolio.refetchAll}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      {/* 헤더 영역: 타이틀 + 새로고침 + 마지막 업데이트 */}
+      <DashboardHeader
+        lastUpdated={portfolio.lastUpdated}
+        isLoading={portfolio.isLoading}
+        onRefresh={portfolio.refetchAll}
+      />
+
+      {/* 거래소별 오류 배지 */}
+      {portfolio.hasPartialError && (
+        <ExchangeErrorBadges
+          exchangeStates={portfolio.exchangeStates}
+          onRetry={portfolio.refetchExchange}
+        />
+      )}
+
+      {/* 요약 카드 영역 */}
+      <SummaryCards
+        totalEvaluation={portfolio.totalEvaluation}
+        totalInvestment={portfolio.totalInvestment}
+        totalProfitLoss={portfolio.totalProfitLoss}
+        profitLossRate={portfolio.profitLossRate}
+      />
+
+      {/* 자산 분포 차트 (코인별 비중, 거래소별 비중) */}
+      {assetDistribution && (
+        <AssetDistributionCharts distribution={assetDistribution} />
+      )}
+
+      {/* 코인 상세 보기 또는 보유 테이블 */}
+      {portfolio.selectedCoin && portfolio.selectedCoinSummary ? (
+        <CoinDetailView
+          coinSummary={portfolio.selectedCoinSummary}
+          onBack={() => portfolio.selectCoin(null)}
+        />
+      ) : (
+        <>
+          {/* 필터/정렬 컨트롤 */}
+          <TableControls
+            viewMode={portfolio.viewMode}
+            sortCriteria={portfolio.sortCriteria}
+            sortDirection={portfolio.sortDirection}
+            filter={portfolio.filter}
+            onViewModeChange={portfolio.setViewMode}
+            onToggleSort={portfolio.toggleSort}
+            onFilterChange={portfolio.setFilter}
+          />
+
+          {/* 보유 코인 테이블 */}
+          <HoldingsTable
+            mergedHoldings={portfolio.mergedHoldings}
+            sortCriteria={portfolio.sortCriteria}
+            sortDirection={portfolio.sortDirection}
+            isLoading={portfolio.isLoading}
+            loadingStates={portfolio.loadingStates}
+            onToggleSort={portfolio.toggleSort}
+            onSelectCoin={portfolio.selectCoin}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ===== 서브 컴포넌트 =====
+
+// ----- 대시보드 헤더 -----
+
+interface DashboardHeaderProps {
+  lastUpdated: Date | null;
+  isLoading: boolean;
+  onRefresh: () => void;
+}
+
+/**
+ * 대시보드 상단 헤더 영역
+ *
+ * 페이지 타이틀, 마지막 업데이트 시각, 새로고침 버튼을 표시한다.
+ *
+ * @see 요구사항 2.5 (수동 새로고침 버튼)
+ */
+function DashboardHeader({ lastUpdated, isLoading, onRefresh }: DashboardHeaderProps) {
+  const { t } = useTranslation();
+
+  const formattedTime = lastUpdated
+    ? lastUpdated.toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : null;
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">
+          {t.nav.dashboard}
+        </h1>
+        {formattedTime && (
+          <p className="text-sm text-muted-foreground">
+            {t.common.lastUpdate}: {formattedTime}
+          </p>
+        )}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRefresh}
+        disabled={isLoading}
+        aria-label={t.dashboard.refresh}
+      >
+        <RefreshCw
+          className={cn('mr-2 h-4 w-4', isLoading && 'animate-spin')}
+          aria-hidden="true"
+        />
+        {t.dashboard.refresh}
+      </Button>
+    </div>
+  );
+}
+
+// ----- 거래소별 오류 배지 -----
+
+interface ExchangeErrorBadgesProps {
+  exchangeStates: ReturnType<typeof usePortfolio>['exchangeStates'];
+  onRetry: (exchange: ExchangeType) => void;
+}
+
+/**
+ * 오류 상태인 거래소들의 배지를 표시한다.
+ *
+ * @see 요구사항 2.6 (거래소 오류 시 마지막 성공 시점 데이터 표시)
+ */
+function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesProps) {
+  const errorExchanges = Object.values(exchangeStates).filter(
+    (s) => s?.errorMessage,
+  );
+
+  if (errorExchanges.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2" role="status" aria-label="거래소 연결 상태">
+      {errorExchanges.map((state) => {
+        if (!state) return null;
+        const config = EXCHANGE_CONFIGS[state.exchange];
+        return (
+          <div key={state.exchange} className="flex items-center gap-1">
+            <ExchangeErrorBadge
+              exchangeName={config?.nameKo ?? state.exchange}
+              lastUpdated={state.lastUpdated ?? undefined}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={() => onRetry(state.exchange)}
+              aria-label={`${config?.nameKo ?? state.exchange} 재시도`}
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ----- 요약 카드 영역 -----
+
+interface SummaryCardsProps {
+  totalEvaluation: number;
+  totalInvestment: number;
+  totalProfitLoss: number;
+  profitLossRate: number;
+}
+
+/**
+ * 포트폴리오 요약 카드 4개를 그리드로 표시한다.
+ *
+ * @see 요구사항 2.1 (총 평가금액, 총 투자금액, 총 손익, 총 수익률)
+ */
+function SummaryCards({
+  totalEvaluation,
+  totalInvestment,
+  totalProfitLoss,
+  profitLossRate,
+}: SummaryCardsProps) {
+  const { t } = useTranslation();
+
+  const cards = [
+    {
+      label: t.dashboard.totalEvaluation,
+      value: totalEvaluation,
+      icon: Wallet,
+      colorize: false,
+    },
+    {
+      label: t.dashboard.totalInvestment,
+      value: totalInvestment,
+      icon: BarChart3,
+      colorize: false,
+    },
+    {
+      label: t.dashboard.totalProfitLoss,
+      value: totalProfitLoss,
+      icon: totalProfitLoss >= 0 ? TrendingUp : TrendingDown,
+      colorize: true,
+    },
+    {
+      label: t.dashboard.totalProfitLossRate,
+      value: profitLossRate,
+      icon: totalProfitLoss >= 0 ? TrendingUp : TrendingDown,
+      colorize: true,
+      isPercent: true,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map((card) => (
+        <Card key={card.label}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {card.label}
+            </CardTitle>
+            <card.icon
+              className={cn(
+                'h-4 w-4',
+                card.colorize
+                  ? card.value >= 0
+                    ? 'text-profit'
+                    : 'text-loss'
+                  : 'text-muted-foreground',
+              )}
+              aria-hidden="true"
+            />
+          </CardHeader>
+          <CardContent>
+            {'isPercent' in card && card.isPercent ? (
+              <FormattedPercent
+                value={card.value}
+                colorize={card.colorize}
+                className="text-2xl font-bold"
+              />
+            ) : (
+              <FormattedCurrency
+                value={card.value}
+                colorize={card.colorize}
+                showSign={card.colorize}
+                className="text-2xl font-bold"
+              />
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ----- 테이블 컨트롤 (필터/정렬/뷰 모드) -----
+
+interface TableControlsProps {
+  viewMode: 'merged' | 'byExchange';
+  sortCriteria: SortCriteria;
+  sortDirection: 'asc' | 'desc';
+  filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' };
+  onViewModeChange: (mode: 'merged' | 'byExchange') => void;
+  onToggleSort: (criteria: SortCriteria) => void;
+  onFilterChange: (filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' }) => void;
+}
+
+/**
+ * 보유 코인 테이블 상단의 필터/정렬 컨트롤
+ *
+ * @see 요구사항 2.9 (정렬 기준 변경)
+ * @see 요구사항 2.10 (필터 적용)
+ */
+function TableControls({
+  viewMode,
+  sortCriteria,
+  sortDirection,
+  filter,
+  onViewModeChange,
+  onToggleSort,
+  onFilterChange,
+}: TableControlsProps) {
+  const { t } = useTranslation();
+
+  /** 수익/손실 필터 버튼 핸들러 */
+  const handleProfitLossFilter = useCallback(
+    (type: 'all' | 'profit' | 'loss') => {
+      onFilterChange({ ...filter, profitLossType: type });
+    },
+    [filter, onFilterChange],
+  );
+
+  /** 거래소 필터 토글 핸들러 */
+  const handleExchangeFilter = useCallback(
+    (exchange: ExchangeType) => {
+      const current = filter.exchanges ?? [];
+      const isSelected = current.includes(exchange);
+      const newExchanges = isSelected
+        ? current.filter((e) => e !== exchange)
+        : [...current, exchange];
+      onFilterChange({ ...filter, exchanges: newExchanges.length > 0 ? newExchanges : undefined });
+    },
+    [filter, onFilterChange],
+  );
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 className="text-lg font-semibold text-foreground">
+        {t.dashboard.holdings}
+      </h2>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 거래소 필터 */}
+        {(['upbit', 'bithumb', 'coinone'] as ExchangeType[]).map((exchange) => {
+          const config = EXCHANGE_CONFIGS[exchange];
+          const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
+          return (
+            <Button
+              key={exchange}
+              variant={isActive ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => handleExchangeFilter(exchange)}
+              aria-pressed={isActive}
+              aria-label={`${config.nameKo} 필터`}
+            >
+              {config.nameKo}
+            </Button>
+          );
+        })}
+
+        {/* 구분선 */}
+        <div className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
+
+        {/* 수익/손실 필터 */}
+        {(['all', 'profit', 'loss'] as const).map((type) => {
+          const labels = { all: t.common.filter, profit: '수익', loss: '손실' };
+          const isActive = (filter.profitLossType ?? 'all') === type;
+          return (
+            <Button
+              key={type}
+              variant={isActive ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => handleProfitLossFilter(type)}
+              aria-pressed={isActive}
+            >
+              {type === 'all' ? '전체' : labels[type]}
+            </Button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ----- 정렬 가능한 테이블 헤더 -----
+
+interface SortableHeaderProps {
+  label: string;
+  criteria: SortCriteria;
+  currentCriteria: SortCriteria;
+  currentDirection: 'asc' | 'desc';
+  onToggle: (criteria: SortCriteria) => void;
+  className?: string;
+}
+
+/**
+ * 클릭으로 정렬 가능한 테이블 헤더 셀
+ */
+function SortableHeader({
+  label,
+  criteria,
+  currentCriteria,
+  currentDirection,
+  onToggle,
+  className,
+}: SortableHeaderProps) {
+  const isActive = currentCriteria === criteria;
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors',
+        isActive && 'text-foreground',
+        className,
+      )}
+      onClick={() => onToggle(criteria)}
+      aria-label={`${label} 기준으로 정렬`}
+      aria-sort={
+        isActive
+          ? currentDirection === 'asc'
+            ? 'ascending'
+            : 'descending'
+          : 'none'
+      }
+    >
+      {label}
+      {isActive ? (
+        currentDirection === 'asc' ? (
+          <ChevronUp className="h-3 w-3" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="h-3 w-3" aria-hidden="true" />
+        )
+      ) : (
+        <ChevronsUpDown className="h-3 w-3 opacity-50" aria-hidden="true" />
+      )}
+    </button>
+  );
+}
+
+// ----- 보유 코인 테이블 -----
+
+interface HoldingsTableProps {
+  mergedHoldings: MergedHolding[];
+  sortCriteria: SortCriteria;
+  sortDirection: 'asc' | 'desc';
+  isLoading: boolean;
+  loadingStates: Partial<Record<ExchangeType, boolean>>;
+  onToggleSort: (criteria: SortCriteria) => void;
+  onSelectCoin: (symbol: string) => void;
+}
+
+/**
+ * 통합 보유 코인 테이블
+ *
+ * MergedHolding 배열을 테이블로 렌더링한다.
+ * 동일 코인을 여러 거래소에서 보유 시 거래소 뱃지를 표시한다.
+ *
+ * @see 요구사항 2.2 (거래소별 보유 코인 목록)
+ * @see 요구사항 2.3 (동일 코인 다중 거래소 보유 시 통합)
+ * @see 요구사항 2.8 (특정 코인 선택 시 거래소별 상세)
+ * @see 요구사항 2.9 (정렬)
+ */
+function HoldingsTable({
+  mergedHoldings,
+  sortCriteria,
+  sortDirection,
+  isLoading,
+  loadingStates,
+  onToggleSort,
+  onSelectCoin,
+}: HoldingsTableProps) {
+  const { t } = useTranslation();
+
+  if (mergedHoldings.length === 0 && !isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Wallet className="h-12 w-12 text-muted-foreground/50" aria-hidden="true" />
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t.dashboard.noHoldings}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        {/* 데스크톱 테이블 */}
+        <div className="hidden md:block">
+          <div className="overflow-x-auto">
+            <table className="w-full" role="table" aria-label={t.dashboard.holdings}>
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left" scope="col">
+                    <SortableHeader
+                      label={t.portfolio.coinName}
+                      criteria="symbol"
+                      currentCriteria={sortCriteria}
+                      currentDirection={sortDirection}
+                      onToggle={onToggleSort}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-right" scope="col">
+                    <SortableHeader
+                      label={t.portfolio.quantity}
+                      criteria="balance"
+                      currentCriteria={sortCriteria}
+                      currentDirection={sortDirection}
+                      onToggle={onToggleSort}
+                      className="justify-end"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-right" scope="col">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.portfolio.avgBuyPrice}
+                    </span>
+                  </th>
+                  <th className="px-4 py-3 text-right" scope="col">
+                    <SortableHeader
+                      label={t.portfolio.currentPrice}
+                      criteria="currentPrice"
+                      currentCriteria={sortCriteria}
+                      currentDirection={sortDirection}
+                      onToggle={onToggleSort}
+                      className="justify-end"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-right" scope="col">
+                    <SortableHeader
+                      label={t.portfolio.evaluationAmount}
+                      criteria="evaluationAmount"
+                      currentCriteria={sortCriteria}
+                      currentDirection={sortDirection}
+                      onToggle={onToggleSort}
+                      className="justify-end"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-right" scope="col">
+                    <SortableHeader
+                      label={t.portfolio.profitLossRate}
+                      criteria="profitLossRate"
+                      currentCriteria={sortCriteria}
+                      currentDirection={sortDirection}
+                      onToggle={onToggleSort}
+                      className="justify-end"
+                    />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {mergedHoldings.map((holding) => (
+                  <HoldingRow
+                    key={holding.symbol}
+                    holding={holding}
+                    onSelect={() => onSelectCoin(holding.symbol)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 모바일 카드 리스트 */}
+        <div className="md:hidden divide-y divide-border">
+          {mergedHoldings.map((holding) => (
+            <HoldingCard
+              key={holding.symbol}
+              holding={holding}
+              onSelect={() => onSelectCoin(holding.symbol)}
+            />
+          ))}
+        </div>
+
+        {/* 로딩 중 추가 인디케이터 */}
+        {isLoading && mergedHoldings.length > 0 && (
+          <div className="border-t border-border p-3">
+            <LoadingSpinner
+              size="sm"
+              message={t.dashboard.loadingAssets}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ----- 보유 코인 행 (데스크톱) -----
+
+interface HoldingRowProps {
+  holding: MergedHolding;
+  onSelect: () => void;
+}
+
+/**
+ * 테이블 행: 코인 한 줄 표시 (데스크톱)
+ *
+ * 코인명, 수량, 매수평균가, 현재가, 평가금액, 수익률을 표시한다.
+ * 여러 거래소에서 보유 시 거래소 뱃지를 함께 표시한다.
+ *
+ * @see 요구사항 2.2 (코인명, 수량, 매수 평균가, 현재가, 평가금액, 수익률)
+ * @see 요구사항 2.3 (동일 코인 다중 거래소 보유 시 통합 + 개별 내역)
+ */
+function HoldingRow({ holding, onSelect }: HoldingRowProps) {
+  return (
+    <tr
+      className="border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
+      onClick={onSelect}
+      role="row"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      aria-label={`${holding.symbol} 상세 보기`}
+    >
+      {/* 코인명 + 거래소 뱃지 */}
+      <td className="px-4 py-3">
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-foreground">{holding.symbol}</span>
+          <div className="flex flex-wrap gap-1">
+            {holding.exchanges.map((ex) => (
+              <Badge
+                key={ex.exchange}
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0"
+              >
+                {EXCHANGE_CONFIGS[ex.exchange]?.nameKo ?? ex.exchange}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </td>
+
+      {/* 수량 */}
+      <td className="px-4 py-3 text-right">
+        <FormattedQuantity value={holding.totalBalance} />
+      </td>
+
+      {/* 매수 평균가 */}
+      <td className="px-4 py-3 text-right">
+        <FormattedPrice value={holding.weightedAvgBuyPrice} symbol={holding.symbol} />
+      </td>
+
+      {/* 현재가 */}
+      <td className="px-4 py-3 text-right">
+        <FormattedPrice value={holding.currentPrice} symbol={holding.symbol} />
+      </td>
+
+      {/* 평가금액 */}
+      <td className="px-4 py-3 text-right">
+        <FormattedCurrency value={holding.totalEvaluation} className="font-medium" />
+      </td>
+
+      {/* 수익률 */}
+      <td className="px-4 py-3 text-right">
+        <ProfitLossIndicator
+          amount={holding.totalProfitLoss}
+          rate={holding.profitLossRate}
+        />
+      </td>
+    </tr>
+  );
+}
+
+// ----- 보유 코인 카드 (모바일) -----
+
+interface HoldingCardProps {
+  holding: MergedHolding;
+  onSelect: () => void;
+}
+
+/**
+ * 모바일용 보유 코인 카드
+ *
+ * @see 요구사항 9.1 (모바일에 최적화된 레이아웃)
+ */
+function HoldingCard({ holding, onSelect }: HoldingCardProps) {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      type="button"
+      className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+      onClick={onSelect}
+      aria-label={`${holding.symbol} 상세 보기`}
+    >
+      {/* 상단: 코인명 + 수익률 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{holding.symbol}</span>
+          <div className="flex gap-0.5">
+            {holding.exchanges.map((ex) => (
+              <Badge
+                key={ex.exchange}
+                variant="secondary"
+                className="text-[10px] px-1 py-0"
+              >
+                {EXCHANGE_CONFIGS[ex.exchange]?.nameKo?.[0] ?? ex.exchange[0]}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <FormattedPercent
+          value={holding.profitLossRate}
+          colorize
+          className="text-sm font-medium"
+        />
+      </div>
+
+      {/* 하단: 평가금액 + 손익 */}
+      <div className="mt-1 flex items-center justify-between">
+        <FormattedCurrency
+          value={holding.totalEvaluation}
+          className="text-sm text-foreground"
+        />
+        <FormattedCurrency
+          value={holding.totalProfitLoss}
+          colorize
+          showSign
+          className="text-xs"
+        />
+      </div>
+
+      {/* 추가 정보: 수량 + 현재가 */}
+      <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          {t.portfolio.quantity}: <FormattedQuantity value={holding.totalBalance} />
+        </span>
+        <span>
+          {t.portfolio.currentPrice}: <FormattedPrice value={holding.currentPrice} symbol={holding.symbol} />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// ----- 코인 상세 보기 -----
+
+interface CoinDetailViewProps {
+  coinSummary: {
+    symbol: string;
+    totalBalance: number;
+    weightedAvgBuyPrice: number;
+    currentPrice: number;
+    totalEvaluation: number;
+    totalProfitLoss: number;
+    profitLossRate: number;
+    exchanges: {
+      exchange: ExchangeType;
+      balance: number;
+      avgBuyPrice: number;
+      currentPrice: number;
+      evaluation: number;
+      profitLoss: number;
+      profitLossRate: number;
+    }[];
+  };
+  onBack: () => void;
+}
+
+/**
+ * 특정 코인의 거래소별 보유 상세 비교 화면
+ *
+ * 사용자가 보유 테이블에서 코인을 선택하면 표시된다.
+ * 거래소별 수량, 매수가, 현재가, 수익률을 비교한다.
+ *
+ * @see 요구사항 2.8 (특정 코인 선택 시 거래소별 보유 상세 비교)
+ */
+function CoinDetailView({ coinSummary, onBack }: CoinDetailViewProps) {
+  const { t } = useTranslation();
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            aria-label={t.common.back}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <div>
+            <CardTitle className="text-xl">{coinSummary.symbol}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t.portfolio.quantity}: <FormattedQuantity value={coinSummary.totalBalance} />
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* 통합 요약 */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">{t.portfolio.avgBuyPrice}</p>
+            <FormattedPrice
+              value={coinSummary.weightedAvgBuyPrice}
+              symbol={coinSummary.symbol}
+              className="font-medium"
+            />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t.portfolio.currentPrice}</p>
+            <FormattedPrice
+              value={coinSummary.currentPrice}
+              symbol={coinSummary.symbol}
+              className="font-medium"
+            />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t.portfolio.evaluationAmount}</p>
+            <FormattedCurrency value={coinSummary.totalEvaluation} className="font-medium" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{t.dashboard.totalProfitLoss}</p>
+            <ProfitLossIndicator
+              amount={coinSummary.totalProfitLoss}
+              rate={coinSummary.profitLossRate}
+            />
+          </div>
+        </div>
+
+        {/* 거래소별 상세 비교 테이블 */}
+        <div className="overflow-x-auto">
+          <table className="w-full" role="table" aria-label={`${coinSummary.symbol} 거래소별 보유 상세`}>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground" scope="col">
+                  {t.exchange.upbit && '거래소'}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
+                  {t.portfolio.quantity}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
+                  {t.portfolio.avgBuyPrice}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
+                  {t.portfolio.currentPrice}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
+                  {t.portfolio.evaluationAmount}
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
+                  {t.portfolio.profitLossRate}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {coinSummary.exchanges.map((ex) => {
+                const config = EXCHANGE_CONFIGS[ex.exchange];
+                return (
+                  <tr
+                    key={ex.exchange}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <td className="px-4 py-2">
+                      <Badge variant="outline">
+                        {config?.nameKo ?? ex.exchange}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <FormattedQuantity value={ex.balance} />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <FormattedPrice value={ex.avgBuyPrice} symbol={coinSummary.symbol} />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <FormattedPrice value={ex.currentPrice} symbol={coinSummary.symbol} />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <FormattedCurrency value={ex.evaluation} />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <ProfitLossIndicator
+                        amount={ex.profitLoss}
+                        rate={ex.profitLossRate}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

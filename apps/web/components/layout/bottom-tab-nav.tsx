@@ -1,0 +1,122 @@
+/**
+ * 하단 탭 네비게이션 컴포넌트 (모바일)
+ *
+ * 모바일 화면(768px 이하)에서 하단 고정 탭 바를 렌더링한다.
+ * 주요 메뉴만 아이콘 기반으로 표시하여 모바일에 최적화한다.
+ *
+ * @see 요구사항 9.1 (모바일 최적화 레이아웃)
+ * @see 요구사항 NF4.1 (WCAG 2.1 AA 접근성)
+ */
+
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  TrendingUp,
+  BarChart3,
+  Bell,
+  Settings,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { isActiveRoute, type NavItem } from './sidebar-nav';
+
+/**
+ * 모바일 하단 탭에 표시할 메뉴 항목 (최대 5개)
+ *
+ * 모바일 화면의 제한된 공간에 맞춰 핵심 메뉴만 선별한다.
+ */
+export const mobileTabItems: NavItem[] = [
+  {
+    label: '대시보드',
+    href: '/',
+    icon: LayoutDashboard,
+    ariaLabel: '포트폴리오 대시보드',
+  },
+  {
+    label: '마켓',
+    href: '/market',
+    icon: TrendingUp,
+    ariaLabel: '실시간 마켓 시세',
+  },
+  {
+    label: '김프',
+    href: '/premium',
+    icon: BarChart3,
+    ariaLabel: '거래소 간 김치 프리미엄 분석',
+  },
+  {
+    label: '알림',
+    href: '/alerts',
+    icon: Bell,
+    ariaLabel: '가격 알림 관리',
+  },
+  {
+    label: '설정',
+    href: '/settings',
+    icon: Settings,
+    ariaLabel: 'API 키 관리 및 설정',
+  },
+];
+
+/** BottomTabNav Props */
+interface BottomTabNavProps {
+  /** 추가 CSS 클래스 */
+  className?: string;
+}
+
+/**
+ * 모바일 하단 탭 네비게이션
+ *
+ * 768px 이하에서만 표시되며, 하단 고정 바로 렌더링된다.
+ * 각 탭은 아이콘과 짧은 텍스트를 포함하며,
+ * 활성 상태를 시각적으로 구분한다.
+ */
+export function BottomTabNav({ className }: BottomTabNavProps) {
+  const pathname = usePathname();
+
+  return (
+    <nav
+      className={cn(
+        'fixed bottom-0 left-0 right-0 z-50',
+        'flex md:hidden',
+        'border-t border-border bg-background/95 backdrop-blur-sm',
+        'safe-area-inset-bottom',
+        className,
+      )}
+      aria-label="모바일 네비게이션"
+    >
+      <ul className="flex w-full" role="list">
+        {mobileTabItems.map((item) => {
+          const isActive = isActiveRoute(pathname, item.href);
+          const Icon = item.icon;
+
+          return (
+            <li key={item.href} className="flex-1">
+              <Link
+                href={item.href}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-1 py-2 px-1',
+                  'text-xs font-medium transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-label={item.ariaLabel || item.label}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon
+                  className={cn('h-5 w-5', isActive && 'text-primary')}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
