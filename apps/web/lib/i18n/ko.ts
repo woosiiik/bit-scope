@@ -651,11 +651,13 @@ const ko = {
         upbit: 'https://upbit.com/mypage/open_api_management',
         bithumb: 'https://www.bithumb.com/api_support/management_api',
         coinone: 'https://coinone.co.kr/developer/app',
+        binance: 'https://www.binance.com/en/my/settings/api-management',
       },
       guideSteps: {
         upbit: '업비트 > 마이페이지 > Open API 관리에서 발급할 수 있습니다.',
         bithumb: '빗썸 > 고객센터 > API 관리에서 발급할 수 있습니다.',
         coinone: '코인원 > 개발자 센터 > 앱 관리에서 발급할 수 있습니다.',
+        binance: '바이낸스 > 계정 > API 관리에서 발급할 수 있습니다.',
       },
     },
   },

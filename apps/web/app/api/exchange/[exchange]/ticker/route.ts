@@ -97,6 +97,15 @@ function buildTickerUrl(exchange: ExchangeType, symbols?: string[], upbitMarkets
       }
       return `${baseUrl}${endpoint}`;
     }
+    case 'binance': {
+      // 바이낸스: /api/v3/ticker/24hr?symbol=BTCUSDT 또는 전체 목록
+      if (symbols && symbols.length > 0) {
+        // 복수 심볼 조회: symbols 파라미터 사용
+        const binanceSymbols = symbols.map((s) => `"${s.toUpperCase()}USDT"`).join(',');
+        return `${baseUrl}${endpoint}?symbols=[${binanceSymbols}]`;
+      }
+      return `${baseUrl}${endpoint}`;
+    }
     default:
       return `${baseUrl}${endpoint}`;
   }

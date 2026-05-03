@@ -303,7 +303,7 @@ describe('Balance Route Handler', () => {
   it('지원하지 않는 거래소에 대해 400 오류를 반환한다', async () => {
     const signedRequest = createSignedRequest();
     const request = createPostRequest(signedRequest);
-    const response = await balancePOST(request, createRouteParams('binance'));
+    const response = await balancePOST(request, createRouteParams('kraken'));
     const data = await parseResponse(response);
 
     expect(response.status).toBe(400);
@@ -447,9 +447,9 @@ describe('Ticker Route Handler', () => {
 
     it('지원하지 않는 거래소에 대해 400 오류를 반환한다', async () => {
       const request = createGetRequest(
-        'http://localhost:3000/api/exchange/binance/ticker?symbols=BTC',
+        'http://localhost:3000/api/exchange/kraken/ticker?symbols=BTC',
       );
-      const response = await tickerGET(request, createRouteParams('binance'));
+      const response = await tickerGET(request, createRouteParams('kraken'));
       const data = await parseResponse(response);
 
       expect(response.status).toBe(400);
@@ -561,9 +561,9 @@ describe('Orderbook Route Handler', () => {
 
     it('지원하지 않는 거래소에 대해 400 오류를 반환한다', async () => {
       const request = createGetRequest(
-        'http://localhost:3000/api/exchange/binance/orderbook?symbol=BTC',
+        'http://localhost:3000/api/exchange/kraken/orderbook?symbol=BTC',
       );
-      const response = await orderbookGET(request, createRouteParams('binance'));
+      const response = await orderbookGET(request, createRouteParams('kraken'));
       const data = await parseResponse(response);
 
       expect(response.status).toBe(400);

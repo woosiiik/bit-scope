@@ -73,15 +73,17 @@ export {
   EXCHANGE_CONFIGS,
   EXCHANGE_ENDPOINTS,
   SUPPORTED_EXCHANGES,
+  DOMESTIC_EXCHANGES,
   DEFAULT_CACHE_TTL_MS,
   DEFAULT_REFRESH_INTERVAL_MS,
   COINONE_POLLING_INTERVAL_MS,
   WS_MAX_RECONNECT_ATTEMPTS,
   RETRY_CONFIG,
   PREMIUM_SNAPSHOT_INTERVAL_MS,
-  // 바이낸스 설정 (김치 프리미엄 비교용)
+  // 바이낸스 설정 (포트폴리오 + 김치 프리미엄 비교용)
   BINANCE_CONFIG,
   BINANCE_ENDPOINTS,
+  BINANCE_PRICE_ENDPOINTS,
   BINANCE_POLLING_INTERVAL_MS,
   // 코인 심볼
   MAJOR_COINS,
@@ -115,6 +117,7 @@ export {
   validateUpbitApiKeyFormat,
   validateBithumbApiKeyFormat,
   validateCoinoneApiKeyFormat,
+  validateBinanceApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

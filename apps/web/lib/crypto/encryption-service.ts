@@ -280,7 +280,7 @@ export function removeEncryptedKey(walletAddress: string, exchange: ExchangeType
  * @param walletAddress 지갑 주소 (0x...)
  */
 export function removeAllEncryptedKeys(walletAddress: string): void {
-  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone'];
+  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone', 'binance'];
   for (const exchange of exchanges) {
     removeEncryptedKey(walletAddress, exchange);
   }
@@ -293,7 +293,7 @@ export function removeAllEncryptedKeys(walletAddress: string): void {
  * @returns 등록된 거래소 식별자 목록
  */
 export function getRegisteredExchanges(walletAddress: string): ExchangeType[] {
-  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone'];
+  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone', 'binance'];
   const registered: ExchangeType[] = [];
 
   for (const exchange of exchanges) {

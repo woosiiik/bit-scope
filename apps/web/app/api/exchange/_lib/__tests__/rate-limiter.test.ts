@@ -37,8 +37,8 @@ describe('ExchangeRateLimiter', () => {
 
     it('지원하지 않는 거래소는 오류를 발생시킨다', () => {
       expect(() =>
-        limiter.acquireToken('binance' as never),
-      ).toThrowError('지원하지 않는 거래소입니다: binance');
+        limiter.acquireToken('kraken' as never),
+      ).toThrowError('지원하지 않는 거래소입니다: kraken');
     });
 
     it('토큰을 초과하여 사용하면 RateLimitError를 발생시킨다', () => {
@@ -129,7 +129,7 @@ describe('ExchangeRateLimiter', () => {
     });
 
     it('지원하지 않는 거래소는 false를 반환한다', () => {
-      expect(limiter.isRateLimited('binance' as never)).toBe(false);
+      expect(limiter.isRateLimited('kraken' as never)).toBe(false);
     });
   });
 
@@ -152,7 +152,7 @@ describe('ExchangeRateLimiter', () => {
     });
 
     it('지원하지 않는 거래소는 0을 반환한다', () => {
-      expect(limiter.getAvailableTokens('binance' as never)).toBe(0);
+      expect(limiter.getAvailableTokens('kraken' as never)).toBe(0);
     });
   });
 

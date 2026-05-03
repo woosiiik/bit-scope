@@ -41,6 +41,13 @@ import {
   normalizeCoinoneOrderHistory,
 } from './coinone';
 
+import {
+  normalizeBinanceBalance,
+  normalizeBinanceTicker,
+  normalizeBinanceOrderbook,
+  normalizeBinanceOrderHistory,
+} from './binance';
+
 // 타입 re-export
 export type {
   NormalizedBalance,
@@ -72,6 +79,8 @@ export function normalizeBalance(
       return normalizeBithumbBalance(rawResponse);
     case 'coinone':
       return normalizeCoinoneBalance(rawResponse);
+    case 'binance':
+      return normalizeBinanceBalance(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -101,6 +110,8 @@ export function normalizeTicker(
       return normalizeBithumbTicker(rawResponse, symbol);
     case 'coinone':
       return normalizeCoinoneTicker(rawResponse);
+    case 'binance':
+      return normalizeBinanceTicker(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -128,6 +139,8 @@ export function normalizeOrderbook(
       return normalizeBithumbOrderbook(rawResponse);
     case 'coinone':
       return normalizeCoinoneOrderbook(rawResponse);
+    case 'binance':
+      return normalizeBinanceOrderbook(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -155,6 +168,8 @@ export function normalizeOrderHistory(
       return normalizeBithumbOrderHistory(rawResponse);
     case 'coinone':
       return normalizeCoinoneOrderHistory(rawResponse);
+    case 'binance':
+      return normalizeBinanceOrderHistory(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }

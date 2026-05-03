@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput & NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon --watch dist --delay 1 dist/main.js",
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 tsc --watch --preserveWatchOutput & NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon --watch dist --delay 1 dist/main.js",
     "start": "node dist/main",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

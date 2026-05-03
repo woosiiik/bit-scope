@@ -132,8 +132,8 @@ describe('normalizeBalance', () => {
 
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
-      normalizeBalance('binance' as never, {});
-    }).toThrow('지원하지 않는 거래소입니다: binance');
+      normalizeBalance('kraken' as never, {});
+    }).toThrow('지원하지 않는 거래소입니다: kraken');
   });
 });
 
@@ -166,8 +166,8 @@ describe('normalizeTicker', () => {
 
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
-      normalizeTicker('binance' as never, {});
-    }).toThrow('지원하지 않는 거래소입니다: binance');
+      normalizeTicker('kraken' as never, {});
+    }).toThrow('지원하지 않는 거래소입니다: kraken');
   });
 });
 
@@ -223,8 +223,8 @@ describe('normalizeOrderbook', () => {
 
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
-      normalizeOrderbook('binance' as never, {});
-    }).toThrow('지원하지 않는 거래소입니다: binance');
+      normalizeOrderbook('kraken' as never, {});
+    }).toThrow('지원하지 않는 거래소입니다: kraken');
   });
 });
 
@@ -303,7 +303,7 @@ describe('normalizeOrderHistory', () => {
 
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
-      normalizeOrderHistory('binance' as never, {});
-    }).toThrow('지원하지 않는 거래소입니다: binance');
+      normalizeOrderHistory('kraken' as never, {});
+    }).toThrow('지원하지 않는 거래소입니다: kraken');
   });
 });

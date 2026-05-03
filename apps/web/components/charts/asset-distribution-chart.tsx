@@ -51,6 +51,7 @@ const EXCHANGE_COLORS: Record<ExchangeType, string> = {
   upbit: 'hsl(217.2, 91.2%, 59.8%)',   // 업비트: 파란색
   bithumb: 'hsl(30, 80%, 55%)',         // 빗썸: 주황색
   coinone: 'hsl(160, 60%, 45%)',        // 코인원: 초록색
+  binance: 'hsl(50, 80%, 50%)',         // 바이낸스: 노란색
 };
 
 // ===== 차트 데이터 타입 =====

@@ -107,7 +107,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           `getUpdates 폴링 오류: ${error instanceof Error ? error.message : String(error)}`,
         );
       });
-    }, 3000);
+    }, 10_000); // 10초 간격
   }
 
   /**
@@ -132,11 +132,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         signal: AbortSignal.timeout(10_000),
       });
 
-      this.logger.debug(`[폴링] getUpdates 응답: ${response.status}`);
-
       if (!response.ok) {
-        const errorBody = await response.text();
-        this.logger.error(`[폴링] getUpdates 실패: ${response.status} - ${errorBody}`);
+        this.logger.error(`[폴링] getUpdates 실패: ${response.status}`);
         return;
       }
 
@@ -144,8 +141,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         ok: boolean;
         result: Array<{ update_id: number } & Record<string, unknown>>;
       };
-
-      this.logger.debug(`[폴링] ok=${data.ok}, updates=${data.result?.length ?? 0}`);
 
       if (!data.ok || !data.result || data.result.length === 0) return;
 

@@ -47,16 +47,23 @@ describe('ExchangeSignerFactory', () => {
       expect(signer.getExchangeType()).toBe('coinone');
     });
 
+    it('바이낸스 ExchangeType에 대해 바이낸스 서명기를 반환한다', () => {
+      const signer = createSigner('binance');
+
+      expect(signer).toBeDefined();
+      expect(signer.getExchangeType()).toBe('binance');
+    });
+
     it('지원하지 않는 거래소 타입에 대해 오류를 발생시킨다', () => {
       expect(() => {
-        createSigner('binance' as ExchangeType);
-      }).toThrow('지원하지 않는 거래소입니다: binance');
+        createSigner('kraken' as ExchangeType);
+      }).toThrow('지원하지 않는 거래소입니다: kraken');
     });
 
     it('지원하지 않는 거래소 타입 오류 메시지에 지원 거래소 목록을 포함한다', () => {
       expect(() => {
         createSigner('kraken' as ExchangeType);
-      }).toThrow('upbit, bithumb, coinone');
+      }).toThrow('upbit, bithumb, coinone, binance');
     });
 
     it('모든 지원 거래소에 대해 서명기를 반환한다', () => {
@@ -76,7 +83,7 @@ describe('ExchangeSignerFactory', () => {
   });
 
   describe('ExchangeSigner 인터페이스 준수', () => {
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
       '%s 서명기가 signRequest 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -84,7 +91,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
       '%s 서명기가 validateApiKey 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -92,7 +99,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
       '%s 서명기가 getExchangeType 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -206,7 +213,6 @@ describe('ExchangeSignerFactory', () => {
     });
 
     it('지원하지 않는 거래소에 대해 false를 반환한다', () => {
-      expect(isSupportedExchange('binance')).toBe(false);
       expect(isSupportedExchange('kraken')).toBe(false);
       expect(isSupportedExchange('')).toBe(false);
       expect(isSupportedExchange('UPBIT')).toBe(false);

@@ -30,6 +30,7 @@ import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
 import * as UpbitSigner from './upbit-signer';
 import * as BithumbSigner from './bithumb-signer';
 import * as CoinoneSigner from './coinone-signer';
+import * as BinanceSigner from './binance-signer';
 
 /**
  * 거래소 요청 서명기 인터페이스
@@ -80,6 +81,17 @@ const coinoneSigner: ExchangeSigner = {
 };
 
 /**
+ * 바이낸스 서명기 어댑터
+ *
+ * binance-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const binanceSigner: ExchangeSigner = {
+  signRequest: BinanceSigner.signRequest,
+  validateApiKey: BinanceSigner.validateApiKey,
+  getExchangeType: BinanceSigner.getExchangeType,
+};
+
+/**
  * 거래소 서명기 레지스트리
  *
  * ExchangeType을 키로 사용하여 해당 거래소의 서명기 인스턴스를 보관한다.
@@ -89,6 +101,7 @@ const signerRegistry: Record<ExchangeType, ExchangeSigner> = {
   upbit: upbitSigner,
   bithumb: bithumbSigner,
   coinone: coinoneSigner,
+  binance: binanceSigner,
 };
 
 /**

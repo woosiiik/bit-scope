@@ -116,13 +116,14 @@ export const COINONE_ENDPOINTS: ExchangeEndpoints = {
 } as const;
 
 /**
- * 바이낸스 API 설정 (해외 거래소 - 김치 프리미엄 비교용)
+ * 바이낸스 API 설정 (해외 거래소 - 포트폴리오 + 김치 프리미엄 비교용)
  *
- * 바이낸스는 국내 거래소 포트폴리오 연동 대상이 아니며,
- * 공개 시세 API를 통한 김치 프리미엄 비교 전용으로 사용된다.
- * ExchangeType에는 포함되지 않는 별도 설정이다.
+ * 바이낸스는 포트폴리오 거래소로 사용되며(자산 조회, 대시보드 표시),
+ * 공개 시세 API를 통한 김치 프리미엄 비교에도 사용된다.
+ * 바이낸스 잔고는 USDT 기준이므로 KRW 환산하여 표시한다.
  */
-export const BINANCE_CONFIG = {
+export const BINANCE_CONFIG: ExchangeConfig = {
+  id: 'binance',
   nameKo: '바이낸스',
   nameEn: 'Binance',
   restBaseUrl: 'https://api.binance.com',
@@ -135,7 +136,21 @@ export const BINANCE_CONFIG = {
 } as const;
 
 /** 바이낸스 API 엔드포인트 */
-export const BINANCE_ENDPOINTS = {
+export const BINANCE_ENDPOINTS: ExchangeEndpoints = {
+  /** 잔고 조회: GET /api/v3/account (HMAC-SHA256 인증 필요) */
+  balance: '/api/v3/account',
+  /** 시세(24h 통계) 조회: GET /api/v3/ticker/24hr */
+  ticker: '/api/v3/ticker/24hr',
+  /** 호가 조회: GET /api/v3/depth */
+  orderbook: '/api/v3/depth',
+  /** 주문 내역 조회: GET /api/v3/allOrders (HMAC-SHA256 인증 필요) */
+  orders: '/api/v3/allOrders',
+  /** 전체 거래 가능 심볼 정보: GET /api/v3/exchangeInfo */
+  markets: '/api/v3/exchangeInfo',
+} as const;
+
+/** 바이낸스 가격 조회 전용 엔드포인트 (김치 프리미엄용) */
+export const BINANCE_PRICE_ENDPOINTS = {
   /** 개별 시세 조회: GET /api/v3/ticker/price?symbol=BTCUSDT */
   tickerPrice: '/api/v3/ticker/price',
   /** 전체 시세 조회: GET /api/v3/ticker/price */
@@ -154,6 +169,7 @@ export const EXCHANGE_CONFIGS: Record<ExchangeType, ExchangeConfig> = {
   upbit: UPBIT_CONFIG,
   bithumb: BITHUMB_CONFIG,
   coinone: COINONE_CONFIG,
+  binance: BINANCE_CONFIG,
 } as const;
 
 /**
@@ -165,10 +181,19 @@ export const EXCHANGE_ENDPOINTS: Record<ExchangeType, ExchangeEndpoints> = {
   upbit: UPBIT_ENDPOINTS,
   bithumb: BITHUMB_ENDPOINTS,
   coinone: COINONE_ENDPOINTS,
+  binance: BINANCE_ENDPOINTS,
 } as const;
 
 /** 지원하는 모든 거래소 목록 */
 export const SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
+  'upbit',
+  'bithumb',
+  'coinone',
+  'binance',
+] as const;
+
+/** 국내 거래소 목록 (김치 프리미엄 비교 기준) */
+export const DOMESTIC_EXCHANGES: readonly ExchangeType[] = [
   'upbit',
   'bithumb',
   'coinone',

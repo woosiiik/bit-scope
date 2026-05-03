@@ -11,7 +11,7 @@
  */
 
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { BINANCE_CONFIG, BINANCE_ENDPOINTS, BINANCE_POLLING_INTERVAL_MS } from '@bitscope/shared';
+import { BINANCE_CONFIG, BINANCE_PRICE_ENDPOINTS, BINANCE_POLLING_INTERVAL_MS } from '@bitscope/shared';
 
 /** 바이낸스 ticker/price 응답 항목 */
 export interface BinanceTickerPriceItem {
@@ -184,7 +184,7 @@ export class BinancePollingClient implements OnModuleDestroy {
    * 구독 중인 심볼의 USDT 마켓 가격만 내부 맵에 저장한다.
    */
   private async fetchTickers(): Promise<void> {
-    const url = `${BINANCE_CONFIG.restBaseUrl}${BINANCE_ENDPOINTS.allTickerPrices}`;
+    const url = `${BINANCE_CONFIG.restBaseUrl}${BINANCE_PRICE_ENDPOINTS.allTickerPrices}`;
 
     try {
       this.abortController = new AbortController();
@@ -243,15 +243,13 @@ export class BinancePollingClient implements OnModuleDestroy {
       }
 
       this.consecutiveErrors++;
-      this.logger.error(
-        `바이낸스 시세 조회 실패 (연속 ${this.consecutiveErrors}회)`,
-        error instanceof Error ? error.message : String(error),
-      );
-
-      // 연속 오류 횟수 초과 시 경고 (폴링은 계속)
-      if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+      // 첫 번째와 10회마다만 로그 출력 (로그 스팸 방지)
+      if (this.consecutiveErrors === 1 || this.consecutiveErrors % 10 === 0) {
+        const errDetail = error instanceof Error
+          ? `${error.message} / cause: ${(error as NodeJS.ErrnoException).cause ?? 'none'} / code: ${(error as NodeJS.ErrnoException).code ?? 'none'}`
+          : String(error);
         this.logger.warn(
-          `바이낸스 연속 오류 ${this.consecutiveErrors}회 초과`,
+          `바이낸스 시세 조회 실패 (연속 ${this.consecutiveErrors}회): ${errDetail} / url: ${url}`,
         );
       }
     } finally {

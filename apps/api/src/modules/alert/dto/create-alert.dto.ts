@@ -31,8 +31,8 @@ export class CreateAlertDto {
   /** 대상 거래소 (null이면 모든 거래소) */
   @IsOptional()
   @IsString()
-  @IsIn(['upbit', 'bithumb', 'coinone'], {
-    message: 'exchange는 upbit, bithumb, coinone 중 하나여야 합니다.',
+  @IsIn(['upbit', 'bithumb', 'coinone', 'binance'], {
+    message: 'exchange는 upbit, bithumb, coinone, binance 중 하나여야 합니다.',
   })
   exchange?: string;
 

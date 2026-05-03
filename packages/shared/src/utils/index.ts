@@ -24,6 +24,7 @@ export {
   validateUpbitApiKeyFormat,
   validateBithumbApiKeyFormat,
   validateCoinoneApiKeyFormat,
+  validateBinanceApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

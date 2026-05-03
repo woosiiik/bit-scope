@@ -277,7 +277,7 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
 
     // 가격 맵에서도 제거
     for (const symbol of symbols) {
-      for (const exchange of ['upbit', 'bithumb', 'coinone'] as ExchangeType[]) {
+      for (const exchange of ['upbit', 'bithumb', 'coinone', 'binance'] as ExchangeType[]) {
         this.priceMap.delete(`${exchange}:${symbol}`);
       }
     }

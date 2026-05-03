@@ -565,36 +565,36 @@ export class AlertService {
     switch (condition) {
       case 'above':
         return (
-          `<b>BitScope Alert</b>\n\n` +
+          `🚨 <b>BitScope Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `Condition: >= ${targetValue.toLocaleString()} KRW\n` +
-          `Current: ${triggeredValue.toLocaleString()} KRW\n` +
-          (exchangeName ? `Exchange: ${exchangeName}\n` : '') +
+          `조건: ${targetValue.toLocaleString()} KRW 이상\n` +
+          `현재가: ${triggeredValue.toLocaleString()} KRW\n` +
+          (exchangeName ? `거래소: ${exchangeName}\n` : '') +
           `\n---\nBitScope`
         );
       case 'below':
         return (
-          `<b>BitScope Alert</b>\n\n` +
+          `🚨 <b>BitScope Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `Condition: <= ${targetValue.toLocaleString()} KRW\n` +
-          `Current: ${triggeredValue.toLocaleString()} KRW\n` +
-          (exchangeName ? `Exchange: ${exchangeName}\n` : '') +
+          `조건: ${targetValue.toLocaleString()} KRW 이하\n` +
+          `현재가: ${triggeredValue.toLocaleString()} KRW\n` +
+          (exchangeName ? `거래소: ${exchangeName}\n` : '') +
           `\n---\nBitScope`
         );
       case 'premium_above':
         return (
-          `<b>BitScope Premium Alert</b>\n\n` +
+          `📊 <b>BitScope 김프 Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `Condition: Premium >= ${targetValue}%\n` +
-          `Current: ${triggeredValue.toFixed(2)}%\n` +
+          `조건: 김프 ${targetValue}% 이상\n` +
+          `현재: ${triggeredValue.toFixed(2)}%\n` +
           `\n---\nBitScope`
         );
       case 'premium_below':
         return (
-          `<b>BitScope Premium Alert</b>\n\n` +
+          `📊 <b>BitScope 김프 Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `Condition: Premium <= ${targetValue}%\n` +
-          `Current: ${triggeredValue.toFixed(2)}%\n` +
+          `조건: 김프 ${targetValue}% 이하\n` +
+          `현재: ${triggeredValue.toFixed(2)}%\n` +
           `\n---\nBitScope`
         );
       default:

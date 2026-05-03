@@ -616,7 +616,7 @@ function TableControls({
 
       <div className="flex flex-wrap items-center gap-2">
         {/* 거래소 필터 */}
-        {(['upbit', 'bithumb', 'coinone'] as ExchangeType[]).map((exchange) => {
+        {(['upbit', 'bithumb', 'coinone', 'binance'] as ExchangeType[]).map((exchange) => {
           const config = EXCHANGE_CONFIGS[exchange];
           const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
           return (

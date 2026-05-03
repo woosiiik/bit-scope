@@ -20,7 +20,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import type { ExchangeType, KimchiPremiumData } from '@bitscope/shared';
 import {
-  SUPPORTED_EXCHANGES,
+  DOMESTIC_EXCHANGES,
   DEFAULT_PREMIUM_COINS,
   MAJOR_COIN_SYMBOLS,
 } from '@bitscope/shared';
@@ -182,8 +182,8 @@ export class PremiumService {
     const entitiesToSave: KimchiPremiumHistoryEntity[] = [];
 
     for (const symbol of DEFAULT_PREMIUM_COINS) {
-      // 각 국내 거래소 기준으로 김프 스냅샷 저장
-      for (const exchange of SUPPORTED_EXCHANGES) {
+      // 각 국내 거래소 기준으로 김프 스냅샷 저장 (바이낸스 vs 바이낸스 비교는 무의미하므로 국내 거래소만)
+      for (const exchange of DOMESTIC_EXCHANGES) {
         const premium = this.calculatePremium(symbol, exchange);
         if (!premium) {
           continue;

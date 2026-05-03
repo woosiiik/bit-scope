@@ -358,7 +358,7 @@ describe('PremiumService', () => {
 
       expect(premiumHistoryRepo.save).toHaveBeenCalledTimes(1);
       const savedEntities = (premiumHistoryRepo.save as jest.Mock).mock.calls[0]![0];
-      // DEFAULT_PREMIUM_COINS(5) x SUPPORTED_EXCHANGES(3) = 15 항목
+      // DEFAULT_PREMIUM_COINS(5) x DOMESTIC_EXCHANGES(3) = 15 항목
       expect(savedEntities).toHaveLength(15);
     });
 

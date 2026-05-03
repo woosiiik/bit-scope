@@ -654,11 +654,13 @@ const en: Messages = {
         upbit: 'https://upbit.com/mypage/open_api_management',
         bithumb: 'https://www.bithumb.com/api_support/management_api',
         coinone: 'https://coinone.co.kr/developer/app',
+        binance: 'https://www.binance.com/en/my/settings/api-management',
       },
       guideSteps: {
         upbit: 'Upbit > My Page > Open API Management',
         bithumb: 'Bithumb > Customer Center > API Management',
         coinone: 'Coinone > Developer Center > App Management',
+        binance: 'Binance > Account > API Management',
       },
     },
   },

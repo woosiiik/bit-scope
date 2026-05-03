@@ -171,6 +171,52 @@ export function validateCoinoneApiKeyFormat(
 }
 
 /**
+ * 바이낸스 API Key 형식을 검증한다.
+ *
+ * 바이낸스 API Key는 영숫자로 구성된 Access Key와 Secret Key를 사용한다.
+ *
+ * @param apiKey - 검증할 API Key 쌍
+ * @returns 형식 검증 결과
+ */
+export function validateBinanceApiKeyFormat(
+  apiKey: ApiKeyPair,
+): ApiKeyFormatValidation {
+  const accessKeyValid = isNonEmptyString(apiKey.accessKey);
+  const secretKeyValid = isNonEmptyString(apiKey.secretKey);
+
+  if (!accessKeyValid && !secretKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: false,
+      isSecretKeyValid: false,
+      errorMessage: 'API Key와 Secret Key를 모두 입력해주세요.',
+    };
+  }
+  if (!accessKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: false,
+      isSecretKeyValid: secretKeyValid,
+      errorMessage: 'API Key를 입력해주세요.',
+    };
+  }
+  if (!secretKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: accessKeyValid,
+      isSecretKeyValid: false,
+      errorMessage: 'Secret Key를 입력해주세요.',
+    };
+  }
+
+  return {
+    isValid: true,
+    isAccessKeyValid: true,
+    isSecretKeyValid: true,
+  };
+}
+
+/**
  * 거래소 유형에 따라 API Key 형식을 검증한다.
  *
  * @param exchange - 거래소 유형
@@ -188,6 +234,8 @@ export function validateApiKeyFormat(
       return validateBithumbApiKeyFormat(apiKey);
     case 'coinone':
       return validateCoinoneApiKeyFormat(apiKey);
+    case 'binance':
+      return validateBinanceApiKeyFormat(apiKey);
     default: {
       // 타입 안전성: 새로운 거래소 추가 시 컴파일 오류 발생
       const _exhaustiveCheck: never = exchange;

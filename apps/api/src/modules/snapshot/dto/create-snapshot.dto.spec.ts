@@ -116,7 +116,7 @@ describe('CreateSnapshotHoldingDto', () => {
   it('지원하지 않는 거래소는 검증에 실패해야 한다', async () => {
     const data = {
       symbol: 'BTC',
-      exchange: 'binance',
+      exchange: 'kraken',
       balance: 0.5,
       avgBuyPrice: 50000000,
       currentPrice: 55000000,
@@ -130,8 +130,8 @@ describe('CreateSnapshotHoldingDto', () => {
     expect(exchangeError).toBeDefined();
   });
 
-  it('각 거래소(upbit, bithumb, coinone) 값을 허용해야 한다', async () => {
-    const exchanges = ['upbit', 'bithumb', 'coinone'];
+  it('각 거래소(upbit, bithumb, coinone, binance) 값을 허용해야 한다', async () => {
+    const exchanges = ['upbit', 'bithumb', 'coinone', 'binance'];
 
     for (const exchange of exchanges) {
       const data = {

@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 
 import type { ExchangeType, KimchiPremiumData } from '@bitscope/shared';
-import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
+import { DOMESTIC_EXCHANGES } from '@bitscope/shared';
 
 import { PremiumService, PremiumHistoryPeriod } from './premium.service';
 import { QueryPremiumDto } from './dto/query-premium.dto';
@@ -29,7 +29,7 @@ import { KimchiPremiumHistoryEntity } from './entities/kimchi-premium-history.en
 function parseDomesticExchange(exchange?: string): ExchangeType {
   if (
     exchange &&
-    SUPPORTED_EXCHANGES.includes(exchange as ExchangeType)
+    DOMESTIC_EXCHANGES.includes(exchange as ExchangeType)
   ) {
     return exchange as ExchangeType;
   }

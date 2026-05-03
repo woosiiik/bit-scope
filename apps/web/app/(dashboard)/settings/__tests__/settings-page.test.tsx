@@ -222,18 +222,18 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('Secret Key')).toBeInTheDocument();
   });
 
-  it('3개 거래소(업비트, 빗썸, 코인원) API 키 입력 폼을 제공한다', () => {
+  it('4개 거래소(업비트, 빗썸, 코인원, 바이낸스) API 키 입력 폼을 제공한다', () => {
     render(<SettingsPage />);
 
     const registerButtons = screen.getAllByText('새 API 키 등록');
     fireEvent.click(registerButtons[registerButtons.length - 1]);
 
-    // 3개 거래소가 모두 선택 가능한지 확인
+    // 4개 거래소가 모두 선택 가능한지 확인
     const radioGroup = screen.getByRole('radiogroup');
     expect(radioGroup).toBeInTheDocument();
 
     const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(3);
+    expect(radios).toHaveLength(4);
   });
 
   it('거래소 선택 후 선택 상태가 반영된다', () => {
@@ -685,7 +685,7 @@ describe('SettingsPage', () => {
 
     // 업비트는 이미 등록되어 있으므로 선택 불가
     const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(2); // 빗썸, 코인원만 표시
+    expect(radios).toHaveLength(3); // 빗썸, 코인원, 바이낸스만 표시
     expect(screen.queryByRole('radio', { name: '업비트' })).not.toBeInTheDocument();
   });
 

@@ -244,6 +244,20 @@ async function getValidKrwSymbols(
           }
         }
       }
+    } else if (exchange === 'binance') {
+      // 바이낸스: { symbols: [{ symbol: "BTCUSDT", status: "TRADING", ... }, ...] }
+      const symbolList = markets?.symbols;
+      if (Array.isArray(symbolList)) {
+        for (const s of symbolList) {
+          if (
+            s.quoteAsset === 'USDT' &&
+            s.status === 'TRADING' &&
+            s.baseAsset
+          ) {
+            krwSymbols.add(s.baseAsset.toUpperCase());
+          }
+        }
+      }
     }
 
     // 캐시 저장
@@ -274,7 +288,7 @@ export function signBalanceRequest(
   const signer = createSigner(exchange);
 
   // 코인원 private API는 POST만 지원하므로 거래소별로 메서드를 분기한다.
-  // 업비트, 빗썸 v2는 GET /v1/accounts로 전체 잔고를 반환한다.
+  // 업비트, 빗썸 v2, 바이낸스는 GET 방식으로 전체 잔고를 반환한다.
   const method = exchange === 'coinone' ? 'POST' : 'GET';
 
   return signer.signRequest({

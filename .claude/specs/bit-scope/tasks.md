@@ -343,6 +343,25 @@
   - `apps/web/lib/i18n/ko.ts`, `en.ts`: 텔레그램 관련 i18n 키 추가
   - 단위 테스트: telegram.service.spec.ts (24 테스트), telegram.controller.spec.ts (9 테스트)
 
+- [x] 22. 바이낸스 거래소 포트폴리오 연동
+  - `packages/shared/src/types/exchange.ts`: ExchangeType에 'binance' 추가
+  - `packages/shared/src/constants/exchanges.ts`: BINANCE_CONFIG을 ExchangeConfig 규격으로 업그레이드, BINANCE_ENDPOINTS를 ExchangeEndpoints 규격으로 추가, EXCHANGE_CONFIGS/EXCHANGE_ENDPOINTS/SUPPORTED_EXCHANGES에 binance 등록, DOMESTIC_EXCHANGES 상수 추가, BINANCE_PRICE_ENDPOINTS 분리
+  - `packages/shared/src/utils/validation.ts`: validateBinanceApiKeyFormat 함수 추가, validateApiKeyFormat에 binance 케이스 추가
+  - `apps/web/lib/exchange/binance-signer.ts`: HMAC-SHA256 서명 구현 (timestamp + signature 쿼리 파라미터, X-MBX-APIKEY 헤더), validateApiKey, getExchangeType
+  - `apps/web/lib/exchange/signer-factory.ts`: binanceSigner 어댑터 등록
+  - `apps/web/app/api/exchange/_lib/normalizer/binance.ts`: normalizeBinanceBalance (USDT 기준), normalizeBinanceTicker, normalizeBinanceOrderbook, normalizeBinanceOrderHistory
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: 4개 디스패치 함수에 binance 케이스 추가
+  - `apps/web/app/api/exchange/[exchange]/ticker/route.ts`: buildTickerUrl에 binance 케이스 추가
+  - `apps/web/lib/api-client.ts`: getValidKrwSymbols에 binance USDT 마켓 파싱 추가
+  - `apps/web/lib/crypto/encryption-service.ts`: removeAllEncryptedKeys, getRegisteredExchanges에 'binance' 추가
+  - `apps/web/app/(dashboard)/page.tsx`: 거래소 필터에 'binance' 추가
+  - `apps/api/src/modules/alert/dto/create-alert.dto.ts`, `update-alert.dto.ts`: @IsIn에 'binance' 추가
+  - `apps/api/src/modules/snapshot/dto/create-snapshot.dto.ts`: @IsIn에 'binance' 추가
+  - `apps/api/src/modules/premium/premium.service.ts`: SUPPORTED_EXCHANGES를 DOMESTIC_EXCHANGES로 변경 (김프 비교는 국내 거래소만)
+  - `apps/api/src/modules/premium/premium.controller.ts`: SUPPORTED_EXCHANGES를 DOMESTIC_EXCHANGES로 변경
+  - `apps/api/src/modules/price/price-monitor.service.ts`: unsubscribeFromSymbols에 'binance' 추가
+  - 테스트 수정: normalizer/index, signer-factory, route-handlers, rate-limiter, settings-page, snapshot-dto, entity spec 등에서 'binance' 관련 테스트 업데이트
+
 - [ ] 20. E2E 테스트 작성
   - Playwright 설정 및 MSW 기반 모의 거래소 서버 구성
   - 핵심 시나리오 E2E 테스트: 지갑 연결 → API Key 등록 → 대시보드 조회
