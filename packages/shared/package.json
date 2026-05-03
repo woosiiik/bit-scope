@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsup && cp dist/index.d.mts dist/index.d.ts",
+    "build": "tsup",
     "dev": "tsup --watch",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
