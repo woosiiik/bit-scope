@@ -213,8 +213,12 @@ export function signRequest(params: SignRequestParams): SignedRequest {
   // 서명된 요청 객체 구성
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
   };
+
+  // POST/DELETE 요청에만 Content-Type 추가
+  if (method === 'POST' || method === 'DELETE') {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const signedRequest: SignedRequest = {
     url,
@@ -269,9 +273,9 @@ export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidati
       };
     }
 
-    // HTTP 오류 응답 처리
+    // HTTP 오류 응답 처리 (Route Handler 응답 구조: { success, error: { message, code } })
     const errorData = await response.json().catch(() => null);
-    const errorMessage = errorData?.message || `HTTP ${response.status}`;
+    const errorMessage = errorData?.error?.message || errorData?.message || `HTTP ${response.status}`;
 
     if (response.status === 401) {
       return {

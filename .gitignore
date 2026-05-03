@@ -11,8 +11,10 @@ out
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
 # IDE
@@ -30,6 +32,13 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Docker
+docker-compose.override.yml
+
+# Deploy
+deploy.log
+backups/
 
 # Misc
 *.tsbuildinfo

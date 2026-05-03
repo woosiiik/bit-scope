@@ -119,12 +119,11 @@ describe('ExchangeSignerFactory', () => {
       expect(signedRequest.headers['Authorization']).toMatch(/^Bearer /);
     });
 
-    it('빗썸 서명기가 올바른 서명된 요청을 생성한다', () => {
+    it('빗썸 서명기가 올바른 서명된 요청을 생성한다 (v2 JWT 인증)', () => {
       const signer = createSigner('bithumb');
       const params: SignRequestParams = {
-        method: 'POST',
-        endpoint: '/info/balance',
-        body: { order_currency: 'BTC', payment_currency: 'KRW' },
+        method: 'GET',
+        endpoint: '/v1/accounts',
         apiKey: TEST_API_KEY,
       };
 
@@ -132,12 +131,10 @@ describe('ExchangeSignerFactory', () => {
 
       expect(signedRequest).toBeDefined();
       expect(signedRequest.url).toContain('api.bithumb.com');
-      expect(signedRequest.method).toBe('POST');
+      expect(signedRequest.method).toBe('GET');
       expect(signedRequest.headers).toBeDefined();
-      expect(signedRequest.headers['Api-Key']).toBe(TEST_API_KEY.accessKey);
-      expect(signedRequest.headers['Api-Sign']).toBeDefined();
-      expect(signedRequest.headers['Api-Nonce']).toBeDefined();
-      expect(signedRequest.headers['Api-Timestamp']).toBeDefined();
+      // 빗썸 v2는 JWT 인증 방식 (업비트와 동일)
+      expect(signedRequest.headers['Authorization']).toMatch(/^Bearer .+\..+\..+$/);
     });
 
     it('코인원 서명기가 올바른 서명된 요청을 생성한다', () => {

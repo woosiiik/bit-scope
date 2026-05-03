@@ -7,7 +7,7 @@
  *
  * 지원 거래소:
  * - 업비트 (upbit): JWT(HS256) 토큰 기반 인증
- * - 빗썸 (bithumb): HMAC-SHA512 서명 기반 인증
+ * - 빗썸 (bithumb): JWT(HS256) 토큰 기반 인증 (v2 API)
  * - 코인원 (coinone): HMAC-SHA512 서명 + Base64 payload 기반 인증
  *
  * 보안 원칙:

@@ -14,11 +14,13 @@ import type { PriceEntry } from './price-monitor.service';
 import { UpbitWsClient } from './exchange-ws/upbit-ws.client';
 import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
+import { BinancePollingClient } from './exchange-ws/binance-polling.client';
 
 // 거래소 클라이언트 모킹
 jest.mock('./exchange-ws/upbit-ws.client');
 jest.mock('./exchange-ws/bithumb-ws.client');
 jest.mock('./exchange-ws/coinone-polling.client');
+jest.mock('./exchange-ws/binance-polling.client');
 
 describe('PriceMonitorService', () => {
   let service: PriceMonitorService;
@@ -26,6 +28,7 @@ describe('PriceMonitorService', () => {
   let upbitClient: jest.Mocked<UpbitWsClient>;
   let bithumbClient: jest.Mocked<BithumbWsClient>;
   let coinoneClient: jest.Mocked<CoinonePollingClient>;
+  let binanceClient: jest.Mocked<BinancePollingClient>;
 
   /** priceUpdate 이벤트 핸들러 맵 (클라이언트별) */
   const eventHandlers: Map<string, Map<string, ((...args: unknown[]) => void)[]>> = new Map();
@@ -67,12 +70,22 @@ describe('PriceMonitorService', () => {
     upbitClient = createMockClient('upbit', 'upbit') as unknown as jest.Mocked<UpbitWsClient>;
     bithumbClient = createMockClient('bithumb', 'bithumb') as unknown as jest.Mocked<BithumbWsClient>;
     coinoneClient = createMockClient('coinone', 'coinone') as unknown as jest.Mocked<CoinonePollingClient>;
+    binanceClient = {
+      start: jest.fn().mockResolvedValue(undefined),
+      stop: jest.fn().mockResolvedValue(undefined),
+      subscribe: jest.fn(),
+      getPrice: jest.fn().mockReturnValue(null),
+      getAllPrices: jest.fn().mockReturnValue(new Map()),
+      isActive: jest.fn().mockReturnValue(false),
+      onModuleDestroy: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<BinancePollingClient>;
 
     service = new PriceMonitorService(
       eventEmitter,
       upbitClient,
       bithumbClient,
       coinoneClient,
+      binanceClient,
     );
   });
 

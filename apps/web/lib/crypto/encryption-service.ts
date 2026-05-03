@@ -19,6 +19,51 @@ import type { ApiKeyPair, EncryptedApiKey, ExchangeType } from '@bitscope/shared
 /** sessionStorage 키: 도출된 AES 암호화 키 */
 const ENCRYPTION_KEY_SESSION_KEY = 'bitscope:encryptionKey';
 
+/** sessionStorage 키: 암호화 키 도출에 사용된 nonce */
+const ENCRYPTION_NONCE_SESSION_KEY = 'bitscope:encryptionNonce';
+
+/**
+ * 지갑 주소 단위의 nonce localStorage 키를 생성한다.
+ * nonce는 거래소별이 아닌 지갑 주소당 1개로 관리한다.
+ * 이를 통해 모든 거래소가 동일한 암호화 키를 사용하여 서명을 1회만 받으면 된다.
+ */
+function buildNonceStorageKey(walletAddress: string): string {
+  return `bitscope:${walletAddress.toLowerCase()}:nonce`;
+}
+
+/**
+ * 지갑 주소에 연결된 nonce를 localStorage에 저장한다.
+ */
+export function storeWalletNonce(walletAddress: string, nonce: string): void {
+  try {
+    localStorage.setItem(buildNonceStorageKey(walletAddress), nonce);
+  } catch {
+    // localStorage 접근 실패 시 무시
+  }
+}
+
+/**
+ * 지갑 주소에 연결된 nonce를 localStorage에서 조회한다.
+ */
+export function loadWalletNonce(walletAddress: string): string | null {
+  try {
+    return localStorage.getItem(buildNonceStorageKey(walletAddress));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 지갑 주소에 연결된 nonce를 localStorage에서 삭제한다.
+ */
+export function removeWalletNonce(walletAddress: string): void {
+  try {
+    localStorage.removeItem(buildNonceStorageKey(walletAddress));
+  } catch {
+    // localStorage 접근 실패 시 무시
+  }
+}
+
 /**
  * localStorage 키를 생성한다.
  *
@@ -165,12 +210,14 @@ export function storeEncryptedKey(
     encryptedAccessKey: encryptedData.encryptedAccessKey,
     encryptedSecretKey: encryptedData.encryptedSecretKey,
     iv: encryptedData.iv,
-    nonce,
+    nonce, // 하위호환을 위해 유지하지만, 실제 nonce는 지갑 단위로 관리
     registeredAt: new Date().toISOString(),
   };
 
   try {
     localStorage.setItem(storageKey, JSON.stringify(data));
+    // nonce를 지갑 주소 단위로도 저장 (모든 거래소가 동일한 nonce/키 사용)
+    storeWalletNonce(walletAddress, nonce);
   } catch (error) {
     throw new Error(`API 키 저장에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
   }
@@ -269,16 +316,18 @@ export function getRegisteredExchanges(walletAddress: string): ExchangeType[] {
  * @param key 도출된 AES 암호화 키 (hex 문자열)
  * @throws 암호화 키가 빈 문자열인 경우
  */
-export function cacheEncryptionKey(key: string): void {
+export function cacheEncryptionKey(key: string, nonce?: string): void {
   if (!key) {
     throw new Error('캐싱할 암호화 키가 필요합니다.');
   }
 
   try {
     sessionStorage.setItem(ENCRYPTION_KEY_SESSION_KEY, key);
+    if (nonce) {
+      sessionStorage.setItem(ENCRYPTION_NONCE_SESSION_KEY, nonce);
+    }
   } catch {
     // sessionStorage 접근 실패 시 무시 (private browsing 등)
-    // 이 경우 페이지 새로고침 시 재서명이 필요하다
   }
 }
 
@@ -291,20 +340,30 @@ export function getCachedEncryptionKey(): string | null {
   try {
     return sessionStorage.getItem(ENCRYPTION_KEY_SESSION_KEY);
   } catch {
-    // sessionStorage 접근 실패 시 null 반환
     return null;
   }
 }
 
 /**
- * sessionStorage에서 캐싱된 암호화 키를 삭제한다.
+ * sessionStorage에서 캐싱된 nonce를 조회한다.
  *
- * 지갑 연결 해제 또는 지갑 주소 변경 시 호출하여
- * 이전 세션의 암호화 키를 즉시 삭제한다.
+ * @returns 캐싱된 nonce, 없으면 null
+ */
+export function getCachedEncryptionNonce(): string | null {
+  try {
+    return sessionStorage.getItem(ENCRYPTION_NONCE_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * sessionStorage에서 캐싱된 암호화 키와 nonce를 삭제한다.
  */
 export function clearCachedEncryptionKey(): void {
   try {
     sessionStorage.removeItem(ENCRYPTION_KEY_SESSION_KEY);
+    sessionStorage.removeItem(ENCRYPTION_NONCE_SESSION_KEY);
   } catch {
     // sessionStorage 접근 실패 시 무시
   }

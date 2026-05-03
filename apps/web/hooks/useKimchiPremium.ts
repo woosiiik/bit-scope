@@ -1,24 +1,25 @@
 /**
  * 김치 프리미엄 데이터 훅 (useKimchiPremium)
  *
- * NestJS 백엔드의 프리미엄 API를 통해 거래소 간 시세 차이(김치 프리미엄) 데이터를
- * 실시간으로 조회하고 관리한다.
+ * NestJS 백엔드의 프리미엄 API를 통해 국내 거래소 vs 바이낸스 시세 차이(김치 프리미엄)
+ * 데이터를 실시간으로 조회하고 관리한다.
  *
  * 주요 기능:
- * - 주요 코인의 실시간 프리미엄 목록 조회
+ * - 주요 코인의 실시간 프리미엄 목록 조회 (국내 거래소 선택 가능)
  * - 특정 코인의 프리미엄 이력 조회 (24시간/7일/30일)
  * - price-store의 실시간 가격 데이터를 보조적으로 활용
  *
- * @see 요구사항 3.1 (3개 거래소 실시간 시세 비교 테이블)
+ * @see 요구사항 3.1 (거래소 간 실시간 시세 비교 테이블)
  * @see 요구사항 3.2 (가격 차이 절대값, 백분율 계산)
  * @see 요구사항 3.4 (실시간 시세 업데이트)
+ * @see 요구사항 3.5 (해외 거래소 김치 프리미엄)
  * @see 요구사항 3.6 (김프 추이 차트 24시간/7일/30일)
  */
 
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import type { KimchiPremiumData, KimchiPremiumHistory } from '@bitscope/shared';
+import type { ExchangeType, KimchiPremiumData, KimchiPremiumHistory } from '@bitscope/shared';
 
 // ===== 상수 =====
 
@@ -59,14 +60,16 @@ export const premiumQueryKeys = {
   all: ['premium'] as const,
 
   /** 실시간 프리미엄 목록 쿼리 키 */
-  topPremiums: (limit?: number) => ['premium', 'top', limit ?? 20] as const,
+  topPremiums: (limit?: number, exchange?: ExchangeType) =>
+    ['premium', 'top', limit ?? 20, exchange ?? 'upbit'] as const,
 
   /** 특정 코인의 실시간 프리미엄 쿼리 키 */
-  premium: (symbol: string) => ['premium', 'current', symbol] as const,
+  premium: (symbol: string, exchange?: ExchangeType) =>
+    ['premium', 'current', symbol, exchange ?? 'upbit'] as const,
 
   /** 프리미엄 이력 쿼리 키 */
-  history: (symbol: string, period: PremiumHistoryPeriod) =>
-    ['premium', 'history', symbol, period] as const,
+  history: (symbol: string, period: PremiumHistoryPeriod, exchange?: ExchangeType) =>
+    ['premium', 'history', symbol, period, exchange ?? 'upbit'] as const,
 } as const;
 
 // ===== API 호출 함수 =====
@@ -75,11 +78,15 @@ export const premiumQueryKeys = {
  * 프리미엄 상위 목록을 조회한다.
  *
  * @param limit 조회할 최대 코인 수
+ * @param exchange 비교 기준 국내 거래소 (기본: upbit)
  * @returns 프리미엄 비율 기준 내림차순 정렬된 데이터 배열
  */
-async function fetchTopPremiums(limit: number): Promise<KimchiPremiumData[]> {
+async function fetchTopPremiums(
+  limit: number,
+  exchange: ExchangeType = 'upbit',
+): Promise<KimchiPremiumData[]> {
   const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${PREMIUM_API_PATH}?limit=${limit}`;
+  const url = `${baseUrl}${PREMIUM_API_PATH}?limit=${limit}&exchange=${exchange}`;
 
   const res = await fetch(url, {
     signal: AbortSignal.timeout(10_000),
@@ -89,18 +96,24 @@ async function fetchTopPremiums(limit: number): Promise<KimchiPremiumData[]> {
     throw new Error(`프리미엄 목록 조회 실패: ${res.status} ${res.statusText}`);
   }
 
-  return res.json();
+  const json = await res.json();
+  // NestJS TransformInterceptor가 { success, data, timestamp }로 래핑
+  return json.data ?? json;
 }
 
 /**
  * 특정 코인의 현재 프리미엄을 조회한다.
  *
  * @param symbol 코인 심볼
+ * @param exchange 비교 기준 국내 거래소 (기본: upbit)
  * @returns 김치 프리미엄 데이터 또는 null
  */
-async function fetchPremium(symbol: string): Promise<KimchiPremiumData | null> {
+async function fetchPremium(
+  symbol: string,
+  exchange: ExchangeType = 'upbit',
+): Promise<KimchiPremiumData | null> {
   const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${PREMIUM_API_PATH}/${symbol}`;
+  const url = `${baseUrl}${PREMIUM_API_PATH}/${symbol}?exchange=${exchange}`;
 
   const res = await fetch(url, {
     signal: AbortSignal.timeout(10_000),
@@ -111,7 +124,8 @@ async function fetchPremium(symbol: string): Promise<KimchiPremiumData | null> {
     throw new Error(`프리미엄 조회 실패: ${res.status} ${res.statusText}`);
   }
 
-  return res.json();
+  const json = await res.json();
+  return json.data ?? json;
 }
 
 /**
@@ -119,14 +133,16 @@ async function fetchPremium(symbol: string): Promise<KimchiPremiumData | null> {
  *
  * @param symbol 코인 심볼
  * @param period 조회 기간 ('24h', '7d', '30d')
+ * @param exchange 비교 기준 국내 거래소 (기본: upbit)
  * @returns 프리미엄 이력 배열
  */
 async function fetchPremiumHistory(
   symbol: string,
   period: PremiumHistoryPeriod,
+  exchange: ExchangeType = 'upbit',
 ): Promise<KimchiPremiumHistory[]> {
   const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${PREMIUM_API_PATH}/${symbol}/history?period=${period}`;
+  const url = `${baseUrl}${PREMIUM_API_PATH}/${symbol}/history?period=${period}&exchange=${exchange}`;
 
   const res = await fetch(url, {
     signal: AbortSignal.timeout(10_000),
@@ -138,10 +154,12 @@ async function fetchPremiumHistory(
     );
   }
 
-  const data = await res.json();
+  const json = await res.json();
+  // NestJS TransformInterceptor가 { success, data, timestamp }로 래핑
+  const data = json.data ?? json;
 
   // recordedAt 문자열을 Date 객체로 변환
-  return data.map((item: KimchiPremiumHistory & { recordedAt: string }) => ({
+  return (Array.isArray(data) ? data : []).map((item: KimchiPremiumHistory & { recordedAt: string }) => ({
     ...item,
     recordedAt: new Date(item.recordedAt),
   }));
@@ -153,6 +171,8 @@ async function fetchPremiumHistory(
 export interface UseTopPremiumsOptions {
   /** 조회할 최대 코인 수 (기본: 20) */
   limit?: number;
+  /** 비교 기준 국내 거래소 (기본: upbit) */
+  exchange?: ExchangeType;
   /** 자동 갱신 활성화 여부 (기본: true) */
   enabled?: boolean;
   /** 자동 갱신 간격 (밀리초, 기본: 5_000) */
@@ -167,35 +187,18 @@ export interface UseTopPremiumsOptions {
  *
  * @param options 훅 옵션
  * @returns TanStack Query 결과 (data, isLoading, error 등)
- *
- * @example
- * ```tsx
- * function PremiumList() {
- *   const { data, isLoading, error } = useTopPremiums({ limit: 15 });
- *
- *   if (isLoading) return <Skeleton />;
- *   if (error) return <ErrorDisplay />;
- *
- *   return (
- *     <ul>
- *       {data?.map((p) => (
- *         <li key={p.symbol}>{p.symbol}: {p.premiumRate.toFixed(2)}%</li>
- *       ))}
- *     </ul>
- *   );
- * }
- * ```
  */
 export function useTopPremiums(options: UseTopPremiumsOptions = {}) {
   const {
     limit = 20,
+    exchange = 'upbit',
     enabled = true,
     refetchInterval = PREMIUM_REFETCH_INTERVAL_MS,
   } = options;
 
   return useQuery<KimchiPremiumData[]>({
-    queryKey: premiumQueryKeys.topPremiums(limit),
-    queryFn: () => fetchTopPremiums(limit),
+    queryKey: premiumQueryKeys.topPremiums(limit, exchange),
+    queryFn: () => fetchTopPremiums(limit, exchange),
     enabled,
     refetchInterval,
     staleTime: 3_000,
@@ -209,6 +212,8 @@ export function useTopPremiums(options: UseTopPremiumsOptions = {}) {
 export interface UsePremiumOptions {
   /** 코인 심볼 */
   symbol: string;
+  /** 비교 기준 국내 거래소 (기본: upbit) */
+  exchange?: ExchangeType;
   /** 활성화 여부 (기본: true) */
   enabled?: boolean;
   /** 자동 갱신 간격 (밀리초, 기본: 5_000) */
@@ -224,13 +229,14 @@ export interface UsePremiumOptions {
 export function usePremium(options: UsePremiumOptions) {
   const {
     symbol,
+    exchange = 'upbit',
     enabled = true,
     refetchInterval = PREMIUM_REFETCH_INTERVAL_MS,
   } = options;
 
   return useQuery<KimchiPremiumData | null>({
-    queryKey: premiumQueryKeys.premium(symbol),
-    queryFn: () => fetchPremium(symbol),
+    queryKey: premiumQueryKeys.premium(symbol, exchange),
+    queryFn: () => fetchPremium(symbol, exchange),
     enabled: enabled && !!symbol,
     refetchInterval,
     staleTime: 3_000,
@@ -246,6 +252,8 @@ export interface UsePremiumHistoryOptions {
   symbol: string;
   /** 조회 기간 */
   period: PremiumHistoryPeriod;
+  /** 비교 기준 국내 거래소 (기본: upbit) */
+  exchange?: ExchangeType;
   /** 활성화 여부 (기본: true) */
   enabled?: boolean;
 }
@@ -262,11 +270,11 @@ export interface UsePremiumHistoryOptions {
  * @see 요구사항 3.6 (김프 추이 차트 24시간/7일/30일)
  */
 export function usePremiumHistory(options: UsePremiumHistoryOptions) {
-  const { symbol, period, enabled = true } = options;
+  const { symbol, period, exchange = 'upbit', enabled = true } = options;
 
   return useQuery<KimchiPremiumHistory[]>({
-    queryKey: premiumQueryKeys.history(symbol, period),
-    queryFn: () => fetchPremiumHistory(symbol, period),
+    queryKey: premiumQueryKeys.history(symbol, period, exchange),
+    queryFn: () => fetchPremiumHistory(symbol, period, exchange),
     enabled: enabled && !!symbol,
     refetchInterval: HISTORY_REFETCH_INTERVAL_MS,
     staleTime: 30_000,

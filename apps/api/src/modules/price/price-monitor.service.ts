@@ -12,11 +12,13 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import type { ExchangeType, PriceUpdate } from '@bitscope/shared';
-import { MAJOR_COIN_SYMBOLS } from '@bitscope/shared';
+import { MAJOR_COIN_SYMBOLS, UPBIT_CONFIG } from '@bitscope/shared';
 
 import { UpbitWsClient } from './exchange-ws/upbit-ws.client';
 import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
+import { BinancePollingClient } from './exchange-ws/binance-polling.client';
+import type { BinancePriceEntry } from './exchange-ws/binance-polling.client';
 import { BaseExchangeClient } from './exchange-ws/base-exchange.client';
 
 /** 거래소+심볼 조합의 가격 키 (예: "upbit:BTC") */
@@ -57,11 +59,24 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
   /** 모니터링 활성 여부 */
   private isMonitoring = false;
 
+  /** USDT/KRW 환율 (업비트 KRW-USDT 마켓 시세 기준) */
+  private usdtKrwRate = 0;
+
+  /** USDT/KRW 환율 마지막 업데이트 시각 */
+  private usdtKrwRateUpdatedAt = 0;
+
+  /** USDT/KRW 폴링 타이머 */
+  private usdtKrwTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** USDT/KRW 폴링 간격 (밀리초) - 5초 */
+  private readonly USDT_KRW_POLLING_INTERVAL_MS = 5_000;
+
   constructor(
     private readonly eventEmitter: EventEmitter2,
     private readonly upbitClient: UpbitWsClient,
     private readonly bithumbClient: BithumbWsClient,
     private readonly coinoneClient: CoinonePollingClient,
+    private readonly binanceClient: BinancePollingClient,
   ) {
     this.exchangeClients = [
       this.upbitClient,
@@ -98,8 +113,10 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log('시세 모니터링 시작');
 
-    // 각 클라이언트에 이벤트 핸들러 등록
+    // 기존 이벤트 핸들러를 모두 제거한 후 재등록하여 중복 등록을 방지한다.
     for (const client of this.exchangeClients) {
+      client.removeAllListeners();
+
       client.on('priceUpdate', (update: PriceUpdate) => {
         this.handlePriceUpdate(update);
       });
@@ -143,6 +160,20 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
+    // 바이낸스 시세 폴링 시작 (김치 프리미엄 비교용)
+    try {
+      await this.binanceClient.start(symbols);
+      this.logger.log('바이낸스 시세 수신 시작 성공');
+    } catch (error) {
+      this.logger.error(
+        `바이낸스 시세 수신 시작 실패: ${error}`,
+      );
+    }
+
+    // USDT/KRW 환율 폴링 시작
+    await this.fetchUsdtKrwRate();
+    this.startUsdtKrwPolling();
+
     this.isMonitoring = true;
     this.eventEmitter.emit(PRICE_EVENTS.MONITORING_STARTED);
     this.logger.log('시세 모니터링 시작 완료');
@@ -165,6 +196,12 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
     await Promise.allSettled(
       this.exchangeClients.map((client) => client.stop()),
     );
+
+    // 바이낸스 폴링 중지
+    await this.binanceClient.stop();
+
+    // USDT/KRW 폴링 중지
+    this.stopUsdtKrwPolling();
 
     // 이벤트 핸들러 제거
     for (const client of this.exchangeClients) {
@@ -253,6 +290,97 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
    */
   isActive(): boolean {
     return this.isMonitoring;
+  }
+
+  /**
+   * 특정 심볼의 바이낸스 USDT 가격을 조회한다.
+   *
+   * @param symbol 코인 심볼 (예: "BTC")
+   * @returns 바이낸스 가격 정보 또는 null
+   */
+  getBinancePrice(symbol: string): BinancePriceEntry | null {
+    return this.binanceClient.getPrice(symbol);
+  }
+
+  /**
+   * 현재 USDT/KRW 환율을 반환한다.
+   *
+   * 업비트 KRW-USDT 마켓 시세를 기반으로 한다.
+   * 환율 데이터가 없으면 0을 반환한다.
+   *
+   * @returns USDT/KRW 환율
+   */
+  getUsdtKrwRate(): number {
+    return this.usdtKrwRate;
+  }
+
+  /**
+   * USDT/KRW 환율 폴링을 시작한다.
+   */
+  private startUsdtKrwPolling(): void {
+    this.usdtKrwTimer = setInterval(() => {
+      this.fetchUsdtKrwRate().catch((error) => {
+        this.logger.error(
+          'USDT/KRW 환율 조회 실패',
+          error instanceof Error ? error.message : String(error),
+        );
+      });
+    }, this.USDT_KRW_POLLING_INTERVAL_MS);
+
+    this.logger.log(
+      `USDT/KRW 환율 폴링 시작 - 간격: ${this.USDT_KRW_POLLING_INTERVAL_MS}ms`,
+    );
+  }
+
+  /**
+   * USDT/KRW 환율 폴링을 중지한다.
+   */
+  private stopUsdtKrwPolling(): void {
+    if (this.usdtKrwTimer) {
+      clearInterval(this.usdtKrwTimer);
+      this.usdtKrwTimer = null;
+    }
+  }
+
+  /**
+   * 업비트 공개 API에서 USDT/KRW 현재가를 조회한다.
+   *
+   * @see https://docs.upbit.com/reference/ticker%ED%98%84%EC%9E%AC%EA%B0%80-%EC%A0%95%EB%B3%B4
+   */
+  private async fetchUsdtKrwRate(): Promise<void> {
+    const url = `${UPBIT_CONFIG.restBaseUrl}/ticker?markets=KRW-USDT`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `업비트 USDT/KRW 조회 오류: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const data = (await response.json()) as Array<{
+        market: string;
+        trade_price: number;
+      }>;
+
+      if (Array.isArray(data) && data.length > 0 && data[0]) {
+        const tradePrice = data[0].trade_price;
+        if (typeof tradePrice === 'number' && tradePrice > 0) {
+          this.usdtKrwRate = tradePrice;
+          this.usdtKrwRateUpdatedAt = Date.now();
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        'USDT/KRW 환율 조회 실패',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
   /**

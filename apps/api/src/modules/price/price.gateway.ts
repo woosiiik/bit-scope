@@ -67,6 +67,7 @@ export const WS_EVENTS = {
   namespace: 'price',
   cors: {
     origin: [
+      'http://localhost:3500',
       'http://localhost:3000',
       ...(process.env.CORS_ORIGINS?.split(',') || []),
     ],
@@ -107,7 +108,7 @@ export class PriceGateway
    * Socket.IO가 Room에서 자동으로 제거해주므로 별도 정리가 필요 없다.
    */
   handleDisconnect(client: Socket): void {
-    this.connectedClients--;
+    this.connectedClients = Math.max(0, this.connectedClients - 1);
     this.logger.log(
       `클라이언트 연결 해제: ${client.id} (총 ${this.connectedClients}명)`,
     );

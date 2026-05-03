@@ -110,7 +110,7 @@ export interface UpbitOrderItem {
  */
 export function extractSymbolFromMarket(market: string): string {
   const parts = market.split('-');
-  return parts.length >= 2 ? parts[1] : market;
+  return parts.length >= 2 ? (parts[1] ?? market) : market;
 }
 
 /**

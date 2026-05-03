@@ -57,19 +57,23 @@ export interface Orderbook {
   timestamp: number;
 }
 
-/** 김치 프리미엄 데이터 (거래소 간 시세 차이) */
+/** 김치 프리미엄 데이터 (국내 거래소 vs 바이낸스 시세 차이) */
 export interface KimchiPremiumData {
   /** 코인 심볼 */
   symbol: string;
-  /** 거래소별 현재가 */
-  prices: Partial<Record<ExchangeType, number>>;
-  /** 최고가 거래소 및 가격 */
-  maxPrice: { exchange: ExchangeType; price: number };
-  /** 최저가 거래소 및 가격 */
-  minPrice: { exchange: ExchangeType; price: number };
-  /** 가격 차이 (최고 - 최저) */
+  /** 비교 기준 국내 거래소 */
+  domesticExchange: ExchangeType;
+  /** 국내 거래소 KRW 가격 */
+  domesticPrice: number;
+  /** 바이낸스 USDT 가격 */
+  binanceUsdtPrice: number;
+  /** USDT/KRW 환율 (업비트 KRW-USDT 시세 기준) */
+  usdtKrwRate: number;
+  /** 바이낸스 가격의 KRW 환산가 (binanceUsdtPrice * usdtKrwRate) */
+  binanceKrwPrice: number;
+  /** 가격 차이 (국내가격 - 바이낸스KRW환산가) */
   premiumAmount: number;
-  /** 프리미엄 비율 (%) */
+  /** 프리미엄 비율 (%) = (국내가격 - 바이낸스KRW환산가) / 바이낸스KRW환산가 * 100 */
   premiumRate: number;
   /** 타임스탬프 (밀리초) */
   timestamp: number;
@@ -79,12 +83,14 @@ export interface KimchiPremiumData {
 export interface KimchiPremiumHistory {
   /** 코인 심볼 */
   symbol: string;
-  /** 업비트 가격 */
-  upbitPrice: number;
-  /** 빗썸 가격 */
-  bithumbPrice: number;
-  /** 코인원 가격 */
-  coinonePrice: number;
+  /** 비교 기준 국내 거래소 */
+  domesticExchange: ExchangeType;
+  /** 국내 거래소 KRW 가격 */
+  domesticPrice: number;
+  /** 바이낸스 USDT 가격 */
+  binanceUsdtPrice: number;
+  /** USDT/KRW 환율 */
+  usdtKrwRate: number;
   /** 프리미엄 비율 (%) */
   premiumRate: number;
   /** 기록 시각 */

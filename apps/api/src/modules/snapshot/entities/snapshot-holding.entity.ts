@@ -24,7 +24,7 @@ export class SnapshotHoldingEntity {
   id!: string;
 
   /** 스냅샷 ID (FK) */
-  @Column({ name: 'snapshot_id', type: 'uuid' })
+  @Column({ name: 'snapshot_id', type: 'varchar', length: 36 })
   snapshotId!: string;
 
   /** 코인 심볼 (예: "BTC", "ETH") */

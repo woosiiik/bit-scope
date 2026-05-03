@@ -35,6 +35,16 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalHttpExceptionFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
+    // WebSocket이나 RPC 컨텍스트에서 발생한 예외는 HTTP 필터에서 처리하지 않는다.
+    // HTTP 컨텍스트가 아닌 경우 기본 에러 핸들링에 위임한다.
+    if (host.getType() !== 'http') {
+      this.logger.error(
+        `Non-HTTP context exception (${host.getType()})`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+      return;
+    }
+
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();

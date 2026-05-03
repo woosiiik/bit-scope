@@ -384,11 +384,45 @@ export function filterMergedHoldings(
 ): MergedHolding[] {
   let result = [...mergedHoldings];
 
-  // 거래소 필터: 해당 거래소에 보유 내역이 있는 코인만 표시
+  // 거래소 필터: 선택된 거래소의 데이터만 남기고 수치를 재계산
   if (filter.exchanges && filter.exchanges.length > 0) {
-    result = result.filter((m) =>
-      m.exchanges.some((e) => filter.exchanges!.includes(e.exchange)),
-    );
+    const selectedExchanges = filter.exchanges;
+
+    result = result
+      .map((m) => {
+        // 선택된 거래소의 내역만 필터링
+        const filteredExchanges = m.exchanges.filter((e) =>
+          selectedExchanges.includes(e.exchange),
+        );
+
+        // 선택된 거래소에 해당 코인이 없으면 제외
+        if (filteredExchanges.length === 0) return null;
+
+        // 모든 거래소가 포함되면 원본 그대로 반환 (재계산 불필요)
+        if (filteredExchanges.length === m.exchanges.length) return m;
+
+        // 선택된 거래소만으로 수치 재계산
+        const totalBalance = filteredExchanges.reduce((sum, e) => sum + e.balance, 0);
+        const totalEvaluation = filteredExchanges.reduce((sum, e) => sum + e.evaluation, 0);
+        const totalProfitLoss = filteredExchanges.reduce((sum, e) => sum + e.profitLoss, 0);
+        const weightedAvgBuyPrice = totalBalance > 0
+          ? filteredExchanges.reduce((sum, e) => sum + e.balance * e.avgBuyPrice, 0) / totalBalance
+          : 0;
+        const profitLossRate = weightedAvgBuyPrice > 0
+          ? ((m.currentPrice - weightedAvgBuyPrice) / weightedAvgBuyPrice) * 100
+          : 0;
+
+        return {
+          ...m,
+          exchanges: filteredExchanges,
+          totalBalance,
+          weightedAvgBuyPrice,
+          totalEvaluation,
+          totalProfitLoss,
+          profitLossRate,
+        };
+      })
+      .filter((m): m is MergedHolding => m !== null);
   }
 
   // 수익/손실 필터 적용

@@ -26,6 +26,7 @@ import type {
   SignedRequest,
   Ticker,
 } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS } from '@bitscope/shared';
 import { createSigner } from './exchange/signer-factory';
 
 // ===== Route Handler 응답 타입 =====
@@ -169,6 +170,94 @@ function buildRouteHandlerUrl(
   return `/api/exchange/${exchange}/${endpoint}`;
 }
 
+// ===== 유효 마켓 심볼 필터링 =====
+
+/** 거래소별 KRW 마켓 심볼 캐시 (세션 동안 유지) */
+const krwMarketCache = new Map<ExchangeType, { symbols: Set<string>; fetchedAt: number }>();
+
+/** 캐시 유효 시간: 5분 */
+const KRW_MARKET_CACHE_TTL = 5 * 60 * 1000;
+
+/**
+ * 거래소의 KRW 마켓에 상장된 유효한 심볼만 필터링한다.
+ *
+ * 거래소의 전체 마켓 목록을 조회하여 KRW 마켓에 존재하는 심볼만 반환한다.
+ * 에어드랍 등으로 받은 비상장 코인을 걸러내는 데 사용한다.
+ * 결과는 5분간 캐싱하여 불필요한 API 호출을 줄인다.
+ *
+ * @param exchange 거래소 식별자
+ * @param symbols 필터링할 심볼 배열
+ * @returns KRW 마켓에 상장된 유효한 심볼 배열
+ */
+async function getValidKrwSymbols(
+  exchange: ExchangeType,
+  symbols: string[],
+): Promise<string[]> {
+  // 캐시 확인
+  const cached = krwMarketCache.get(exchange);
+  if (cached && Date.now() - cached.fetchedAt < KRW_MARKET_CACHE_TTL) {
+    return symbols.filter((s) => cached.symbols.has(s));
+  }
+
+  try {
+    // 거래소 공개 API로 전체 마켓 목록을 조회한다.
+    // 브라우저 환경에서 CORS 오류가 발생할 수 있으므로 try-catch로 감싼다.
+    const config = EXCHANGE_CONFIGS[exchange];
+    const endpoint = EXCHANGE_ENDPOINTS[exchange].markets;
+    const url = `${config.restBaseUrl}${endpoint}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      // 마켓 목록 조회 실패 시 모든 심볼을 유효한 것으로 간주
+      return symbols;
+    }
+
+    const markets = await response.json();
+    const krwSymbols = new Set<string>();
+
+    if (exchange === 'upbit' && Array.isArray(markets)) {
+      // 업비트: [{ market: "KRW-BTC", ... }, ...]
+      for (const m of markets) {
+        if (typeof m.market === 'string' && m.market.startsWith('KRW-')) {
+          krwSymbols.add(m.market.split('-')[1]);
+        }
+      }
+    } else if (exchange === 'bithumb' && Array.isArray(markets)) {
+      // 빗썸 v2: [{ market: "KRW-BTC", ... }, ...] (업비트와 동일한 형식)
+      for (const m of markets) {
+        if (typeof m.market === 'string' && m.market.startsWith('KRW-')) {
+          krwSymbols.add(m.market.split('-')[1]);
+        }
+      }
+    } else if (exchange === 'coinone') {
+      // 코인원 v2: { markets: [{ target_currency: "BTC", ... }, ...] }
+      // 또는 배열 직접 반환 형태
+      const marketList = Array.isArray(markets) ? markets : markets?.markets;
+      if (Array.isArray(marketList)) {
+        for (const m of marketList) {
+          if (m.target_currency) {
+            krwSymbols.add(m.target_currency.toUpperCase());
+          }
+        }
+      }
+    }
+
+    // 캐시 저장
+    if (krwSymbols.size > 0) {
+      krwMarketCache.set(exchange, { symbols: krwSymbols, fetchedAt: Date.now() });
+    }
+
+    return symbols.filter((s) => krwSymbols.has(s));
+  } catch (error) {
+    // CORS 오류 또는 네트워크 오류 시 모든 심볼을 유효한 것으로 간주
+    return symbols;
+  }
+}
+
 // ===== 서명 생성 =====
 
 /**
@@ -183,9 +272,14 @@ export function signBalanceRequest(
   apiKey: ApiKeyPair,
 ): SignedRequest {
   const signer = createSigner(exchange);
+
+  // 코인원 private API는 POST만 지원하므로 거래소별로 메서드를 분기한다.
+  // 업비트, 빗썸 v2는 GET /v1/accounts로 전체 잔고를 반환한다.
+  const method = exchange === 'coinone' ? 'POST' : 'GET';
+
   return signer.signRequest({
-    method: 'GET',
-    endpoint: 'balance',
+    method,
+    endpoint: EXCHANGE_ENDPOINTS[exchange].balance,
     apiKey,
   });
 }
@@ -205,6 +299,9 @@ export function signOrderHistoryRequest(
 ): SignedRequest {
   const signer = createSigner(exchange);
 
+  // 코인원 private API는 POST만 지원하므로 거래소별로 메서드를 분기한다.
+  const method = exchange === 'coinone' ? 'POST' : 'GET';
+
   const queryParams: Record<string, string> = {};
   if (params?.symbol) {
     queryParams.symbol = params.symbol;
@@ -213,10 +310,16 @@ export function signOrderHistoryRequest(
     queryParams.limit = String(params.limit);
   }
 
+  // 코인원은 POST body로, 업비트/빗썸은 query parameter로 파라미터를 전달한다.
+  const body = exchange === 'coinone' && Object.keys(queryParams).length > 0
+    ? (queryParams as Record<string, unknown>)
+    : undefined;
+
   return signer.signRequest({
-    method: 'GET',
-    endpoint: 'orders',
-    queryParams: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    method,
+    endpoint: EXCHANGE_ENDPOINTS[exchange].orders,
+    queryParams: exchange !== 'coinone' && Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    body,
     apiKey,
   });
 }
@@ -297,7 +400,55 @@ export async function fetchBalance(
     );
   }
 
-  return apiResponse.data;
+  const balanceData = apiResponse.data;
+
+  // 4. 보유 코인의 현재가를 ticker API로 조회하여 합침
+  // 거래소 잔고 API는 현재가를 반환하지 않으므로 별도 조회 필요
+  if (balanceData.holdings.length > 0) {
+    try {
+      // 유효한 KRW 마켓 심볼만 필터링하여 ticker 조회
+      // 잔고에 에어드랍 등으로 받은 비상장 코인이 포함될 수 있으므로
+      // 먼저 거래소의 마켓 목록을 조회하여 유효한 심볼만 추출
+      const allSymbols = balanceData.holdings.map((h) => h.symbol);
+      const validSymbols = await getValidKrwSymbols(exchange, allSymbols);
+
+      if (validSymbols.length > 0) {
+        const tickerData = await fetchTicker(exchange, validSymbols);
+
+        // ticker 데이터를 심볼별 맵으로 변환
+        const priceMap = new Map<string, number>();
+        for (const ticker of tickerData.tickers) {
+          priceMap.set(ticker.symbol, ticker.currentPrice);
+        }
+
+        // 현재가를 합쳐서 평가금액, 손익, 수익률 재계산
+        for (const holding of balanceData.holdings) {
+          const currentPrice = priceMap.get(holding.symbol);
+          if (currentPrice && currentPrice > 0) {
+            holding.currentPrice = currentPrice;
+            const totalBalance = holding.balance + holding.lockedBalance;
+            holding.evaluationAmount = totalBalance * currentPrice;
+            const investmentAmount = totalBalance * holding.avgBuyPrice;
+            holding.profitLoss = holding.evaluationAmount - investmentAmount;
+            holding.profitLossRate = investmentAmount > 0
+              ? (holding.profitLoss / investmentAmount) * 100
+              : 0;
+          }
+        }
+      }
+
+      // 유효한 KRW 마켓에 없는 코인은 대시보드에서 제외
+      // (에어드랍, 상장폐지 등으로 거래 불가능한 코인)
+      const validSymbolSet = new Set(validSymbols);
+      balanceData.holdings = balanceData.holdings.filter(
+        (h) => validSymbolSet.has(h.symbol),
+      );
+    } catch (error) {
+      // ticker 조회 실패 시 매수평균가를 현재가로 유지 (graceful degradation)
+    }
+  }
+
+  return balanceData;
 }
 
 /**

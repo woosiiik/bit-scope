@@ -101,7 +101,7 @@ describe('BithumbWsClient', () => {
       expect(client.isConnected()).toBe(true);
       expect(mockWsInstance.sentMessages).toHaveLength(1);
 
-      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]);
+      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]!);
       expect(subscriptionMsg.type).toBe('ticker');
       expect(subscriptionMsg.symbols).toEqual(['BTC_KRW', 'ETH_KRW']);
       expect(subscriptionMsg.tickTypes).toEqual(['24H']);
@@ -112,7 +112,7 @@ describe('BithumbWsClient', () => {
       mockWsInstance.simulateOpen();
       await startPromise;
 
-      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]);
+      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]!);
       expect(subscriptionMsg.symbols).toEqual([
         'XRP_KRW',
         'SOL_KRW',

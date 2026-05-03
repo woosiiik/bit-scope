@@ -8,13 +8,26 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { PortfolioSnapshotEntity } from './entities/portfolio-snapshot.entity';
 import { SnapshotHoldingEntity } from './entities/snapshot-holding.entity';
 import { CreateSnapshotDto } from './dto/create-snapshot.dto';
 
 import type { AggregationInterval } from '@bitscope/shared';
+
+/**
+ * 집계 간격별 MySQL DATE_FORMAT 패턴 화이트리스트
+ *
+ * SQL 쿼리에 문자열 보간으로 삽입되므로,
+ * 안전한 값만 허용하는 화이트리스트로 관리한다.
+ */
+const DATE_FORMAT_BY_INTERVAL: Record<string, string> = {
+  hourly: '%Y-%m-%d %H:00:00',
+  daily: '%Y-%m-%d',
+  weekly: '%x-W%v', // ISO 주차 기반 그룹화
+  monthly: '%Y-%m',
+};
 
 /** 집계된 스냅샷 결과 타입 */
 export interface AggregatedSnapshotResult {
@@ -146,7 +159,10 @@ export class SnapshotService {
       start || new Date(effectiveEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // MySQL의 DATE_FORMAT을 사용하여 간격별 그룹화
-    const dateFormat = this.getDateFormatByInterval(interval);
+    // 안전한 화이트리스트 맵에서 DATE_FORMAT 패턴을 조회한다.
+    // 문자열 보간을 통한 SQL 인젝션을 방지하기 위해
+    // 반드시 허용된 포맷만 사용해야 한다.
+    const dateFormat = DATE_FORMAT_BY_INTERVAL[interval] ?? DATE_FORMAT_BY_INTERVAL.daily;
 
     const results = await this.snapshotRepository
       .createQueryBuilder('snapshot')
@@ -176,24 +192,5 @@ export class SnapshotService {
       minTotalEvaluation: parseFloat(row.min_total_evaluation) || 0,
       snapshotCount: parseInt(row.snapshot_count, 10) || 0,
     }));
-  }
-
-  /**
-   * 집계 간격에 따른 MySQL DATE_FORMAT 패턴을 반환한다.
-   */
-  private getDateFormatByInterval(interval: AggregationInterval): string {
-    switch (interval) {
-      case 'hourly':
-        return '%Y-%m-%d %H:00:00';
-      case 'daily':
-        return '%Y-%m-%d';
-      case 'weekly':
-        // ISO 주차 기반 그룹화
-        return '%x-W%v';
-      case 'monthly':
-        return '%Y-%m';
-      default:
-        return '%Y-%m-%d';
-    }
   }
 }

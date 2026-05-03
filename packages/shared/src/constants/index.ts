@@ -21,6 +21,9 @@ export {
   WS_MAX_RECONNECT_ATTEMPTS,
   RETRY_CONFIG,
   PREMIUM_SNAPSHOT_INTERVAL_MS,
+  BINANCE_CONFIG,
+  BINANCE_ENDPOINTS,
+  BINANCE_POLLING_INTERVAL_MS,
 } from './exchanges';
 
 export type { ExchangeConfig, ExchangeEndpoints } from './exchanges';

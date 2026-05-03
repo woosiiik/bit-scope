@@ -17,25 +17,28 @@ describe('KimchiPremiumHistoryEntity', () => {
     const entity = new KimchiPremiumHistoryEntity();
     entity.id = 'premium-uuid';
     entity.symbol = 'BTC';
-    entity.upbitPrice = 100000000;
-    entity.bithumbPrice = 100500000;
-    entity.coinonePrice = 99800000;
-    entity.premiumRate = 0.7;
+    entity.domesticExchange = 'upbit';
+    entity.domesticPrice = 139_000_000;
+    entity.binanceUsdtPrice = 95_000;
+    entity.usdtKrwRate = 1_400;
+    entity.premiumRate = 4.51;
     entity.recordedAt = new Date('2026-01-01T12:00:00Z');
 
     expect(entity.symbol).toBe('BTC');
-    expect(entity.upbitPrice).toBe(100000000);
-    expect(entity.bithumbPrice).toBe(100500000);
-    expect(entity.coinonePrice).toBe(99800000);
-    expect(entity.premiumRate).toBe(0.7);
+    expect(entity.domesticExchange).toBe('upbit');
+    expect(entity.domesticPrice).toBe(139_000_000);
+    expect(entity.binanceUsdtPrice).toBe(95_000);
+    expect(entity.usdtKrwRate).toBe(1_400);
+    expect(entity.premiumRate).toBe(4.51);
   });
 
   it('프리미엄이 없는 경우(0%)도 저장할 수 있어야 한다', () => {
     const entity = new KimchiPremiumHistoryEntity();
     entity.symbol = 'ETH';
-    entity.upbitPrice = 3000000;
-    entity.bithumbPrice = 3000000;
-    entity.coinonePrice = 3000000;
+    entity.domesticExchange = 'upbit';
+    entity.domesticPrice = 4_200_000;
+    entity.binanceUsdtPrice = 3_000;
+    entity.usdtKrwRate = 1_400;
     entity.premiumRate = 0;
 
     expect(entity.premiumRate).toBe(0);
@@ -44,6 +47,7 @@ describe('KimchiPremiumHistoryEntity', () => {
   it('음수 프리미엄(역프)도 저장할 수 있어야 한다', () => {
     const entity = new KimchiPremiumHistoryEntity();
     entity.symbol = 'BTC';
+    entity.domesticExchange = 'upbit';
     entity.premiumRate = -1.5;
 
     expect(entity.premiumRate).toBe(-1.5);

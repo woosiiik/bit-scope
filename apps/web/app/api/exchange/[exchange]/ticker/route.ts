@@ -51,13 +51,34 @@ function buildUpbitMarkets(symbols: string[]): string {
  * @param symbols 코인 심볼 배열
  * @returns 거래소 시세 조회 URL
  */
-function buildTickerUrl(exchange: ExchangeType, symbols?: string[]): string {
+async function fetchUpbitKrwMarkets(): Promise<string[]> {
+  try {
+    const res = await fetch('https://api.upbit.com/v1/market/all?is_details=false', {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const markets = (await res.json()) as Array<{ market: string }>;
+    return markets
+      .filter((m) => m.market.startsWith('KRW-'))
+      .map((m) => m.market);
+  } catch {
+    return [];
+  }
+}
+
+function buildTickerUrl(exchange: ExchangeType, symbols?: string[], upbitMarkets?: string[]): string {
   const baseUrl = EXCHANGE_CONFIGS[exchange].restBaseUrl;
   const endpoint = EXCHANGE_ENDPOINTS[exchange].ticker;
 
   switch (exchange) {
     case 'upbit': {
-      const markets = symbols ? buildUpbitMarkets(symbols) : 'KRW-BTC';
+      if (symbols) {
+        return `${baseUrl}${endpoint}?markets=${buildUpbitMarkets(symbols)}`;
+      }
+      // 전체 KRW 마켓 조회
+      const markets = upbitMarkets && upbitMarkets.length > 0
+        ? upbitMarkets.join(',')
+        : 'KRW-BTC';
       return `${baseUrl}${endpoint}?markets=${markets}`;
     }
     case 'bithumb': {
@@ -122,8 +143,14 @@ export async function GET(
     ? symbolsParam.split(',').map((s) => s.trim().toUpperCase())
     : undefined;
 
+  // 업비트 전체 조회 시 KRW 마켓 목록을 먼저 가져온다
+  let upbitMarkets: string[] | undefined;
+  if (exchange === 'upbit' && !symbols) {
+    upbitMarkets = await fetchUpbitKrwMarkets();
+  }
+
   // 거래소별 시세 조회 URL 생성
-  const tickerUrl = buildTickerUrl(exchange, symbols);
+  const tickerUrl = buildTickerUrl(exchange, symbols, upbitMarkets);
 
   // 공개 API이므로 별도 서명 없이 직접 요청
   const signedRequest: SignedRequest = {

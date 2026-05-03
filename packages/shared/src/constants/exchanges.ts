@@ -66,7 +66,7 @@ export const UPBIT_ENDPOINTS: ExchangeEndpoints = {
   markets: '/market/all',
 } as const;
 
-/** 빗썸 API 설정 */
+/** 빗썸 API 설정 (v2 - JWT 인증 기반) */
 export const BITHUMB_CONFIG: ExchangeConfig = {
   id: 'bithumb',
   nameKo: '빗썸',
@@ -74,19 +74,20 @@ export const BITHUMB_CONFIG: ExchangeConfig = {
   restBaseUrl: 'https://api.bithumb.com',
   wsUrl: 'wss://pubwss.bithumb.com/pub/ws',
   rateLimit: {
-    requestsPerSecond: 10,
-    requestsPerMinute: 300,
+    /** Private API: 초당 140회, Public API: 초당 150회 (낮은 값 기준) */
+    requestsPerSecond: 140,
+    requestsPerMinute: 8_400,
   },
   timeoutMs: 10_000,
 } as const;
 
-/** 빗썸 API 엔드포인트 */
+/** 빗썸 API 엔드포인트 (v2 - JWT 인증 기반) */
 export const BITHUMB_ENDPOINTS: ExchangeEndpoints = {
-  balance: '/info/balance',
+  balance: '/v1/accounts',
   ticker: '/public/ticker',
   orderbook: '/public/orderbook',
-  orders: '/info/orders',
-  markets: '/public/ticker/ALL_KRW',
+  orders: '/v1/orders',
+  markets: '/v1/market/all',
 } as const;
 
 /** 코인원 API 설정 */
@@ -98,8 +99,9 @@ export const COINONE_CONFIG: ExchangeConfig = {
   // 코인원은 공개 WebSocket이 없으므로 REST 폴링 방식 사용
   wsUrl: undefined,
   rateLimit: {
-    requestsPerSecond: 6,
-    requestsPerMinute: 90,
+    /** Private API V2.1: 주문 외 80/초, Public API V2: 1200/분 (낮은 값 기준 20/초) */
+    requestsPerSecond: 20,
+    requestsPerMinute: 1_200,
   },
   timeoutMs: 10_000,
 } as const;
@@ -112,6 +114,36 @@ export const COINONE_ENDPOINTS: ExchangeEndpoints = {
   orders: '/v2.1/order/query_active_orders',
   markets: '/public/v2/markets/KRW',
 } as const;
+
+/**
+ * 바이낸스 API 설정 (해외 거래소 - 김치 프리미엄 비교용)
+ *
+ * 바이낸스는 국내 거래소 포트폴리오 연동 대상이 아니며,
+ * 공개 시세 API를 통한 김치 프리미엄 비교 전용으로 사용된다.
+ * ExchangeType에는 포함되지 않는 별도 설정이다.
+ */
+export const BINANCE_CONFIG = {
+  nameKo: '바이낸스',
+  nameEn: 'Binance',
+  restBaseUrl: 'https://api.binance.com',
+  wsUrl: 'wss://stream.binance.com:9443/ws',
+  rateLimit: {
+    requestsPerSecond: 20,
+    requestsPerMinute: 1_200,
+  },
+  timeoutMs: 10_000,
+} as const;
+
+/** 바이낸스 API 엔드포인트 */
+export const BINANCE_ENDPOINTS = {
+  /** 개별 시세 조회: GET /api/v3/ticker/price?symbol=BTCUSDT */
+  tickerPrice: '/api/v3/ticker/price',
+  /** 전체 시세 조회: GET /api/v3/ticker/price */
+  allTickerPrices: '/api/v3/ticker/price',
+} as const;
+
+/** 바이낸스 REST 폴링 간격 (밀리초) */
+export const BINANCE_POLLING_INTERVAL_MS = 5_000;
 
 /**
  * 거래소 설정 맵

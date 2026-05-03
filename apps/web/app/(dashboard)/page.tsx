@@ -8,17 +8,22 @@
  * - 거래소별 로딩 상태 개별 표시
  * - 자동 갱신(기본 30초) 및 수동 새로고침
  * - 특정 코인 선택 시 거래소별 보유 상세 비교
+ * - 최초 로그인 시 온보딩 마법사 표시
+ * - API 키 미등록 시 데모 모드 지원
  *
  * @see 요구사항 2.1~2.11 (통합 포트폴리오 대시보드)
  * @see 요구사항 2.7 (자산 분포를 도넛/파이 차트로 시각화)
  * @see 요구사항 9.5 (스켈레톤 UI / 로딩 인디케이터)
  * @see 요구사항 9.7 (숫자 데이터 포맷)
  * @see 요구사항 9.8 (수익 녹색/손실 빨간색 색상 구분)
+ * @see 요구사항 11.1 (단계별 온보딩 가이드)
+ * @see 요구사항 11.3 (데모 데이터 미리보기 모드)
+ * @see 요구사항 11.4 (온보딩 완료 후 대시보드 이동)
  */
 
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshCw,
   TrendingUp,
@@ -29,6 +34,7 @@ import {
   ChevronUp,
   ChevronsUpDown,
   ArrowLeft,
+  Filter,
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
@@ -36,6 +42,10 @@ import { EXCHANGE_CONFIGS } from '@bitscope/shared';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { getCachedEncryptionKey, cacheEncryptionKey, hasEncryptedKeys, loadEncryptedKey, getRegisteredExchanges } from '@/lib/crypto/encryption-service';
+import { deriveEncryptionKey } from '@/lib/crypto/key-derivation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +60,7 @@ import { DashboardSkeleton, CardSkeleton, TableRowSkeleton } from '@/components/
 import { ErrorDisplay, ExchangeErrorBadge } from '@/components/ui/error-display';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AssetDistributionCharts } from '@/components/charts';
+import { OnboardingWizard, DemoModeBanner } from '@/components/onboarding';
 import { getAssetDistribution } from '@/lib/portfolio/aggregator';
 import { usePortfolioStore } from '@/store/portfolio-store';
 
@@ -58,12 +69,69 @@ import { usePortfolioStore } from '@/store/portfolio-store';
 export default function DashboardPage() {
   const { address } = useAccount();
   const { t } = useTranslation();
+  const { signMessage } = useWalletAuth();
   const walletAddress = address ?? '';
+
+  // 암호화 키 확보 상태
+  const [encryptionKeyReady, setEncryptionKeyReady] = useState(false);
+  const [encryptionKeyError, setEncryptionKeyError] = useState(false);
+
+  // 대시보드 진입 시 암호화 키 확보 (sessionStorage에 없으면 지갑 서명 요청)
+  useEffect(() => {
+    if (!walletAddress) return;
+    if (encryptionKeyReady) return;
+    if (!hasEncryptedKeys(walletAddress)) {
+      setEncryptionKeyReady(true);
+      return;
+    }
+
+    const cached = getCachedEncryptionKey();
+    if (cached) {
+      setEncryptionKeyReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const exchanges = getRegisteredExchanges(walletAddress);
+        let existingNonce: string | undefined;
+        for (const ex of exchanges) {
+          const stored = loadEncryptedKey(walletAddress, ex);
+          if (stored?.nonce) {
+            existingNonce = stored.nonce;
+            break;
+          }
+        }
+
+        const derivation = await deriveEncryptionKey(walletAddress, signMessage, existingNonce);
+        if (!cancelled) {
+          cacheEncryptionKey(derivation.derivedKey, derivation.nonce);
+          setEncryptionKeyReady(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setEncryptionKeyError(true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [walletAddress, signMessage, encryptionKeyReady]);
+
+  // 온보딩 상태 관리
+  const onboarding = useOnboarding(walletAddress);
 
   const portfolio = usePortfolio({
     walletAddress,
-    enabled: !!walletAddress,
+    // 암호화 키가 준비되지 않았거나, 온보딩 중이거나, 데모 모드인 경우 비활성화
+    enabled: !!walletAddress && encryptionKeyReady && !onboarding.shouldShowOnboarding && !onboarding.isDemoMode,
   });
+
+  // 데모 모드용 자산 분포 데이터
+  const demoAssetDistribution = useMemo(() => {
+    if (!onboarding.isDemoMode || !onboarding.demoPortfolio) return null;
+    return getAssetDistribution(onboarding.demoPortfolio);
+  }, [onboarding.isDemoMode, onboarding.demoPortfolio]);
 
   // 자산 분포 데이터 계산 (차트용)
   const aggregatedPortfolio = usePortfolioStore((s) => s.aggregatedPortfolio);
@@ -71,6 +139,124 @@ export default function DashboardPage() {
     if (!aggregatedPortfolio) return null;
     return getAssetDistribution(aggregatedPortfolio);
   }, [aggregatedPortfolio]);
+
+  // 필터 적용 시 요약 수치를 mergedHoldings 기준으로 재계산
+  const isFiltered = !!(portfolio.filter.exchanges && portfolio.filter.exchanges.length > 0)
+    || !!(portfolio.filter.profitLossType && portfolio.filter.profitLossType !== 'all');
+
+  const filteredSummary = useMemo(() => {
+    if (!isFiltered) {
+      // 필터 없으면 전체 합산
+      return {
+        totalEvaluation: portfolio.totalEvaluation,
+        totalInvestment: portfolio.totalInvestment,
+        totalProfitLoss: portfolio.totalProfitLoss,
+        profitLossRate: portfolio.profitLossRate,
+        filterLabel: undefined as string | undefined,
+      };
+    }
+
+    // 필터된 mergedHoldings에서 재계산
+    const holdings = portfolio.mergedHoldings;
+    const totalEvaluation = holdings.reduce((sum, h) => sum + h.totalEvaluation, 0);
+    const totalInvestment = holdings.reduce((sum, h) => sum + h.totalBalance * h.weightedAvgBuyPrice, 0);
+    const totalProfitLoss = totalEvaluation - totalInvestment;
+    const profitLossRate = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0;
+
+    // 필터 레이블 생성
+    const labels: string[] = [];
+    if (portfolio.filter.exchanges && portfolio.filter.exchanges.length > 0) {
+      const names = portfolio.filter.exchanges.map((e) => EXCHANGE_CONFIGS[e]?.nameKo ?? e);
+      labels.push(names.join(', '));
+    }
+
+    return {
+      totalEvaluation,
+      totalInvestment,
+      totalProfitLoss,
+      profitLossRate,
+      filterLabel: labels.length > 0 ? labels.join(' · ') : undefined,
+    };
+  }, [isFiltered, portfolio.mergedHoldings, portfolio.totalEvaluation, portfolio.totalInvestment, portfolio.totalProfitLoss, portfolio.profitLossRate, portfolio.filter]);
+
+  // 암호화 키 로딩 중
+  if (!encryptionKeyReady && !encryptionKeyError && hasEncryptedKeys(walletAddress)) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4 md:p-6">
+        <LoadingSpinner size="lg" message={t.apiKey.settingsPage.signatureDescription} />
+      </div>
+    );
+  }
+
+  // 암호화 키 도출 실패
+  if (encryptionKeyError) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4 md:p-6">
+        <ErrorDisplay
+          title={t.apiKey.settingsPage.signatureRequired}
+          message={t.apiKey.settingsPage.signatureRequiredForDecrypt}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
+
+  // 온보딩 마법사 표시 (최초 로그인, API 키 미등록 시)
+  if (onboarding.shouldShowOnboarding) {
+    return (
+      <OnboardingWizard
+        onboarding={onboarding}
+        walletAddress={walletAddress}
+      />
+    );
+  }
+
+  // 데모 모드: 모의 데이터로 대시보드 표시
+  if (onboarding.isDemoMode && onboarding.demoPortfolio) {
+    const demo = onboarding.demoPortfolio;
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        {/* 데모 모드 배너 */}
+        <DemoModeBanner onExit={() => {
+          // 데모 모드 종료 시 isDemoMode를 false로 변경
+          // (페이지가 리렌더링되며 실제 포트폴리오 조회 시작)
+          onboarding.exitDemoMode();
+        }} />
+
+        {/* 대시보드 헤더 */}
+        <DashboardHeader
+          lastUpdated={demo.lastUpdated}
+          isLoading={false}
+          onRefresh={() => {}}
+          isDemoMode
+        />
+
+        {/* 요약 카드 */}
+        <SummaryCards
+          totalEvaluation={demo.totalEvaluation}
+          totalInvestment={demo.totalInvestment}
+          totalProfitLoss={demo.totalProfitLoss}
+          profitLossRate={demo.profitLossRate}
+        />
+
+        {/* 자산 분포 차트 (데모) */}
+        {demoAssetDistribution && (
+          <AssetDistributionCharts distribution={demoAssetDistribution} />
+        )}
+
+        {/* 데모 보유 코인 테이블 */}
+        <HoldingsTable
+          mergedHoldings={demo.mergedHoldings}
+          sortCriteria="evaluationAmount"
+          sortDirection="desc"
+          isLoading={false}
+          loadingStates={{}}
+          onToggleSort={() => {}}
+          onSelectCoin={() => {}}
+        />
+      </div>
+    );
+  }
 
   // 초기 로딩 시 스켈레톤 표시
   if (portfolio.isInitialLoading) {
@@ -111,12 +297,13 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* 요약 카드 영역 */}
+      {/* 요약 카드 영역 - 필터 적용 시 필터된 데이터 기준으로 재계산 */}
       <SummaryCards
-        totalEvaluation={portfolio.totalEvaluation}
-        totalInvestment={portfolio.totalInvestment}
-        totalProfitLoss={portfolio.totalProfitLoss}
-        profitLossRate={portfolio.profitLossRate}
+        totalEvaluation={filteredSummary.totalEvaluation}
+        totalInvestment={filteredSummary.totalInvestment}
+        totalProfitLoss={filteredSummary.totalProfitLoss}
+        profitLossRate={filteredSummary.profitLossRate}
+        filterLabel={filteredSummary.filterLabel}
       />
 
       {/* 자산 분포 차트 (코인별 비중, 거래소별 비중) */}
@@ -167,16 +354,19 @@ interface DashboardHeaderProps {
   lastUpdated: Date | null;
   isLoading: boolean;
   onRefresh: () => void;
+  /** 데모 모드 여부 */
+  isDemoMode?: boolean;
 }
 
 /**
  * 대시보드 상단 헤더 영역
  *
  * 페이지 타이틀, 마지막 업데이트 시각, 새로고침 버튼을 표시한다.
+ * 데모 모드에서는 새로고침 버튼을 비활성화한다.
  *
  * @see 요구사항 2.5 (수동 새로고침 버튼)
  */
-function DashboardHeader({ lastUpdated, isLoading, onRefresh }: DashboardHeaderProps) {
+function DashboardHeader({ lastUpdated, isLoading, onRefresh, isDemoMode }: DashboardHeaderProps) {
   const { t } = useTranslation();
 
   const formattedTime = lastUpdated
@@ -199,19 +389,21 @@ function DashboardHeader({ lastUpdated, isLoading, onRefresh }: DashboardHeaderP
           </p>
         )}
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onRefresh}
-        disabled={isLoading}
-        aria-label={t.dashboard.refresh}
-      >
-        <RefreshCw
-          className={cn('mr-2 h-4 w-4', isLoading && 'animate-spin')}
-          aria-hidden="true"
-        />
-        {t.dashboard.refresh}
-      </Button>
+      {!isDemoMode && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          disabled={isLoading}
+          aria-label={t.dashboard.refresh}
+        >
+          <RefreshCw
+            className={cn('mr-2 h-4 w-4', isLoading && 'animate-spin')}
+            aria-hidden="true"
+          />
+          {t.dashboard.refresh}
+        </Button>
+      )}
     </div>
   );
 }
@@ -229,6 +421,7 @@ interface ExchangeErrorBadgesProps {
  * @see 요구사항 2.6 (거래소 오류 시 마지막 성공 시점 데이터 표시)
  */
 function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesProps) {
+  const { t } = useTranslation();
   const errorExchanges = Object.values(exchangeStates).filter(
     (s) => s?.errorMessage,
   );
@@ -236,7 +429,7 @@ function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesPro
   if (errorExchanges.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2" role="status" aria-label="거래소 연결 상태">
+    <div className="flex flex-wrap gap-2" role="status" aria-label={t.dashboard.exchangeConnectionStatus}>
       {errorExchanges.map((state) => {
         if (!state) return null;
         const config = EXCHANGE_CONFIGS[state.exchange];
@@ -251,7 +444,7 @@ function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesPro
               size="sm"
               className="h-6 px-1.5 text-xs"
               onClick={() => onRetry(state.exchange)}
-              aria-label={`${config?.nameKo ?? state.exchange} 재시도`}
+              aria-label={t.dashboard.exchangeRetry(config?.nameKo ?? state.exchange)}
             >
               <RefreshCw className="h-3 w-3" aria-hidden="true" />
             </Button>
@@ -269,6 +462,8 @@ interface SummaryCardsProps {
   totalInvestment: number;
   totalProfitLoss: number;
   profitLossRate: number;
+  /** 필터 적용 시 표시할 레이블 (예: "빗썸") */
+  filterLabel?: string;
 }
 
 /**
@@ -281,6 +476,7 @@ function SummaryCards({
   totalInvestment,
   totalProfitLoss,
   profitLossRate,
+  filterLabel,
 }: SummaryCardsProps) {
   const { t } = useTranslation();
 
@@ -313,7 +509,14 @@ function SummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-2">
+      {filterLabel && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Filter className="h-4 w-4" aria-hidden="true" />
+          <span>{filterLabel} 기준</span>
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -350,6 +553,7 @@ function SummaryCards({
           </CardContent>
         </Card>
       ))}
+      </div>
     </div>
   );
 }
@@ -423,7 +627,7 @@ function TableControls({
               className="h-7 px-2 text-xs"
               onClick={() => handleExchangeFilter(exchange)}
               aria-pressed={isActive}
-              aria-label={`${config.nameKo} 필터`}
+              aria-label={t.dashboard.exchangeFilter(config.nameKo)}
             >
               {config.nameKo}
             </Button>
@@ -435,7 +639,7 @@ function TableControls({
 
         {/* 수익/손실 필터 */}
         {(['all', 'profit', 'loss'] as const).map((type) => {
-          const labels = { all: t.common.filter, profit: '수익', loss: '손실' };
+          const labels = { all: t.dashboard.allLabel, profit: t.dashboard.profitLabel, loss: t.dashboard.lossLabel };
           const isActive = (filter.profitLossType ?? 'all') === type;
           return (
             <Button
@@ -446,7 +650,7 @@ function TableControls({
               onClick={() => handleProfitLossFilter(type)}
               aria-pressed={isActive}
             >
-              {type === 'all' ? '전체' : labels[type]}
+              {labels[type]}
             </Button>
           );
         })}
@@ -488,7 +692,7 @@ function SortableHeader({
         className,
       )}
       onClick={() => onToggle(criteria)}
-      aria-label={`${label} 기준으로 정렬`}
+      aria-label={label}
       aria-sort={
         isActive
           ? currentDirection === 'asc'
@@ -690,7 +894,7 @@ function HoldingRow({ holding, onSelect }: HoldingRowProps) {
           onSelect();
         }
       }}
-      aria-label={`${holding.symbol} 상세 보기`}
+      aria-label={holding.symbol}
     >
       {/* 코인명 + 거래소 뱃지 */}
       <td className="px-4 py-3">
@@ -761,7 +965,7 @@ function HoldingCard({ holding, onSelect }: HoldingCardProps) {
       type="button"
       className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
       onClick={onSelect}
-      aria-label={`${holding.symbol} 상세 보기`}
+      aria-label={holding.symbol}
     >
       {/* 상단: 코인명 + 수익률 */}
       <div className="flex items-center justify-between">
@@ -902,11 +1106,11 @@ function CoinDetailView({ coinSummary, onBack }: CoinDetailViewProps) {
 
         {/* 거래소별 상세 비교 테이블 */}
         <div className="overflow-x-auto">
-          <table className="w-full" role="table" aria-label={`${coinSummary.symbol} 거래소별 보유 상세`}>
+          <table className="w-full" role="table" aria-label={t.dashboard.exchangeDetailHoldings(coinSummary.symbol)}>
             <thead>
               <tr className="border-b border-border">
                 <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground" scope="col">
-                  {t.exchange.upbit && '거래소'}
+                  {t.dashboard.exchangeLabel}
                 </th>
                 <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground" scope="col">
                   {t.portfolio.quantity}

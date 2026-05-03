@@ -132,10 +132,8 @@ export async function relayRequest<T = unknown>(
         return await fetchWithTimeout<T>(exchange, signedRequest);
       },
       {
-        onRetry: (attempt, error, delayMs) => {
-          console.warn(
-            `[Proxy] ${exchange} 재시도 ${attempt}회 (${delayMs}ms 후): ${error.message}`,
-          );
+        onRetry: () => {
+          // 재시도 로직 (디버깅 필요 시 로깅 추가 가능)
         },
       },
     );
@@ -157,12 +155,6 @@ export async function relayRequest<T = unknown>(
     if (useCache) {
       const staleResult = cache.getWithStale<T>(cacheKey);
       if (staleResult.hit && staleResult.data !== null) {
-        console.warn(
-          `[Proxy] ${exchange} API 호출 실패, 스테일 캐시 데이터 반환: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-
         return {
           success: true,
           data: staleResult.data,
@@ -229,7 +221,6 @@ export async function fetchWithTimeout<T = unknown>(
     }
 
     const response = await fetch(signedRequest.url, fetchOptions);
-
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
       throw new ProxyError(

@@ -23,7 +23,7 @@
 
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ExchangeType, SortCriteria, HoldingFilter, MergedHolding, CoinSummary } from '@bitscope/shared';
 import { usePortfolioStore, type ViewMode, type ExchangePortfolioState } from '@/store/portfolio-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -161,11 +161,27 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
   const refreshInterval = useSettingsStore((s) => s.settings.refreshInterval);
   const refreshIntervalMs = refreshInterval * 1000;
 
-  // 포트폴리오 저장소
-  const store = usePortfolioStore();
+  // 포트폴리오 저장소 - 액션만 개별 선택하여 불필요한 리렌더 방지
+  const updateAllExchangeData = usePortfolioStore((s) => s.updateAllExchangeData);
+  const aggregatedPortfolio = usePortfolioStore((s) => s.aggregatedPortfolio);
+  const exchangeStates = usePortfolioStore((s) => s.exchangeStates);
+  const viewMode = usePortfolioStore((s) => s.viewMode);
+  const sortCriteria = usePortfolioStore((s) => s.sortCriteria);
+  const sortDirection = usePortfolioStore((s) => s.sortDirection);
+  const filter = usePortfolioStore((s) => s.filter);
+  const selectedCoin = usePortfolioStore((s) => s.selectedCoin);
+  const setViewMode = usePortfolioStore((s) => s.setViewMode);
+  const toggleSort = usePortfolioStore((s) => s.toggleSort);
+  const setFilter = usePortfolioStore((s) => s.setFilter);
+  const selectCoin = usePortfolioStore((s) => s.selectCoin);
+  const getFilteredAndSortedMergedHoldings = usePortfolioStore((s) => s.getFilteredAndSortedMergedHoldings);
+  const getSelectedCoinSummary = usePortfolioStore((s) => s.getSelectedCoinSummary);
+  const getHasPartialError = usePortfolioStore((s) => s.getHasPartialError);
+  const getIsAllError = usePortfolioStore((s) => s.getIsAllError);
+  const getLastUpdated = usePortfolioStore((s) => s.getLastUpdated);
 
-  // 이전 results 레퍼런스 (불필요한 업데이트 방지)
-  const prevResultsRef = useRef<UseAllExchangeBalancesReturn['results'] | null>(null);
+  // 이전 결과의 직렬화된 키 (내용 기반 비교용)
+  const prevResultsKeyRef = useRef<string>('');
 
   // 모든 거래소 잔고 병렬 조회
   const balancesResult: UseAllExchangeBalancesReturn = useAllExchangeBalances({
@@ -175,37 +191,32 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
   });
 
   // 조회 결과를 포트폴리오 저장소에 동기화
+  // 로딩 중인 결과는 제외하고 완료된 것만 store에 반영
   useEffect(() => {
     const { results } = balancesResult;
 
-    // 결과가 없거나 이전과 동일하면 건너뛴다
-    if (results.length === 0) return;
+    // 데이터 또는 오류가 있는 결과만 필터링 (로딩 중인 빈 결과 제외)
+    const completedResults = results.filter((r) => r.data !== null || r.error !== null);
+    if (completedResults.length === 0) return;
 
-    // 간단한 참조 비교로 변경 여부를 확인한다
-    if (prevResultsRef.current === results) return;
-    prevResultsRef.current = results;
+    // 내용 기반 비교
+    const resultsKey = completedResults
+      .map((r) => `${r.exchange}:${r.data ? JSON.stringify(r.data).length : 'null'}:${r.error?.message ?? ''}`)
+      .join('|');
 
-    const storeResults = results.map((r) => ({
+    if (prevResultsKeyRef.current === resultsKey) return;
+    prevResultsKeyRef.current = resultsKey;
+
+    const storeResults = completedResults.map((r) => ({
       exchange: r.exchange,
       data: r.data,
       error: r.error ? r.error.message : null,
     }));
 
-    store.updateAllExchangeData(storeResults);
-  }, [balancesResult.results]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 거래소별 로딩 상태 동기화
-  useEffect(() => {
-    const { loadingStates } = balancesResult;
-    for (const [exchange, isLoading] of Object.entries(loadingStates)) {
-      if (isLoading) {
-        store.setExchangeLoading(exchange as ExchangeType, true);
-      }
-    }
-  }, [balancesResult.loadingStates]); // eslint-disable-line react-hooks/exhaustive-deps
+    updateAllExchangeData(storeResults);
+  }, [balancesResult.results, updateAllExchangeData]);
 
   // 통합 데이터 계산
-  const { aggregatedPortfolio } = store;
   const totalEvaluation = aggregatedPortfolio?.totalEvaluation ?? 0;
   const totalInvestment = aggregatedPortfolio?.totalInvestment ?? 0;
   const totalProfitLoss = aggregatedPortfolio?.totalProfitLoss ?? 0;
@@ -213,11 +224,16 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
   const totalKrwBalance = aggregatedPortfolio?.totalKrwBalance ?? 0;
 
   // 정렬/필터 적용된 holdings
-  const mergedHoldings = store.getFilteredAndSortedMergedHoldings();
+  // getFilteredAndSortedMergedHoldings()는 get()을 사용하므로 Zustand 구독이 안 됨
+  // filter, sortCriteria, sortDirection, aggregatedPortfolio를 직접 구독하고 useMemo로 계산
+  const mergedHoldings = useMemo(() => {
+    return getFilteredAndSortedMergedHoldings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aggregatedPortfolio, filter, sortCriteria, sortDirection]);
 
   // 오류 상태 집계
   const errors: Partial<Record<ExchangeType, string>> = {};
-  for (const [exchange, state] of Object.entries(store.exchangeStates)) {
+  for (const [exchange, state] of Object.entries(exchangeStates)) {
     if (state?.errorMessage) {
       errors[exchange as ExchangeType] = state.errorMessage;
     }
@@ -228,7 +244,7 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
     balancesResult.isLoading && !aggregatedPortfolio;
 
   // 선택된 코인 요약
-  const selectedCoinSummary = store.getSelectedCoinSummary();
+  const selectedCoinSummary = getSelectedCoinSummary();
 
   // 스냅샷 동기화: 포트폴리오 조회 완료 시 NestJS에 비동기 전송
   const snapshotSync = useSnapshotSync({
@@ -247,23 +263,23 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
     mergedHoldings,
 
     // 거래소별 상태
-    exchangeStates: store.exchangeStates,
+    exchangeStates,
 
     // 로딩/오류 상태
     isLoading: balancesResult.isLoading,
     isInitialLoading,
     loadingStates: balancesResult.loadingStates,
-    hasPartialError: store.getHasPartialError(),
-    isAllError: store.getIsAllError(),
+    hasPartialError: getHasPartialError(),
+    isAllError: getIsAllError(),
     errors,
-    lastUpdated: store.getLastUpdated(),
+    lastUpdated: getLastUpdated(),
 
     // UI 상태
-    viewMode: store.viewMode,
-    sortCriteria: store.sortCriteria,
-    sortDirection: store.sortDirection,
-    filter: store.filter,
-    selectedCoin: store.selectedCoin,
+    viewMode,
+    sortCriteria,
+    sortDirection,
+    filter,
+    selectedCoin,
     selectedCoinSummary,
 
     // 스냅샷 동기화 상태
@@ -274,10 +290,10 @@ export function usePortfolio(options: UsePortfolioOptions): UsePortfolioReturn {
     // 액션
     refetchAll: balancesResult.refetchAll,
     refetchExchange: balancesResult.refetchExchange,
-    setViewMode: store.setViewMode,
-    toggleSort: store.toggleSort,
-    setFilter: store.setFilter,
-    selectCoin: store.selectCoin,
+    setViewMode,
+    toggleSort,
+    setFilter,
+    selectCoin,
     sendSnapshotNow: snapshotSync.sendNow,
   };
 }

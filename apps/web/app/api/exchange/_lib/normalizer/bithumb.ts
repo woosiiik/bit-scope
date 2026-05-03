@@ -1,18 +1,24 @@
 /**
- * 빗썸 API 응답 정규화 모듈
+ * 빗썸 API v2 응답 정규화 모듈
  *
- * 빗썸 거래소의 API 응답을 통일된 내부 데이터 모델로 변환한다.
+ * 빗썸 거래소의 API v2 응답을 통일된 내부 데이터 모델로 변환한다.
  * 각 API 엔드포인트(잔고, 시세, 호가, 주문 내역)별로 정규화 함수를 제공한다.
  *
- * 빗썸 API 응답 특성:
- * - 공통 래퍼: { status: "0000", data: { ... } } (status "0000" = 성공)
- * - 잔고 조회: data에 코인별 { total_{코인}, available_{코인} } 키-값 구조
- * - 시세 조회: data에 { opening_price, closing_price, ... } 구조
- * - 호가 조회: data에 { bids: [...], asks: [...] } 배열 구조
- * - 주문 내역: data에 주문 배열 구조
+ * 빗썸 API v2 응답 특성 (업비트와 유사한 구조):
+ * - 잔고 조회 (GET /v1/accounts): 코인별 잔고 배열 형태
+ * - 시세 조회 (GET /public/ticker): Public API 시세 조회
+ * - 호가 조회 (GET /public/orderbook): Public API 호가 조회
+ * - 주문 내역 (GET /v1/orders): 주문 배열
+ * - 마켓 목록 (GET /v1/market/all): "KRW-BTC" 형태의 마켓 코드 목록
+ *
+ * v1에서 v2로의 주요 변경:
+ * - 잔고: key-value 구조 -> 배열 구조로 변경 (업비트와 동일)
+ * - 인증: HMAC-SHA512 -> JWT (HS256)
+ * - HTTP 메서드: POST -> GET으로 변경 (잔고 조회 등)
+ * - 마켓 코드: "KRW-BTC" 형태 (업비트와 동일)
  *
  * @see 요구사항 12.4 (응답 데이터 통일된 내부 데이터 모델 정규화)
- * @see https://apidocs.bithumb.com/reference
+ * @see https://apidocs.bithumb.com/v2
  */
 
 import type { Holding, Ticker, Orderbook, OrderbookEntry } from '@bitscope/shared';
@@ -24,28 +30,52 @@ import type {
   OrderHistoryItem,
 } from './types';
 
-// ===== 빗썸 API 원본 응답 타입 =====
+// ===== 빗썸 API v2 원본 응답 타입 =====
 
-/** 빗썸 API 공통 응답 래퍼 */
-export interface BithumbApiResponse<T = unknown> {
-  status: string;
-  data: T;
-  message?: string;
+/** 빗썸 v2 잔고 조회 응답 항목 (업비트와 유사한 구조) */
+export interface BithumbV2BalanceItem {
+  /** 코인 심볼 (예: "BTC", "ETH", "KRW") */
+  currency: string;
+  /** 총 보유량 */
+  balance: string;
+  /** 주문 중 잠긴 수량 */
+  locked: string;
+  /** 매수 평균가 (KRW 마켓 기준) */
+  avg_buy_price?: string;
+  /** 매수 평균가 수정 여부 */
+  avg_buy_price_modified?: boolean;
+  /** 화폐 단위 (예: "KRW") */
+  unit_currency?: string;
 }
 
-/** 빗썸 잔고 조회 응답 데이터 */
-export interface BithumbBalanceData {
-  /**
-   * 코인별 총 보유량: total_{코인심볼(소문자)} = "수량"
-   * 코인별 가용 보유량: available_{코인심볼(소문자)} = "수량"
-   * 예: total_btc: "0.5", available_btc: "0.3"
-   * KRW도 동일: total_krw: "1000000", available_krw: "900000"
-   */
-  [key: string]: string;
+/** 빗썸 v2 시세(Ticker) 조회 응답 항목 */
+export interface BithumbV2TickerItem {
+  /** 마켓 코드 (예: "KRW-BTC") */
+  market: string;
+  /** 현재가 (종가) */
+  trade_price: number;
+  /** 시가 */
+  opening_price: number;
+  /** 고가 */
+  high_price: number;
+  /** 저가 */
+  low_price: number;
+  /** 전일 종가 */
+  prev_closing_price: number;
+  /** 24시간 변동률 (signed_change_rate) */
+  signed_change_rate: number;
+  /** 24시간 변동 금액 (signed_change_price) */
+  signed_change_price: number;
+  /** 24시간 거래량 */
+  acc_trade_volume_24h: number;
+  /** 24시간 거래금액 */
+  acc_trade_price_24h: number;
+  /** 타임스탬프 */
+  timestamp: number;
 }
 
-/** 빗썸 시세(Ticker) 조회 응답 데이터 */
-export interface BithumbTickerData {
+/** 빗썸 v1 시세(Ticker) 조회 응답 데이터 (Public API 하위 호환) */
+export interface BithumbV1TickerData {
   opening_price: string;
   closing_price: string;
   min_price: string;
@@ -60,14 +90,39 @@ export interface BithumbTickerData {
   date: string;
 }
 
-/** 빗썸 전체 시세 조회 응답 데이터 (ALL_KRW) */
+/** 빗썸 전체 시세 조회 응답 데이터 (v1 Public API /public/ticker/ALL_KRW) */
 export interface BithumbAllTickerData {
-  [symbol: string]: BithumbTickerData | string;
-  // date 필드가 최상위에 존재
+  [symbol: string]: BithumbV1TickerData | string;
 }
 
-/** 빗썸 호가(Orderbook) 조회 응답 데이터 */
-export interface BithumbOrderbookData {
+/** 빗썸 v1 Public API 응답 래퍼 (시세/호가 Public API에서 사용) */
+export interface BithumbPublicApiResponse<T = unknown> {
+  status?: string;
+  data?: T;
+  message?: string;
+}
+
+/** 빗썸 v2 호가(Orderbook) 조회 응답 항목 */
+export interface BithumbV2OrderbookItem {
+  /** 마켓 코드 (예: "KRW-BTC") */
+  market: string;
+  /** 타임스탬프 */
+  timestamp: number;
+  /** 호가 유닛 목록 */
+  orderbook_units: {
+    /** 매도 호가 */
+    ask_price: number;
+    /** 매수 호가 */
+    bid_price: number;
+    /** 매도 잔량 */
+    ask_size: number;
+    /** 매수 잔량 */
+    bid_size: number;
+  }[];
+}
+
+/** 빗썸 v1 호가 응답 (Public API /public/orderbook 하위 호환) */
+export interface BithumbV1OrderbookData {
   timestamp: string;
   order_currency: string;
   payment_currency: string;
@@ -81,18 +136,28 @@ export interface BithumbOrderbookData {
   }[];
 }
 
-/** 빗썸 주문 내역 조회 응답 항목 */
-export interface BithumbOrderItem {
-  order_id: string;
-  order_currency: string;
-  payment_currency: string;
-  type: 'bid' | 'ask';
-  status: string;
+/** 빗썸 v2 주문 내역 조회 응답 항목 */
+export interface BithumbV2OrderItem {
+  /** 주문 고유 ID */
+  uuid: string;
+  /** 주문 유형: bid(매수), ask(매도) */
+  side: 'bid' | 'ask';
+  /** 주문 유형: limit, price, market */
+  ord_type: string;
+  /** 주문 가격 */
   price: string;
-  quantity: string;
-  order_qty: string;
-  date: string;
-  // 체결 수량은 order_qty - quantity로 계산
+  /** 주문 상태: wait, watch, done, cancel */
+  state: string;
+  /** 마켓 코드 (예: "KRW-BTC") */
+  market: string;
+  /** 주문 수량 */
+  volume: string;
+  /** 체결 남은 수량 */
+  remaining_volume: string;
+  /** 체결 수량 */
+  executed_volume: string;
+  /** 주문 시각 (ISO 8601) */
+  created_at: string;
 }
 
 // ===== 정규화 함수 =====
@@ -100,23 +165,14 @@ export interface BithumbOrderItem {
 /**
  * 빗썸 잔고 조회 응답을 정규화한다.
  *
- * 빗썸 잔고 응답의 key-value 구조에서 코인 심볼을 추출하고,
- * total/available 쌍을 Holding 형태로 변환한다.
- *
- * - total_{symbol}: 총 보유량
- * - available_{symbol}: 사용 가능 수량
- * - locked = total - available
- *
- * 주의: 빗썸 잔고 응답에는 매수 평균가(avgBuyPrice)와 현재가가 포함되지 않으므로,
- * avgBuyPrice=0, currentPrice=0으로 설정한다. 이후 시세 데이터와 결합하여 갱신해야 한다.
+ * 빗썸 v2 API 잔고 응답은 업비트와 동일한 배열 형식이다:
+ * [{ currency: "BTC", balance: "0.5", locked: "0.1", avg_buy_price: "50000000" }, ...]
  *
  * @param rawResponse 빗썸 잔고 조회 원본 응답
  * @returns 정규화된 잔고 데이터
  */
 export function normalizeBithumbBalance(rawResponse: unknown): NormalizedBalance {
-  const response = rawResponse as BithumbApiResponse<BithumbBalanceData>;
-
-  if (!response || response.status !== '0000' || !response.data) {
+  if (!rawResponse) {
     return {
       exchange: 'bithumb',
       holdings: [],
@@ -125,24 +181,35 @@ export function normalizeBithumbBalance(rawResponse: unknown): NormalizedBalance
     };
   }
 
-  const data = response.data;
+  // v2 형식: 배열이 직접 반환됨 (업비트와 동일)
+  if (Array.isArray(rawResponse)) {
+    return normalizeV2Balance(rawResponse as BithumbV2BalanceItem[]);
+  }
+
+  return {
+    exchange: 'bithumb',
+    holdings: [],
+    krwBalance: 0,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * 빗썸 v2 형식의 잔고 데이터를 정규화한다.
+ *
+ * @param items 빗썸 v2 잔고 항목 배열
+ * @returns 정규화된 잔고 데이터
+ */
+function normalizeV2Balance(items: BithumbV2BalanceItem[]): NormalizedBalance {
   let krwBalance = 0;
   const holdings: Holding[] = [];
 
-  // total_ 접두사로 시작하는 키에서 코인 심볼을 추출
-  const symbols = new Set<string>();
-  for (const key of Object.keys(data)) {
-    if (key.startsWith('total_')) {
-      const symbol = key.replace('total_', '').toUpperCase();
-      symbols.add(symbol);
-    }
-  }
-
-  for (const symbol of symbols) {
-    const lowerSymbol = symbol.toLowerCase();
-    const total = parseFloat(data[`total_${lowerSymbol}`]) || 0;
-    const available = parseFloat(data[`available_${lowerSymbol}`]) || 0;
-    const locked = total - available;
+  for (const item of items) {
+    const symbol = (item.currency || '').toUpperCase();
+    const balance = parseFloat(item.balance) || 0;
+    const locked = parseFloat(item.locked) || 0;
+    const total = balance + locked;
+    const avgBuyPrice = parseFloat(item.avg_buy_price || '0') || 0;
 
     // KRW 잔고는 별도 관리
     if (symbol === 'KRW') {
@@ -159,10 +226,9 @@ export function normalizeBithumbBalance(rawResponse: unknown): NormalizedBalance
       exchange: 'bithumb',
       symbol,
       currency: 'KRW',
-      balance: available,
+      balance,
       lockedBalance: locked > 0 ? locked : 0,
-      // 빗썸 잔고 응답에는 매수 평균가가 포함되지 않음
-      avgBuyPrice: 0,
+      avgBuyPrice,
       currentPrice: 0,
       evaluationAmount: 0,
       profitLoss: 0,
@@ -181,9 +247,12 @@ export function normalizeBithumbBalance(rawResponse: unknown): NormalizedBalance
 /**
  * 빗썸 시세(Ticker) 조회 응답을 정규화한다.
  *
- * 빗썸 시세 응답을 NormalizedTicker 형태로 변환한다.
- * - 단일 코인 시세: data가 BithumbTickerData 객체
- * - 전체 코인 시세(ALL_KRW): data가 코인 심볼을 키로 하는 객체
+ * v2 형식(배열)과 v1 Public API 형식(객체)을 모두 지원한다.
+ * Public API(/public/ticker)는 기존 v1 형식을 유지할 수 있으므로
+ * 양쪽 형식 모두 처리한다.
+ *
+ * v2 형식: [{ market: "KRW-BTC", trade_price: 50500000, ... }, ...]
+ * v1 형식: { status: "0000", data: { opening_price: "49000000", ... } }
  *
  * @param rawResponse 빗썸 시세 조회 원본 응답
  * @param symbol 조회 대상 코인 심볼 (단일 코인 조회 시). 전체 조회 시 생략.
@@ -193,9 +262,7 @@ export function normalizeBithumbTicker(
   rawResponse: unknown,
   symbol?: string,
 ): NormalizedTicker {
-  const response = rawResponse as BithumbApiResponse<BithumbAllTickerData | BithumbTickerData>;
-
-  if (!response || response.status !== '0000' || !response.data) {
+  if (!rawResponse) {
     return {
       exchange: 'bithumb',
       tickers: [],
@@ -203,13 +270,88 @@ export function normalizeBithumbTicker(
     };
   }
 
-  const data = response.data;
+  // v2 형식: 배열이 직접 반환
+  if (Array.isArray(rawResponse)) {
+    return normalizeV2Ticker(rawResponse as BithumbV2TickerItem[]);
+  }
+
+  const response = rawResponse as BithumbPublicApiResponse<unknown>;
+
+  // data가 배열이면 v2 형식
+  if (response.data && Array.isArray(response.data)) {
+    return normalizeV2Ticker(response.data as BithumbV2TickerItem[]);
+  }
+
+  // v1 Public API 형식 처리
+  if (response.status !== '0000' || !response.data) {
+    return {
+      exchange: 'bithumb',
+      tickers: [],
+      timestamp: Date.now(),
+    };
+  }
+
+  return normalizeV1Ticker(response.data, symbol);
+}
+
+/**
+ * 빗썸 v2 형식의 시세 데이터를 정규화한다.
+ *
+ * @param items 빗썸 v2 시세 항목 배열
+ * @returns 정규화된 시세 데이터
+ */
+function normalizeV2Ticker(items: BithumbV2TickerItem[]): NormalizedTicker {
+  const tickers: Ticker[] = [];
+
+  for (const item of items) {
+    if (!item.market || !item.trade_price) {
+      continue;
+    }
+
+    // 마켓 코드에서 심볼 추출 (예: "KRW-BTC" -> "BTC")
+    const parts = item.market.split('-');
+    const symbol = parts.length >= 2 ? (parts[1] ?? '').toUpperCase() : item.market.toUpperCase();
+
+    tickers.push({
+      exchange: 'bithumb',
+      symbol,
+      currentPrice: item.trade_price,
+      openPrice: item.opening_price || 0,
+      highPrice: item.high_price || 0,
+      lowPrice: item.low_price || 0,
+      prevClosePrice: item.prev_closing_price || 0,
+      changeRate: (item.signed_change_rate || 0) * 100, // 비율 -> 백분율
+      changePrice: item.signed_change_price || 0,
+      volume24h: item.acc_trade_volume_24h || 0,
+      volumeAmount24h: item.acc_trade_price_24h || 0,
+      timestamp: item.timestamp || Date.now(),
+    });
+  }
+
+  return {
+    exchange: 'bithumb',
+    tickers,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * 빗썸 v1 Public API 형식의 시세 데이터를 정규화한다.
+ *
+ * Public API(/public/ticker)는 기존 v1 형식을 유지할 수 있으므로
+ * 이 함수로 처리한다.
+ *
+ * @param data v1 시세 응답 데이터
+ * @param symbol 조회 대상 심볼 (선택)
+ * @returns 정규화된 시세 데이터
+ */
+function normalizeV1Ticker(data: unknown, symbol?: string): NormalizedTicker {
   const tickers: Ticker[] = [];
 
   // 단일 코인 시세 조회인 경우 (symbol이 지정됨)
   if (symbol) {
-    const tickerData = data as BithumbTickerData;
-    const ticker = parseBithumbTickerData(symbol, tickerData);
+    const tickerData = data as BithumbV1TickerData;
+    const ticker = parseV1TickerData(symbol, tickerData);
     if (ticker) {
       tickers.push(ticker);
     }
@@ -221,8 +363,8 @@ export function normalizeBithumbTicker(
       if (key === 'date' || typeof value === 'string') {
         continue;
       }
-      const tickerData = value as BithumbTickerData;
-      const ticker = parseBithumbTickerData(key, tickerData);
+      const tickerData = value as BithumbV1TickerData;
+      const ticker = parseV1TickerData(key, tickerData);
       if (ticker) {
         tickers.push(ticker);
       }
@@ -237,13 +379,13 @@ export function normalizeBithumbTicker(
 }
 
 /**
- * 빗썸 시세 데이터 항목을 Ticker 형태로 변환한다.
+ * 빗썸 v1 시세 데이터 항목을 Ticker 형태로 변환한다.
  *
  * @param symbol 코인 심볼
- * @param data 빗썸 시세 데이터
+ * @param data 빗썸 v1 시세 데이터
  * @returns Ticker 객체 또는 null (파싱 실패 시)
  */
-function parseBithumbTickerData(symbol: string, data: BithumbTickerData): Ticker | null {
+function parseV1TickerData(symbol: string, data: BithumbV1TickerData): Ticker | null {
   if (!data || !data.closing_price) {
     return null;
   }
@@ -273,45 +415,132 @@ function parseBithumbTickerData(symbol: string, data: BithumbTickerData): Ticker
 /**
  * 빗썸 호가(Orderbook) 조회 응답을 정규화한다.
  *
- * 빗썸 호가 응답을 NormalizedOrderbook 형태로 변환한다.
- * - asks(매도 호가)는 낮은 가격순으로 정렬한다.
- * - bids(매수 호가)는 높은 가격순으로 정렬한다.
+ * v2 형식(배열)과 v1 Public API 형식(객체)을 모두 지원한다.
+ * Public API(/public/orderbook)는 기존 v1 형식을 유지할 수 있으므로
+ * 양쪽 형식 모두 처리한다.
+ *
+ * v2 형식: [{ market: "KRW-BTC", orderbook_units: [...], ... }]
+ * v1 형식: { status: "0000", data: { bids: [...], asks: [...] } }
  *
  * @param rawResponse 빗썸 호가 조회 원본 응답
  * @returns 정규화된 호가 데이터
  */
 export function normalizeBithumbOrderbook(rawResponse: unknown): NormalizedOrderbook {
-  const response = rawResponse as BithumbApiResponse<BithumbOrderbookData>;
-
-  if (!response || response.status !== '0000' || !response.data) {
-    return {
+  const emptyResult: NormalizedOrderbook = {
+    exchange: 'bithumb',
+    orderbook: {
       exchange: 'bithumb',
-      orderbook: {
-        exchange: 'bithumb',
-        symbol: '',
-        asks: [],
-        bids: [],
-        timestamp: Date.now(),
-      },
+      symbol: '',
+      asks: [],
+      bids: [],
       timestamp: Date.now(),
-    };
+    },
+    timestamp: Date.now(),
+  };
+
+  if (!rawResponse) {
+    return emptyResult;
   }
 
-  const data = response.data;
+  // v2 형식: 배열이 직접 반환
+  if (Array.isArray(rawResponse)) {
+    const items = rawResponse as BithumbV2OrderbookItem[];
+    const firstItem = items[0];
+    if (!firstItem) {
+      return emptyResult;
+    }
+    return normalizeV2Orderbook(firstItem);
+  }
 
+  const response = rawResponse as BithumbPublicApiResponse<unknown>;
+
+  // data가 배열이면 v2 형식
+  if (response.data && Array.isArray(response.data)) {
+    const items = response.data as BithumbV2OrderbookItem[];
+    const firstItem = items[0];
+    if (!firstItem) {
+      return emptyResult;
+    }
+    return normalizeV2Orderbook(firstItem);
+  }
+
+  // v1 Public API 형식 처리
+  if (response.status !== '0000' || !response.data) {
+    return emptyResult;
+  }
+
+  return normalizeV1Orderbook(response.data as BithumbV1OrderbookData);
+}
+
+/**
+ * 빗썸 v2 형식의 호가 데이터를 정규화한다.
+ *
+ * @param item 빗썸 v2 호가 항목
+ * @returns 정규화된 호가 데이터
+ */
+function normalizeV2Orderbook(item: BithumbV2OrderbookItem): NormalizedOrderbook {
+  // 마켓 코드에서 심볼 추출 (예: "KRW-BTC" -> "BTC")
+  const parts = (item.market || '').split('-');
+  const symbol = parts.length >= 2 ? (parts[1] ?? '').toUpperCase() : '';
+
+  const asks: OrderbookEntry[] = [];
+  const bids: OrderbookEntry[] = [];
+
+  for (const unit of (item.orderbook_units || [])) {
+    if (unit.ask_price > 0) {
+      asks.push({
+        price: unit.ask_price,
+        quantity: unit.ask_size,
+      });
+    }
+    if (unit.bid_price > 0) {
+      bids.push({
+        price: unit.bid_price,
+        quantity: unit.bid_size,
+      });
+    }
+  }
+
+  // 매도 호가: 낮은 가격순, 매수 호가: 높은 가격순
+  asks.sort((a, b) => a.price - b.price);
+  bids.sort((a, b) => b.price - a.price);
+
+  return {
+    exchange: 'bithumb',
+    orderbook: {
+      exchange: 'bithumb',
+      symbol,
+      asks,
+      bids,
+      timestamp: item.timestamp || Date.now(),
+    },
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * 빗썸 v1 Public API 형식의 호가 데이터를 정규화한다.
+ *
+ * Public API(/public/orderbook)는 기존 v1 형식을 유지할 수 있으므로
+ * 이 함수로 처리한다.
+ *
+ * @param data 빗썸 v1 호가 데이터
+ * @returns 정규화된 호가 데이터
+ */
+function normalizeV1Orderbook(data: BithumbV1OrderbookData): NormalizedOrderbook {
   const asks: OrderbookEntry[] = (data.asks || [])
     .map((entry) => ({
       price: parseFloat(entry.price) || 0,
       quantity: parseFloat(entry.quantity) || 0,
     }))
-    .sort((a, b) => a.price - b.price); // 낮은 가격순
+    .sort((a, b) => a.price - b.price);
 
   const bids: OrderbookEntry[] = (data.bids || [])
     .map((entry) => ({
       price: parseFloat(entry.price) || 0,
       quantity: parseFloat(entry.quantity) || 0,
     }))
-    .sort((a, b) => b.price - a.price); // 높은 가격순
+    .sort((a, b) => b.price - a.price);
 
   return {
     exchange: 'bithumb',
@@ -329,17 +558,13 @@ export function normalizeBithumbOrderbook(rawResponse: unknown): NormalizedOrder
 /**
  * 빗썸 주문 내역 조회 응답을 정규화한다.
  *
- * 빗썸 주문 응답을 NormalizedOrderHistory 형태로 변환한다.
- * - bid -> buy, ask -> sell로 매핑한다.
- * - 주문 상태를 통일된 상태값으로 변환한다.
+ * v2 형식: [{ uuid: "...", side: "bid", market: "KRW-BTC", ... }, ...]
  *
  * @param rawResponse 빗썸 주문 내역 조회 원본 응답
  * @returns 정규화된 주문 내역 데이터
  */
 export function normalizeBithumbOrderHistory(rawResponse: unknown): NormalizedOrderHistory {
-  const response = rawResponse as BithumbApiResponse<BithumbOrderItem[]>;
-
-  if (!response || response.status !== '0000' || !response.data || !Array.isArray(response.data)) {
+  if (!rawResponse) {
     return {
       exchange: 'bithumb',
       orders: [],
@@ -347,21 +572,44 @@ export function normalizeBithumbOrderHistory(rawResponse: unknown): NormalizedOr
     };
   }
 
-  const orders: OrderHistoryItem[] = response.data.map((item) => {
-    const orderQty = parseFloat(item.order_qty) || 0;
-    const remainingQty = parseFloat(item.quantity) || 0;
-    const executedQty = orderQty - remainingQty;
+  // v2 형식: 배열이 직접 반환
+  if (Array.isArray(rawResponse)) {
+    return normalizeV2OrderHistory(rawResponse as BithumbV2OrderItem[]);
+  }
+
+  return {
+    exchange: 'bithumb',
+    orders: [],
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * 빗썸 v2 형식의 주문 내역을 정규화한다.
+ *
+ * @param items 빗썸 v2 주문 항목 배열
+ * @returns 정규화된 주문 내역 데이터
+ */
+function normalizeV2OrderHistory(items: BithumbV2OrderItem[]): NormalizedOrderHistory {
+  const orders: OrderHistoryItem[] = items.map((item) => {
+    // 마켓 코드에서 심볼 추출 (예: "KRW-BTC" -> "BTC")
+    const parts = (item.market || '').split('-');
+    const symbol = parts.length >= 2 ? (parts[1] ?? '').toUpperCase() : '';
+    const currency = parts.length >= 2 ? (parts[0] ?? 'KRW').toUpperCase() : 'KRW';
+
+    const volume = parseFloat(item.volume) || 0;
+    const executedVolume = parseFloat(item.executed_volume) || 0;
 
     return {
-      orderId: item.order_id,
-      symbol: (item.order_currency || '').toUpperCase(),
-      currency: ((item.payment_currency || 'KRW').toUpperCase()) as 'KRW' | 'BTC' | 'USDT',
-      side: item.type === 'bid' ? ('buy' as const) : ('sell' as const),
+      orderId: item.uuid,
+      symbol,
+      currency: currency as 'KRW' | 'BTC' | 'USDT',
+      side: item.side === 'bid' ? ('buy' as const) : ('sell' as const),
       price: parseFloat(item.price) || 0,
-      quantity: orderQty,
-      executedQuantity: executedQty > 0 ? executedQty : 0,
-      status: mapBithumbOrderStatus(item.status, orderQty, executedQty),
-      orderedAt: new Date(parseInt(item.date, 10) || Date.now()),
+      quantity: volume,
+      executedQuantity: executedVolume,
+      status: mapV2OrderStatus(item.state, volume, executedVolume),
+      orderedAt: new Date(item.created_at || Date.now()),
     };
   });
 
@@ -373,29 +621,28 @@ export function normalizeBithumbOrderHistory(rawResponse: unknown): NormalizedOr
 }
 
 /**
- * 빗썸 주문 상태를 통일된 상태값으로 매핑한다.
+ * 빗썸 v2 주문 상태를 통일된 상태값으로 매핑한다.
  *
- * @param status 빗썸 주문 상태 문자열
- * @param orderQty 주문 수량
- * @param executedQty 체결 수량
+ * @param state 빗썸 v2 주문 상태 (wait, watch, done, cancel)
+ * @param volume 주문 수량
+ * @param executedVolume 체결 수량
  * @returns 통일된 주문 상태
  */
-function mapBithumbOrderStatus(
-  status: string,
-  orderQty: number,
-  executedQty: number,
+function mapV2OrderStatus(
+  state: string,
+  volume: number,
+  executedVolume: number,
 ): OrderHistoryItem['status'] {
-  // 빗썸 상태: pending, completed, cancel 등
-  const normalizedStatus = status.toLowerCase();
+  const normalizedState = (state || '').toLowerCase();
 
-  if (normalizedStatus === 'completed' || normalizedStatus === 'done') {
+  if (normalizedState === 'done') {
     return 'filled';
   }
-  if (normalizedStatus === 'cancel' || normalizedStatus === 'cancelled') {
+  if (normalizedState === 'cancel') {
     return 'cancelled';
   }
-  // pending 상태에서 일부 체결된 경우
-  if (executedQty > 0 && executedQty < orderQty) {
+  // wait/watch 상태에서 일부 체결된 경우
+  if (executedVolume > 0 && executedVolume < volume) {
     return 'partially_filled';
   }
   return 'open';

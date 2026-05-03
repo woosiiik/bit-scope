@@ -15,6 +15,7 @@ import { ReportEntity } from '../modules/report/entities/report.entity';
 import { ReportScheduleEntity } from '../modules/report/entities/report-schedule.entity';
 import { KimchiPremiumHistoryEntity } from '../modules/premium/entities/kimchi-premium-history.entity';
 import { PriceHistoryEntity } from '../modules/price/entities/price-history.entity';
+import { TelegramConnectionEntity } from '../modules/telegram/entities/telegram-connection.entity';
 
 /** 모든 TypeORM 엔티티 목록 */
 export const ENTITIES = [
@@ -26,6 +27,7 @@ export const ENTITIES = [
   ReportScheduleEntity,
   KimchiPremiumHistoryEntity,
   PriceHistoryEntity,
+  TelegramConnectionEntity,
 ];
 
 /**
@@ -46,6 +48,9 @@ export function getDatabaseConfig(): TypeOrmModuleOptions {
     // 커넥션 풀 설정 (OCI Free Tier 리소스 절약)
     extra: {
       connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
+      // MySQL 8.4 caching_sha2_password: 로컬 개발 시 SSL 없이 접속 허용
+      ssl: false,
+      authPlugins: undefined,
     },
     // 로깅 설정
     logging: process.env.DB_LOGGING === 'true',

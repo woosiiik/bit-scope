@@ -66,7 +66,6 @@ const coinoneTickerFixture: CoinoneTickerResponse = {
       low: '48500000',
       target_volume: '5000',
       quote_volume: '250000000000',
-      yesterday_last: '49500000',
       timestamp: 1746100800000,
     },
     {
@@ -78,7 +77,6 @@ const coinoneTickerFixture: CoinoneTickerResponse = {
       low: '3000000',
       target_volume: '4000',
       quote_volume: '12600000000',
-      yesterday_last: '3050000',
       timestamp: 1746100800000,
     },
   ],
@@ -275,20 +273,20 @@ describe('normalizeCoinoneTicker', () => {
     expect(btc.openPrice).toBe(49000000);
     expect(btc.highPrice).toBe(51000000);
     expect(btc.lowPrice).toBe(48500000);
-    expect(btc.prevClosePrice).toBe(49500000);
+    expect(btc.prevClosePrice).toBe(49000000); // 코인원은 전일 종가 미제공, 시가를 사용
   });
 
   it('변동률을 올바르게 계산한다', () => {
     const result = normalizeCoinoneTicker(coinoneTickerFixture);
     const btc = result.tickers[0];
 
-    // (50500000 - 49500000) / 49500000 * 100 = 약 2.02%
-    expect(btc.changeRate).toBeCloseTo(2.0202, 2);
-    // 변동 금액 = 50500000 - 49500000 = 1000000
-    expect(btc.changePrice).toBe(1000000);
+    // (50500000 - 49000000) / 49000000 * 100 = 약 3.0612%
+    expect(btc.changeRate).toBeCloseTo(3.0612, 2);
+    // 변동 금액 = 50500000 - 49000000 = 1500000
+    expect(btc.changePrice).toBe(1500000);
   });
 
-  it('전일 종가가 0인 경우 변동률을 0으로 처리한다', () => {
+  it('시가가 0인 경우 변동률을 0으로 처리한다', () => {
     const response: CoinoneTickerResponse = {
       result: 'success',
       tickers: [
@@ -296,12 +294,11 @@ describe('normalizeCoinoneTicker', () => {
           target_currency: 'NEW',
           quote_currency: 'KRW',
           last: '1000',
-          first: '1000',
+          first: '0',
           high: '1000',
           low: '1000',
           target_volume: '100',
           quote_volume: '100000',
-          yesterday_last: '0',
           timestamp: Date.now(),
         },
       ],

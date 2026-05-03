@@ -257,16 +257,19 @@ export function useWalletAuth(
    * @returns 서명 결과 (hex 문자열)
    * @throws 지갑 미연결 시 오류
    */
+  const signMessageAsyncRef = useRef(signMessageAsync);
+  signMessageAsyncRef.current = signMessageAsync;
+
   const signMessage = useCallback(
     async (message: string): Promise<string> => {
       if (!isConnected || !address) {
         throw new Error('지갑이 연결되지 않았습니다. 먼저 지갑을 연결해주세요.');
       }
 
-      const signature = await signMessageAsync({ message });
+      const signature = await signMessageAsyncRef.current({ message });
       return signature;
     },
-    [isConnected, address, signMessageAsync]
+    [isConnected, address]
   );
 
   /**

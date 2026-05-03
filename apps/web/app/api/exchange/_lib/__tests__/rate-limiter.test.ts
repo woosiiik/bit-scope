@@ -137,8 +137,8 @@ describe('ExchangeRateLimiter', () => {
     it('초기 상태에서 최대 토큰 수를 반환한다', () => {
       // 업비트: 초당 10개
       expect(limiter.getAvailableTokens('upbit')).toBe(10);
-      // 빗썸: 초당 10개
-      expect(limiter.getAvailableTokens('bithumb')).toBe(10);
+      // 빗썸: 초당 140개 (v2 API)
+      expect(limiter.getAvailableTokens('bithumb')).toBe(140);
       // 코인원: 초당 6개
       expect(limiter.getAvailableTokens('coinone')).toBe(6);
     });

@@ -19,6 +19,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { UpbitWsClient } from './exchange-ws/upbit-ws.client';
 import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
+import { BinancePollingClient } from './exchange-ws/binance-polling.client';
 import { PriceMonitorService } from './price-monitor.service';
 import { PriceGateway } from './price.gateway';
 
@@ -33,6 +34,8 @@ import { PriceGateway } from './price.gateway';
     UpbitWsClient,
     BithumbWsClient,
     CoinonePollingClient,
+    // 바이낸스 시세 수신 클라이언트 (김치 프리미엄 비교용)
+    BinancePollingClient,
     // 시세 통합 관리 서비스
     PriceMonitorService,
     // Socket.IO 게이트웨이

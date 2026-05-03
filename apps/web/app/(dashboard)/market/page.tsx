@@ -253,8 +253,8 @@ export default function MarketPage() {
             <Search className="h-12 w-12 text-muted-foreground/50" aria-hidden="true" />
             <p className="mt-4 text-sm text-muted-foreground">
               {searchQuery.trim()
-                ? `"${searchQuery}" 검색 결과가 없습니다.`
-                : '시세 데이터가 없습니다.'}
+                ? t.market.noSearchResult(searchQuery)
+                : t.market.noData}
             </p>
           </CardContent>
         </Card>
@@ -307,23 +307,23 @@ function MarketHeader({
           {isConnected ? (
             <Badge variant="secondary" className="gap-1 text-xs">
               <Wifi className="h-3 w-3 text-green-500" aria-hidden="true" />
-              실시간
+              {t.market.realtime}
             </Badge>
           ) : isPollingMode ? (
             <Badge variant="secondary" className="gap-1 text-xs">
               <RefreshCw className="h-3 w-3 text-yellow-500" aria-hidden="true" />
-              폴링 모드
+              {t.market.pollingMode}
             </Badge>
           ) : (
             <button
               type="button"
               onClick={onReconnect}
               className="inline-flex items-center gap-1"
-              aria-label="WebSocket 재연결"
+              aria-label={t.market.reconnect}
             >
               <Badge variant="destructive" className="gap-1 text-xs cursor-pointer">
                 <WifiOff className="h-3 w-3" aria-hidden="true" />
-                연결 끊김
+                {t.market.disconnected}
               </Badge>
             </button>
           )}
@@ -421,6 +421,7 @@ function HighlightCard({
   valueColorize = false,
   onSelect,
 }: HighlightCardProps) {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -436,7 +437,7 @@ function HighlightCard({
             type="button"
             className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted/50 transition-colors"
             onClick={() => onSelect(ticker.symbol)}
-            aria-label={`${ticker.symbol} 상세 보기`}
+            aria-label={ticker.symbol}
           >
             <div className="flex items-center gap-2">
               <span className="w-4 text-xs text-muted-foreground">{index + 1}</span>
@@ -460,7 +461,7 @@ function HighlightCard({
         ))}
         {items.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">
-            데이터 없음
+            {t.market.noDataShort}
           </p>
         )}
       </CardContent>
@@ -541,7 +542,7 @@ function MarketTable({ tickers, onSelectCoin, isLoading }: MarketTableProps) {
                       type="button"
                       className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => toggleSort('symbol')}
-                      aria-label="코인명 기준으로 정렬"
+                      aria-label={t.market.sortByName}
                     >
                       {t.portfolio.coinName}{getSortIndicator('symbol')}
                     </button>
@@ -551,7 +552,7 @@ function MarketTable({ tickers, onSelectCoin, isLoading }: MarketTableProps) {
                       type="button"
                       className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => toggleSort('price')}
-                      aria-label="현재가 기준으로 정렬"
+                      aria-label={t.market.sortByPrice}
                     >
                       {t.market.price}{getSortIndicator('price')}
                     </button>
@@ -561,7 +562,7 @@ function MarketTable({ tickers, onSelectCoin, isLoading }: MarketTableProps) {
                       type="button"
                       className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => toggleSort('change')}
-                      aria-label="변동률 기준으로 정렬"
+                      aria-label={t.market.sortByChange}
                     >
                       {t.market.changeRate24h}{getSortIndicator('change')}
                     </button>
@@ -571,7 +572,7 @@ function MarketTable({ tickers, onSelectCoin, isLoading }: MarketTableProps) {
                       type="button"
                       className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => toggleSort('volume')}
-                      aria-label="거래량 기준으로 정렬"
+                      aria-label={t.market.sortByVolume}
                     >
                       {t.market.volume24h}{getSortIndicator('volume')}
                     </button>
@@ -605,7 +606,7 @@ function MarketTable({ tickers, onSelectCoin, isLoading }: MarketTableProps) {
         {/* 로딩 인디케이터 */}
         {isLoading && tickers.length > 0 && (
           <div className="border-t border-border p-3">
-            <LoadingSpinner size="sm" message="시세 데이터를 갱신하는 중..." />
+            <LoadingSpinner size="sm" message={t.market.refreshingTicker} />
           </div>
         )}
       </CardContent>
@@ -641,7 +642,7 @@ function MarketTableRow({ ticker, onSelect }: MarketTableRowProps) {
           onSelect();
         }
       }}
-      aria-label={`${ticker.symbol} 상세 보기`}
+      aria-label={ticker.symbol}
     >
       {/* 코인명 */}
       <td className="px-4 py-3">
@@ -695,7 +696,7 @@ function MarketMobileCard({ ticker, onSelect }: MarketMobileCardProps) {
       type="button"
       className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
       onClick={onSelect}
-      aria-label={`${ticker.symbol} 상세 보기`}
+      aria-label={ticker.symbol}
     >
       {/* 상단: 코인명 + 변동률 */}
       <div className="flex items-center justify-between">
@@ -863,7 +864,7 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <p className="text-sm text-muted-foreground">
-              {EXCHANGE_CONFIGS[detailExchange].nameKo}에서 {symbol} 시세를 조회할 수 없습니다.
+              {t.market.cannotFetchPrice(EXCHANGE_CONFIGS[detailExchange].nameKo, symbol)}
             </p>
           </CardContent>
         </Card>
@@ -899,13 +900,14 @@ interface TickerDetailCardProps {
  * 현재가, 시가, 고가, 저가, 전일 종가, 변동률, 거래량을 그리드로 표시한다.
  */
 function TickerDetailCard({ ticker }: TickerDetailCardProps) {
+  const { t } = useTranslation();
   const items = [
-    { label: '현재가', value: ticker.currentPrice, isPrice: true },
-    { label: '시가', value: ticker.openPrice, isPrice: true },
-    { label: '고가', value: ticker.highPrice, isPrice: true, highlight: 'high' as const },
-    { label: '저가', value: ticker.lowPrice, isPrice: true, highlight: 'low' as const },
-    { label: '전일 종가', value: ticker.prevClosePrice, isPrice: true },
-    { label: '24시간 변동률', value: ticker.changeRate, isPercent: true },
+    { label: t.market.price, value: ticker.currentPrice, isPrice: true },
+    { label: t.market.openPrice, value: ticker.openPrice, isPrice: true },
+    { label: t.market.highPrice, value: ticker.highPrice, isPrice: true, highlight: 'high' as const },
+    { label: t.market.lowPrice, value: ticker.lowPrice, isPrice: true, highlight: 'low' as const },
+    { label: t.market.prevClosePrice, value: ticker.prevClosePrice, isPrice: true },
+    { label: t.market.changeRate24h, value: ticker.changeRate, isPercent: true },
   ];
 
   return (
@@ -939,13 +941,13 @@ function TickerDetailCard({ ticker }: TickerDetailCardProps) {
         {/* 거래량 정보 */}
         <div className="mt-4 flex items-center gap-6 border-t border-border pt-4">
           <div>
-            <p className="text-xs text-muted-foreground">24시간 거래량</p>
+            <p className="text-xs text-muted-foreground">{t.market.volume24hLabel}</p>
             <p className="text-sm font-medium text-foreground">
               {formatVolume(ticker.volume24h)} {ticker.symbol}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">24시간 거래금액</p>
+            <p className="text-xs text-muted-foreground">{t.market.volumeAmount24h}</p>
             <p className="text-sm font-medium text-foreground">
               {formatCompactKRW(ticker.volumeAmount24h)}
             </p>
@@ -973,14 +975,15 @@ interface OrderbookPanelProps {
  * @see 요구사항 5.4 (호가 정보 표시)
  */
 function OrderbookPanel({ orderbook, isLoading, symbol }: OrderbookPanelProps) {
+  const { t } = useTranslation();
   if (isLoading && !orderbook) {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">호가 정보</CardTitle>
+          <CardTitle className="text-sm font-medium">{t.market.orderbookTitle}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2" role="status" aria-label="호가 데이터 로딩 중">
+          <div className="space-y-2" role="status" aria-label={t.market.orderbookLoading}>
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={`ob-skeleton-${i}`} className="h-6 w-full" />
             ))}
@@ -994,11 +997,11 @@ function OrderbookPanel({ orderbook, isLoading, symbol }: OrderbookPanelProps) {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">호가 정보</CardTitle>
+          <CardTitle className="text-sm font-medium">{t.market.orderbookTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            호가 데이터를 불러올 수 없습니다.
+            {t.market.orderbookNoData}
           </p>
         </CardContent>
       </Card>
@@ -1018,14 +1021,14 @@ function OrderbookPanel({ orderbook, isLoading, symbol }: OrderbookPanelProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">호가 정보</CardTitle>
+        <CardTitle className="text-sm font-medium">{t.market.orderbookTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-0.5" role="table" aria-label={`${symbol} 호가`}>
           {/* 헤더 */}
           <div className="flex items-center justify-between px-2 pb-2 text-xs text-muted-foreground" role="row">
-            <span role="columnheader">가격 (KRW)</span>
-            <span role="columnheader">수량 ({symbol})</span>
+            <span role="columnheader">{t.market.orderbookPriceKRW}</span>
+            <span role="columnheader">{t.market.orderbookQuantity(symbol)}</span>
           </div>
 
           {/* 매도 호가 (빨간색) */}
@@ -1054,7 +1057,7 @@ function OrderbookPanel({ orderbook, isLoading, symbol }: OrderbookPanelProps) {
             <div className="flex items-center justify-center py-1.5">
               <div className="h-px flex-1 bg-border" aria-hidden="true" />
               <span className="mx-3 text-xs font-medium text-muted-foreground">
-                스프레드: {(asks[asks.length - 1]!.price - bids[0]!.price).toLocaleString('ko-KR')} KRW
+                {t.market.orderbookSpread}: {(asks[asks.length - 1]!.price - bids[0]!.price).toLocaleString('ko-KR')} KRW
               </span>
               <div className="h-px flex-1 bg-border" aria-hidden="true" />
             </div>
@@ -1100,6 +1103,7 @@ interface ExchangeComparisonPanelProps {
  * 가장 높은 가격과 가장 낮은 가격을 하이라이트한다.
  */
 function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonPanelProps) {
+  const { t } = useTranslation();
   const validPrices = exchangePrices.filter((ep) => ep.ticker !== null);
 
   const maxPrice = validPrices.length > 0
@@ -1116,13 +1120,13 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium">
-          거래소 간 가격 비교
+          {t.market.exchangeComparison}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {validPrices.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            비교할 거래소 데이터가 없습니다.
+            {t.market.exchangeComparisonNoData}
           </p>
         ) : (
           <div className="space-y-3">
@@ -1148,12 +1152,12 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
                     </Badge>
                     {isMax && (
                       <Badge className="bg-profit/20 text-profit text-[10px] px-1.5">
-                        최고가
+                        {t.market.highestPrice}
                       </Badge>
                     )}
                     {isMin && (
                       <Badge className="bg-loss/20 text-loss text-[10px] px-1.5">
-                        최저가
+                        {t.market.lowestPrice}
                       </Badge>
                     )}
                   </div>
@@ -1172,7 +1176,7 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      데이터 없음
+                      {t.market.noDataShort}
                     </span>
                   )}
                 </div>
@@ -1183,7 +1187,7 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
             {validPrices.length > 1 && priceDiff > 0 && (
               <div className="mt-2 rounded-lg bg-muted/50 px-4 py-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">최대 가격 차이</span>
+                  <span className="text-muted-foreground">{t.market.maxPriceDiff}</span>
                   <div className="text-right">
                     <FormattedCurrency value={priceDiff} className="font-medium" />
                     <span className="ml-1 text-xs text-muted-foreground">

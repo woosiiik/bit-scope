@@ -20,7 +20,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ExternalLink,
   Eye,
@@ -47,7 +47,9 @@ import {
   removeEncryptedKey,
   getRegisteredExchanges,
   getCachedEncryptionKey,
+  getCachedEncryptionNonce,
   cacheEncryptionKey,
+  loadWalletNonce,
   type StoredApiKeyData,
 } from '@/lib/crypto/encryption-service';
 import { deriveEncryptionKey } from '@/lib/crypto/key-derivation';
@@ -65,6 +67,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { TelegramSection } from '@/components/settings/telegram-section';
 
 /** 거래소별 API Key 등록 상태 */
 interface RegisteredKeyInfo {
@@ -161,6 +164,18 @@ export default function SettingsPage() {
   /** API 키 발급 가이드 표시 여부 */
   const [showGuide, setShowGuide] = useState(false);
 
+  /** 알림 자동 제거 타이머 (컴포넌트 언마운트 시 정리용) */
+  const notificationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** 컴포넌트 언마운트 시 알림 타이머 정리 */
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
+
   /**
    * 등록된 API Key 목록을 로드한다.
    *
@@ -221,8 +236,15 @@ export default function SettingsPage() {
    */
   const showNotification = useCallback(
     (type: 'success' | 'error', message: string) => {
+      // 기존 타이머가 있으면 정리
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
       setNotification({ type, message });
-      setTimeout(() => setNotification(null), 5000);
+      notificationTimerRef.current = setTimeout(() => {
+        setNotification(null);
+        notificationTimerRef.current = null;
+      }, 5000);
     },
     [],
   );
@@ -237,24 +259,30 @@ export default function SettingsPage() {
    * @returns 도출된 암호화 키
    */
   const ensureEncryptionKey = useCallback(
-    async (storedData?: StoredApiKeyData | null): Promise<string> => {
-      // sessionStorage에 캐싱된 키가 있으면 사용
+    async (storedData?: StoredApiKeyData | null): Promise<{ key: string; nonce: string }> => {
+      // 1. sessionStorage에 캐싱된 키가 있으면 사용 (서명 불필요)
       const cachedKey = getCachedEncryptionKey();
-      if (cachedKey) {
-        return cachedKey;
+      const cachedNonce = getCachedEncryptionNonce();
+
+      if (cachedKey && cachedNonce) {
+        return { key: cachedKey, nonce: cachedNonce };
       }
 
-      // 지갑 서명을 통해 암호화 키를 도출
+      // 2. 기존 nonce 찾기: 지갑 단위 nonce → storedData nonce 순으로 조회
+      const walletNonce = loadWalletNonce(wallet.address);
+      const existingNonce = walletNonce ?? storedData?.nonce ?? undefined;
+
+      // 3. 지갑 서명을 통해 암호화 키를 도출 (기존 nonce 있으면 재사용)
       const derivation = await deriveEncryptionKey(
         wallet.address,
         signMessage,
-        storedData?.nonce,
+        existingNonce,
       );
 
-      // 도출된 키를 sessionStorage에 캐싱
-      cacheEncryptionKey(derivation.derivedKey);
+      // 4. 도출된 키와 nonce를 sessionStorage에 캐싱
+      cacheEncryptionKey(derivation.derivedKey, derivation.nonce);
 
-      return derivation.derivedKey;
+      return { key: derivation.derivedKey, nonce: derivation.nonce };
     },
     [wallet.address, signMessage],
   );
@@ -345,17 +373,12 @@ export default function SettingsPage() {
 
       // 3. 암호화 키 확보 (지갑 서명)
       setForm((prev) => ({ ...prev, isRegistering: true }));
-      const encryptionKey = await ensureEncryptionKey();
+      const { key: encryptionKey, nonce } = await ensureEncryptionKey();
 
       // 4. AES 암호화
       const encrypted = encryptApiKey(apiKeyPair, encryptionKey);
 
-      // 5. nonce 생성 (deriveEncryptionKey에서 이미 생성됨, sessionStorage에 저장 시 nonce도 필요)
-      // 기존에 저장된 nonce가 있으면 사용, 없으면 새로 도출 과정에서 생성된 것을 사용
-      const existingStored = loadEncryptedKey(wallet.address, exchange);
-      const nonce = existingStored?.nonce || crypto.randomUUID();
-
-      // 6. localStorage 저장
+      // 5. localStorage 저장 (암호화에 사용된 nonce와 동일한 nonce를 저장)
       storeEncryptedKey(wallet.address, exchange, encrypted, nonce);
 
       // 7. 폼 초기화 및 성공 알림
@@ -564,6 +587,9 @@ export default function SettingsPage() {
           </CardContent>
         )}
       </Card>
+
+      {/* 텔레그램 알림 섹션 */}
+      <TelegramSection />
     </div>
   );
 }
@@ -851,7 +877,7 @@ function RegisterForm({
                   showSecretKey: !prev.showSecretKey,
                 }))
               }
-              aria-label={form.showSecretKey ? 'Secret Key 숨기기' : 'Secret Key 보기'}
+              aria-label={form.showSecretKey ? t.apiKey.settingsPage.hideSecretKey : t.apiKey.settingsPage.showSecretKey}
             >
               {form.showSecretKey ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />

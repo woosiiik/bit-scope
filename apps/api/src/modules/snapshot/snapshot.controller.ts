@@ -46,6 +46,23 @@ export class SnapshotController {
   }
 
   /**
+   * GET /snapshots/:walletAddress/latest
+   *
+   * 특정 지갑 주소의 최신 스냅샷을 조회한다.
+   * 스냅샷이 없으면 null을 반환한다.
+   *
+   * 주의: 이 라우트는 :walletAddress보다 먼저 선언되어야 한다.
+   * 그렇지 않으면 "latest"가 walletAddress 파라미터로 매칭된다.
+   */
+  @Get(':walletAddress/latest')
+  async getLatestSnapshot(
+    @Param('walletAddress') walletAddress: string,
+  ): Promise<PortfolioSnapshotEntity | null> {
+    this.logger.log(`최신 스냅샷 조회 요청 - wallet: ${walletAddress}`);
+    return this.snapshotService.getLatestSnapshot(walletAddress);
+  }
+
+  /**
    * GET /snapshots/:walletAddress
    *
    * 특정 지갑 주소의 기간별 스냅샷 목록을 조회한다.
@@ -65,7 +82,11 @@ export class SnapshotController {
 
     const start = query.start ? new Date(query.start) : undefined;
     const end = query.end ? new Date(query.end) : undefined;
-    const limit = query.limit ? parseInt(query.limit, 10) : undefined;
+    const parsedLimit = query.limit ? parseInt(query.limit, 10) : undefined;
+    // 과도한 데이터 조회를 방지하기 위해 최대 1000개로 제한
+    const limit = parsedLimit && parsedLimit > 0
+      ? Math.min(parsedLimit, 1000)
+      : undefined;
 
     // 집계 간격이 지정된 경우 집계 결과 반환
     if (query.interval) {
@@ -79,19 +100,5 @@ export class SnapshotController {
 
     // 개별 스냅샷 목록 반환
     return this.snapshotService.getSnapshots(walletAddress, start, end, limit);
-  }
-
-  /**
-   * GET /snapshots/:walletAddress/latest
-   *
-   * 특정 지갑 주소의 최신 스냅샷을 조회한다.
-   * 스냅샷이 없으면 null을 반환한다.
-   */
-  @Get(':walletAddress/latest')
-  async getLatestSnapshot(
-    @Param('walletAddress') walletAddress: string,
-  ): Promise<PortfolioSnapshotEntity | null> {
-    this.logger.log(`최신 스냅샷 조회 요청 - wallet: ${walletAddress}`);
-    return this.snapshotService.getLatestSnapshot(walletAddress);
   }
 }

@@ -207,18 +207,25 @@ export class InMemoryCache {
   }
 
   /**
-   * 만료된 캐시 항목들을 모두 제거한다.
+   * 오래된 캐시 항목들을 제거한다.
+   *
+   * TTL 만료 후에도 스테일 유예 기간(staleGraceMs) 동안은 항목을 보존하여
+   * 거래소 장애 시 fallback으로 사용할 수 있도록 한다.
+   * 기본 유예 기간은 5분이다.
    *
    * 주기적 정리(cleanup) 또는 수동으로 호출할 수 있다.
    *
+   * @param staleGraceMs 스테일 유예 기간 (밀리초). 기본값 5분.
    * @returns 제거된 항목 수
    */
-  removeExpiredEntries(): number {
+  removeExpiredEntries(staleGraceMs: number = 5 * 60 * 1000): number {
     const now = Date.now();
     let removedCount = 0;
 
     for (const [key, entry] of this.store.entries()) {
-      if (now >= entry.expiresAt) {
+      // TTL 만료 후 유예 기간이 지난 항목만 제거한다.
+      // 유예 기간 내의 스테일 데이터는 fallback용으로 보존한다.
+      if (now >= entry.expiresAt + staleGraceMs) {
         this.store.delete(key);
         removedCount++;
       }

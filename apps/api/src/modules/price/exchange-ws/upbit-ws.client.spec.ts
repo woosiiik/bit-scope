@@ -111,7 +111,7 @@ describe('UpbitWsClient', () => {
 
       // 구독 메시지 확인
       expect(mockWsInstance.sentMessages).toHaveLength(1);
-      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]);
+      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]!);
 
       expect(subscriptionMsg).toHaveLength(2);
       expect(subscriptionMsg[0]).toHaveProperty('ticket');
@@ -125,7 +125,7 @@ describe('UpbitWsClient', () => {
       mockWsInstance.simulateOpen();
       await startPromise;
 
-      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]);
+      const subscriptionMsg = JSON.parse(mockWsInstance.sentMessages[0]!);
       expect(subscriptionMsg[1].codes).toEqual([
         'KRW-XRP',
         'KRW-SOL',
@@ -241,7 +241,7 @@ describe('UpbitWsClient', () => {
 
       // 재구독: 2번째 메시지
       expect(mockWsInstance.sentMessages).toHaveLength(2);
-      const resubMsg = JSON.parse(mockWsInstance.sentMessages[1]);
+      const resubMsg = JSON.parse(mockWsInstance.sentMessages[1]!);
       expect(resubMsg[1].codes).toEqual(['KRW-BTC', 'KRW-ETH']);
     });
 
@@ -253,7 +253,7 @@ describe('UpbitWsClient', () => {
       client.unsubscribe(['ETH']);
 
       const resubMsg = JSON.parse(
-        mockWsInstance.sentMessages[mockWsInstance.sentMessages.length - 1],
+        mockWsInstance.sentMessages[mockWsInstance.sentMessages.length - 1]!,
       );
       expect(resubMsg[1].codes).toEqual(['KRW-BTC', 'KRW-XRP']);
     });

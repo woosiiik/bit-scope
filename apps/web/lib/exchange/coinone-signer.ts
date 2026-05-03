@@ -126,7 +126,7 @@ export function createHmacSignature(
   encodedPayload: string,
   secretKey: string
 ): string {
-  const hmac = CryptoJS.HmacSHA512(encodedPayload, secretKey.toUpperCase());
+  const hmac = CryptoJS.HmacSHA512(encodedPayload, secretKey);
   return hmac.toString(CryptoJS.enc.Hex);
 }
 
@@ -170,8 +170,18 @@ export function signRequest(params: SignRequestParams): SignedRequest {
     url = `${url}?${queryString}`;
   }
 
+  // 코인원 POST 요청에서 queryParams가 전달된 경우 body에 병합한다.
+  // 코인원 private API는 POST만 지원하므로 파라미터를 body에 포함해야 한다.
+  const mergedBody: Record<string, unknown> = { ...(body || {}) };
+  if (method === 'POST' && queryParams && Object.keys(queryParams).length > 0) {
+    for (const [key, value] of Object.entries(queryParams)) {
+      mergedBody[key] = value;
+    }
+  }
+
   // payload 객체 구성 (access_token + nonce + body)
-  const payloadObj = buildPayloadObject(apiKey.accessKey, nonce, body);
+  const payloadBody = Object.keys(mergedBody).length > 0 ? mergedBody : body;
+  const payloadObj = buildPayloadObject(apiKey.accessKey, nonce, payloadBody);
 
   // payload를 Base64 인코딩
   const encodedPayload = encodePayload(payloadObj);
@@ -193,8 +203,11 @@ export function signRequest(params: SignRequestParams): SignedRequest {
   };
 
   // POST 요청의 body 설정
-  if (body && (method === 'POST' || method === 'DELETE')) {
-    signedRequest.body = JSON.stringify(body);
+  if (method === 'POST' || method === 'DELETE') {
+    const bodyContent = Object.keys(mergedBody).length > 0 ? mergedBody : body;
+    if (bodyContent && Object.keys(bodyContent).length > 0) {
+      signedRequest.body = JSON.stringify(bodyContent);
+    }
   }
 
   return signedRequest;
@@ -235,20 +248,35 @@ export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidati
     if (response.ok) {
       const data = await response.json().catch(() => null);
 
-      // 코인원 API는 result 필드로 성공/실패를 구분한다
-      if (data && data.result === 'error') {
-        return mapCoinoneErrorToResult(data.errorCode, data.errorMessage);
+      // Route Handler의 응답 구조: { success, data, error }
+      // data.data는 정규화된 잔고 데이터이다.
+      if (data && data.success === false) {
+        // Route Handler가 오류를 반환한 경우
+        const errorCode = data.error?.code;
+        const errorMsg = data.error?.message;
+        return mapCoinoneErrorToResult(errorCode, errorMsg);
       }
 
+      // 정규화된 잔고 데이터가 있으면 API 키가 유효한 것이다
+      if (data && data.success && data.data) {
+        return {
+          isValid: true,
+          isReadOnly: true,
+        };
+      }
+
+      // 예상치 못한 응답 형식
       return {
-        isValid: true,
-        isReadOnly: true,
+        isValid: false,
+        isReadOnly: false,
+        errorMessage: 'API 키 검증에 실패했습니다: 예상치 못한 응답 형식',
+        errorCode: 'UNKNOWN',
       };
     }
 
     // HTTP 오류 응답 처리
     const errorData = await response.json().catch(() => null);
-    const errorMessage = errorData?.message || `HTTP ${response.status}`;
+    const errorMessage = errorData?.error?.message || errorData?.message || `HTTP ${response.status}`;
 
     if (response.status === 401) {
       return {
@@ -288,16 +316,18 @@ export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidati
  * 코인원 API 오류 코드를 API Key 유효성 검증 결과로 매핑한다.
  *
  * 코인원 API는 HTTP 200으로 응답하면서 result 필드로 오류를 전달하는 경우가 있다.
- * 주요 오류 코드:
- * - "4": Blocked User Access (차단된 사용자)
- * - "11": Access Token is not exist (존재하지 않는 Access Token)
- * - "12": Unauthorized (권한 없음)
- * - "40": Invalid API permission (잘못된 API 권한)
- * - "51": Invalid Parameter (잘못된 파라미터)
- * - "100": Session expired (세션 만료)
- * - "101": Invalid Access Token (잘못된 Access Token)
- * - "103": Need to authenticate (인증 필요)
- * - "104": Invalid Signature (잘못된 서명)
+ * 주요 오류 코드 (https://docs.coinone.co.kr/docs/error-code):
+ * - "4": Blocked user access (차단된 사용자)
+ * - "8": Token parameter required
+ * - "12": Invalid access token
+ * - "21": API registration needed
+ * - "40": Unauthorized API permissions
+ * - "120": Missing payload (V2)
+ * - "121": Invalid payload (V2)
+ * - "122": Missing signature (V2)
+ * - "123": Invalid signature (V2)
+ * - "130-133": Nonce validation failures (V2)
+ * - "151": V1 token incompatible with V2
  *
  * @param errorCode 코인원 API 오류 코드
  * @param errorMessage 코인원 API 오류 메시지
@@ -305,10 +335,12 @@ export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidati
  */
 function mapCoinoneErrorToResult(errorCode?: string, errorMessage?: string): ApiKeyValidationResult {
   switch (errorCode) {
-    case '11':
-    case '100':
-    case '101':
-    case '104':
+    // 잘못된 API 키 관련 오류
+    case '8':   // Token parameter required
+    case '12':  // Invalid access token
+    case '121': // Invalid payload (V2)
+    case '123': // Invalid signature (V2)
+    case '151': // V1 token incompatible with V2
       return {
         isValid: false,
         isReadOnly: false,
@@ -316,15 +348,29 @@ function mapCoinoneErrorToResult(errorCode?: string, errorMessage?: string): Api
         errorCode: 'INVALID_KEY',
       };
 
-    case '4':
-    case '12':
-    case '40':
-    case '103':
+    // 권한 부족 관련 오류
+    case '4':   // Blocked user access
+    case '21':  // API registration needed
+    case '40':  // Unauthorized API permissions
       return {
         isValid: false,
         isReadOnly: false,
         errorMessage: 'API 키 권한이 부족합니다. Read-Only 권한의 API 키로 재발급해주세요.',
         errorCode: 'INSUFFICIENT_PERMISSION',
+      };
+
+    // 서명/페이로드 형식 관련 오류 (클라이언트 구현 이슈)
+    case '120': // Missing payload
+    case '122': // Missing signature
+    case '130': // Nonce validation failure
+    case '131': // Nonce validation failure
+    case '132': // Nonce validation failure
+    case '133': // Nonce validation failure
+      return {
+        isValid: false,
+        isReadOnly: false,
+        errorMessage: '서명 생성에 문제가 있습니다. 앱을 새로고침 후 다시 시도해주세요.',
+        errorCode: 'INVALID_KEY',
       };
 
     default:

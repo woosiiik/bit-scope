@@ -22,3 +22,9 @@ export type {
   CoinoneTickerItem,
   CoinoneTickerResponse,
 } from './coinone-polling.client';
+
+export { BinancePollingClient } from './binance-polling.client';
+export type {
+  BinanceTickerPriceItem,
+  BinancePriceEntry,
+} from './binance-polling.client';

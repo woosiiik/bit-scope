@@ -28,13 +28,16 @@ const upbitBalanceFixture = [
   },
 ];
 
-const bithumbBalanceFixture = {
-  status: '0000',
-  data: {
-    total_btc: '0.3',
-    available_btc: '0.3',
+const bithumbBalanceFixture = [
+  {
+    currency: 'BTC',
+    balance: '0.3',
+    locked: '0',
+    avg_buy_price: '50000000',
+    avg_buy_price_modified: false,
+    unit_currency: 'KRW',
   },
-};
+];
 
 const coinoneBalanceFixture = {
   result: 'success',
@@ -255,22 +258,20 @@ describe('normalizeOrderHistory', () => {
   });
 
   it('빗썸 응답을 올바르게 디스패치한다', () => {
-    const result = normalizeOrderHistory('bithumb', {
-      status: '0000',
-      data: [
-        {
-          order_id: 'bithumb-001',
-          order_currency: 'BTC',
-          payment_currency: 'KRW',
-          type: 'bid',
-          status: 'completed',
-          price: '50000000',
-          quantity: '0',
-          order_qty: '0.1',
-          date: '1746100800000',
-        },
-      ],
-    });
+    const result = normalizeOrderHistory('bithumb', [
+      {
+        uuid: 'bithumb-001',
+        side: 'bid',
+        ord_type: 'limit',
+        price: '50000000',
+        state: 'done',
+        market: 'KRW-BTC',
+        volume: '0.1',
+        remaining_volume: '0',
+        executed_volume: '0.1',
+        created_at: '2025-01-01T00:00:00+09:00',
+      },
+    ]);
 
     expect(result.exchange).toBe('bithumb');
     expect(result.orders).toHaveLength(1);

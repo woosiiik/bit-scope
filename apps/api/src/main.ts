@@ -35,8 +35,10 @@ async function bootstrap() {
   );
 
   // CORS 설정: 같은 서버에서 Next.js와 함께 운영되므로 localhost만 허용
+  // 로컬 개발(3500)과 Docker 환경(3000) 모두 허용
   app.enableCors({
     origin: [
+      'http://localhost:3500',
       'http://localhost:3000',
       ...(process.env.CORS_ORIGINS?.split(',') || []),
     ],

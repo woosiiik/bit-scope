@@ -197,10 +197,10 @@ export class CoinonePollingClient extends BaseExchangeClient {
         );
       }
 
-      const data: CoinoneTickerResponse = await response.json();
+      const data = (await response.json()) as CoinoneTickerResponse;
 
-      // 응답 결과 확인
-      if (data.result !== '0') {
+      // 응답 결과 확인 (코인원 v2 API: result="success", error_code="0")
+      if (data.result !== 'success' && data.result !== '0') {
         throw new Error(
           `코인원 API 오류: result=${data.result}, error_code=${data.error_code}`,
         );

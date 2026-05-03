@@ -286,13 +286,12 @@ export function useAllExchangeBalances(
     refetchInterval = DEFAULT_REFRESH_INTERVAL_MS,
   } = options;
 
-  const queryClient = useQueryClient();
-
   // 등록된 거래소 목록 조회
-  const registeredExchanges = useMemo(() => {
-    if (!walletAddress) return [];
-    return getRegisteredExchanges(walletAddress);
-  }, [walletAddress]);
+  // localStorage 변경을 감지하기 위해 useMemo 대신 매 렌더마다 계산
+  // (getRegisteredExchanges는 가벼운 localStorage 조회이므로 성능 영향 없음)
+  const registeredExchanges = enabled && walletAddress
+    ? getRegisteredExchanges(walletAddress)
+    : [];
 
   // 거래소별 독립 쿼리 실행 (useQueries)
   const queries = useQueries({

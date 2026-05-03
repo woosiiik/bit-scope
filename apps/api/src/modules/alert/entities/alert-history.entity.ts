@@ -26,7 +26,7 @@ export class AlertHistoryEntity {
   id!: string;
 
   /** 알림 ID (FK) */
-  @Column({ name: 'alert_id', type: 'uuid' })
+  @Column({ name: 'alert_id', type: 'varchar', length: 36 })
   alertId!: string;
 
   /** 알림 발생 시각 */

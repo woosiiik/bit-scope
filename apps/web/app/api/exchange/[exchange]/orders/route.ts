@@ -69,7 +69,8 @@ export async function POST(
   // 요청 본문 파싱
   let signedRequest: SignedRequest;
   try {
-    signedRequest = await request.json();
+    const body = await request.json();
+    signedRequest = body.signedRequest ?? body;
   } catch {
     return NextResponse.json(
       {

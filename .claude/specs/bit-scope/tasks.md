@@ -241,7 +241,7 @@
   - 프리미엄 계산 정확성 단위 테스트 작성
   - _요구사항: 3.2, 3.6_
 
-- [ ] 13.2 김치 프리미엄 분석 페이지 구현
+- [x] 13.2 김치 프리미엄 분석 페이지 구현
   - `apps/web/app/(dashboard)/premium/page.tsx`: 주요 코인 3개 거래소 실시간 시세 비교 테이블
   - `apps/web/hooks/useKimchiPremium.ts`: 실시간 프리미엄 데이터 훅
   - 사용자 설정 임계값 초과 시 시각적 하이라이트
@@ -249,7 +249,7 @@
   - _요구사항: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
 - [ ] 14. 알림 시스템 구현
-- [ ] 14.1 NestJS 알림 서비스 구현
+- [x] 14.1 NestJS 알림 서비스 구현
   - `apps/api/src/modules/alert/`: 알림 모듈, 서비스, 컨트롤러, 엔티티 구현
   - 가격 알림 CRUD API (생성, 수정, 삭제, 목록 조회)
   - 알림 이력 조회 API
@@ -257,7 +257,7 @@
   - 조건 매칭 로직, 알림 중복 방지 단위 테스트 작성
   - _요구사항: 6.1, 6.2, 6.5, 6.6, 6.7, 12.11_
 
-- [ ] 14.2 클라이언트 알림 UI 구현
+- [x] 14.2 클라이언트 알림 UI 구현
   - `apps/web/app/(dashboard)/alerts/page.tsx`: 활성/비활성 알림 목록, 알림 이력 표시
   - `apps/web/hooks/useAlerts.ts`: 알림 CRUD, WebSocket 알림 수신 훅
   - 가격 알림 설정 폼 (코인, 목표가, 조건 선택)
@@ -265,7 +265,7 @@
   - 브라우저 Notification API 연동, 권한 거부 시 인앱 토스트/배지 대체
   - _요구사항: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 15. 포트폴리오 성과 분석 페이지 구현
+- [x] 15. 포트폴리오 성과 분석 페이지 구현
   - `apps/web/app/(dashboard)/analytics/page.tsx`: 성과 분석 메인 페이지
   - 총 자산 평가금액 시계열 추이 차트 (일/주/월) - DB 스냅샷 기반
   - 총 투자 원금, 현재 평가금액, 총 손익 요약 표시
@@ -277,7 +277,7 @@
   - _요구사항: 4.1, 4.2, 4.3, 4.4, 4.5, 4.7, 4.8, 4.10_
 
 - [ ] 16. 리포트 생성 및 데이터 내보내기 구현
-- [ ] 16.1 NestJS 리포트 서비스 구현
+- [x] 16.1 NestJS 리포트 서비스 구현
   - `apps/api/src/modules/report/`: 리포트 모듈, 서비스, 컨트롤러, 엔티티 구현
   - 수동 리포트 생성 API (스냅샷 기반 요약, 이전 대비 변동 사항 하이라이트)
   - 정기 리포트 스케줄 CRUD API (일간/주간/월간)
@@ -287,25 +287,25 @@
   - 거래 내역 내보내기 API (CSV)
   - _요구사항: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 12.13_
 
-- [ ] 16.2 리포트 및 내보내기 UI 구현
+- [x] 16.2 리포트 및 내보내기 UI 구현
   - `apps/web/app/(dashboard)/reports/page.tsx`: 리포트 생성 요청, 리포트 이력 목록, PDF/이미지 다운로드
   - 정기 리포트 설정 폼 (일간/주간/월간)
   - 데이터 내보내기 UI (CSV, JSON, PDF 선택)
   - 설정 백업/복원 기능 (API 키 제외, JSON 형식)
   - _요구사항: 7.1, 7.2, 7.3, 7.5, 7.6, 7.7, 7.8, 7.9_
 
-- [ ] 16.3 기간별 리포트 표시 구현
+- [x] 16.3 기간별 리포트 표시 구현
   - `apps/web/app/(dashboard)/analytics/` 또는 리포트 페이지에서 일간/주간/월간 포트폴리오 요약 리포트 렌더링
   - _요구사항: 4.6_
 
-- [ ] 17. 워치리스트 구현
+- [x] 17. 워치리스트 구현
   - `apps/web/app/(dashboard)/watchlist/page.tsx`: 관심 코인 목록 표시 (현재가, 24시간 변동률, 거래량 실시간 업데이트)
   - 코인 추가/제거 기능 (localStorage에 지갑 주소별 저장)
   - 관심 코인 가격 알림 설정 연동
   - 대시보드 상단 또는 별도 섹션 표시
   - _요구사항: 10.1, 10.2, 10.3, 10.4_
 
-- [ ] 18. 온보딩 경험 구현
+- [x] 18. 온보딩 경험 구현
   - 최초 로그인 시 단계별 온보딩 가이드 구현 (거래소 선택 → API 키 입력 → 자산 조회 확인)
   - 특정 거래소 건너뛰기 허용 (나머지 거래소만으로 정상 동작)
   - API 키 미등록 시 데모 모드 제공 (고정 모의 데이터로 서비스 체험)
@@ -313,7 +313,7 @@
   - _요구사항: 11.1, 11.2, 11.3, 11.4_
 
 - [ ] 19. Docker 및 인프라 설정
-- [ ] 19.1 Docker Compose 설정
+- [x] 19.1 Docker Compose 설정
   - Next.js standalone 빌드 Dockerfile 작성
   - NestJS 빌드 Dockerfile 작성
   - MySQL, nginx 포함 `docker-compose.yml` 작성
@@ -321,11 +321,27 @@
   - 도메인 확보 후 Let's Encrypt SSL 적용 가능한 nginx 설정 구조
   - _요구사항: NF2.3, NF6.1, NF6.2, NF6.3_
 
-- [ ] 19.2 CI/CD 파이프라인 구성
+- [x] 19.2 CI/CD 파이프라인 구성
   - `.github/workflows/deploy.yml`: GitHub Actions 자동 빌드/테스트/배포 파이프라인
   - `apps/web`, `apps/api` 독립 빌드 및 배포 지원
   - OCI VM 배포 스크립트
   - _요구사항: NF2.4, NF6.4_
+
+- [x] 21. 텔레그램 봇 알림 기능
+  - `apps/api/src/modules/telegram/entities/telegram-connection.entity.ts`: 텔레그램 연결 정보 엔티티 (wallet_address, chat_id, username, is_active)
+  - `apps/api/src/migrations/1746100000000-AddTelegramConnection.ts`: telegram_connection 테이블 마이그레이션
+  - `apps/api/src/modules/telegram/telegram.service.ts`: 메시지 전송, 웹훅 처리, 인증 코드 생성/검증, 연결 관리
+  - `apps/api/src/modules/telegram/telegram.controller.ts`: 웹훅 수신, 상태 조회, 연결 해제, 연결 링크, 테스트 알림 엔드포인트
+  - `apps/api/src/modules/telegram/telegram.module.ts`: 텔레그램 모듈
+  - `apps/api/src/modules/alert/alert.service.ts`: triggerAlert에 텔레그램 발송 추가 (try-catch로 격리)
+  - `apps/api/src/modules/alert/alert.module.ts`: TelegramModule import 추가
+  - `apps/api/src/app.module.ts`: TelegramModule 등록
+  - `apps/api/src/config/database.config.ts`: TelegramConnectionEntity 추가
+  - `apps/api/.env`: TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME 환경 변수 추가
+  - `apps/web/components/settings/telegram-section.tsx`: 텔레그램 연결/해제/테스트 UI 컴포넌트
+  - `apps/web/app/(dashboard)/settings/page.tsx`: TelegramSection 컴포넌트 추가
+  - `apps/web/lib/i18n/ko.ts`, `en.ts`: 텔레그램 관련 i18n 키 추가
+  - 단위 테스트: telegram.service.spec.ts (24 테스트), telegram.controller.spec.ts (9 테스트)
 
 - [ ] 20. E2E 테스트 작성
   - Playwright 설정 및 MSW 기반 모의 거래소 서버 구성

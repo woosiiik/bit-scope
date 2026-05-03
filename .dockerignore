@@ -1,0 +1,42 @@
+# Docker 빌드 컨텍스트에서 제외할 파일/디렉토리
+# 빌드 속도 향상 및 이미지 크기 최소화
+
+# 의존성 (컨테이너 내부에서 재설치)
+**/node_modules
+
+# 빌드 출력물 (컨테이너 내부에서 재빌드)
+**/.next
+**/.turbo
+**/dist
+**/coverage
+
+# Git
+.git
+.github
+
+# Claude 설정 및 스펙 문서
+.claude
+
+# 환경 변수 (docker-compose.yml에서 별도 관리)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE 설정
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# 문서
+*.md
+!packages/shared/README.md
+
+# 로그
+npm-debug.log*
+pnpm-debug.log*
+
+# Docker 자체 설정 (재귀 방지)
+docker-compose*.yml

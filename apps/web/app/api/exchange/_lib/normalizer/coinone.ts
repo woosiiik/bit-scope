@@ -63,7 +63,7 @@ export interface CoinoneTickerItem {
   quote_currency: string;
   /** 현재가 (마지막 체결가) */
   last: string;
-  /** 시가 (24시간 전 기준) */
+  /** 시가 (24시간 기준 시작가) */
   first: string;
   /** 고가 (24시간) */
   high: string;
@@ -73,12 +73,10 @@ export interface CoinoneTickerItem {
   target_volume: string;
   /** 24시간 거래금액 (KRW 기준) */
   quote_volume: string;
-  /** 전일 종가 */
-  yesterday_last: string;
-  /** 24시간 변동률 (소수, 예: "0.05" = 5%) */
-  yesterday_volume?: string;
   /** 타임스탬프 (밀리초) */
   timestamp: number;
+  /** 고유 ID */
+  id?: string;
 }
 
 /** 코인원 호가(Orderbook) 조회 응답 (v2) */
@@ -224,12 +222,12 @@ export function normalizeCoinoneTicker(rawResponse: unknown): NormalizedTicker {
 
   const tickers: Ticker[] = response.tickers.map((item) => {
     const currentPrice = parseFloat(item.last) || 0;
-    const yesterdayLast = parseFloat(item.yesterday_last) || 0;
     const openPrice = parseFloat(item.first) || 0;
 
-    // 변동률 계산: (현재가 - 전일 종가) / 전일 종가 * 100
-    const changePrice = currentPrice - yesterdayLast;
-    const changeRate = yesterdayLast > 0 ? (changePrice / yesterdayLast) * 100 : 0;
+    // 코인원 API는 전일 종가(yesterday_last) 필드를 제공하지 않으므로
+    // 24시간 시가(first)를 기준으로 변동률을 계산한다.
+    const changePrice = currentPrice - openPrice;
+    const changeRate = openPrice > 0 ? (changePrice / openPrice) * 100 : 0;
 
     return {
       exchange: 'coinone' as const,
@@ -238,7 +236,7 @@ export function normalizeCoinoneTicker(rawResponse: unknown): NormalizedTicker {
       openPrice,
       highPrice: parseFloat(item.high) || 0,
       lowPrice: parseFloat(item.low) || 0,
-      prevClosePrice: yesterdayLast,
+      prevClosePrice: openPrice, // 전일 종가 대신 24시간 시가를 사용
       changeRate,
       changePrice,
       volume24h: parseFloat(item.target_volume) || 0,
