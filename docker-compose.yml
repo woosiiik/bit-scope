@@ -43,6 +43,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
   # ---------------------------------------------------------------------------
   # web - Next.js 프론트엔드 (port 3000)
@@ -57,6 +63,7 @@ services:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost/api/backend}
         - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-http://localhost}
         - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID:-placeholder}
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}
     container_name: bitscope-web
     environment:
       - NODE_ENV=production
@@ -76,6 +83,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # ---------------------------------------------------------------------------
   # api - NestJS 백엔드 (port 4000)
@@ -100,6 +113,9 @@ services:
       - DB_LOGGING=${DB_LOGGING:-false}
       # CORS 설정 (Docker 내부에서는 web:3000으로 통신)
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://web:3000}
+      # 텔레그램 봇 설정 (미설정 시 텔레그램 기능 비활성화)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
     expose:
       - "4000"
     depends_on:
@@ -114,6 +130,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # ---------------------------------------------------------------------------
   # mysql - MySQL 데이터베이스
@@ -150,11 +172,17 @@ services:
     networks:
       - bitscope-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-bitscope_root}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" 2>/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # ---------------------------------------------------------------------------
   # certbot - Let's Encrypt SSL 인증서 관리 (선택적)

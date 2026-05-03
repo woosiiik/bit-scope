@@ -132,6 +132,21 @@ server {
         add_header Cache-Control "public, immutable";
 
         # 보안 헤더 (location 블록에서 add_header를 사용하면 상위 블록 헤더가 상속되지 않음)
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    }
+
+    # Next.js ISR/SSR 데이터 캐싱
+    location /_next/data/ {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        expires 1h;
+        add_header Cache-Control "public, must-revalidate";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
         add_header X-Content-Type-Options "nosniff" always;
     }
 

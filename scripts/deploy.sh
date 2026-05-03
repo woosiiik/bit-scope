@@ -13,7 +13,7 @@
 #   ./scripts/deploy.sh --rollback     # 이전 버전으로 롤백
 #
 # 환경 변수:
-#   DEPLOY_PATH - 배포 경로 (기본: /home/opc/bitscope)
+#   DEPLOY_PATH - 배포 경로 (기본: /home/ubuntu/bitscope)
 #
 # 요구사항: NF2.4, NF6.4
 # =============================================================================

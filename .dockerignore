@@ -18,10 +18,9 @@
 .claude
 
 # 환경 변수 (docker-compose.yml에서 별도 관리)
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env
+.env.*
+!.env.example
 
 # IDE 설정
 .vscode
