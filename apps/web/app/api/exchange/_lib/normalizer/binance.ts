@@ -16,7 +16,7 @@
  * @see https://binance-docs.github.io/apidocs/spot/en/
  */
 
-import type { Holding, Ticker, Orderbook, OrderbookEntry } from '@bitscope/shared';
+import type { Holding, Ticker, OrderbookEntry } from '@bitscope/shared';
 import type {
   NormalizedBalance,
   NormalizedTicker,
@@ -109,22 +109,23 @@ export function normalizeBinanceBalance(rawResponse: unknown): NormalizedBalance
       continue;
     }
 
-    // USDT는 기축통화이므로 별도 처리 (krwBalance와 유사한 역할)
-    if (item.asset === 'USDT') {
-      usdtBalance = totalBalance;
-      continue;
+    // USDT/USDC 등 스테이블코인도 보유 자산으로 포함
+    // 스테이블코인은 currentPrice=1 (USDT 기준)로 설정
+    const isStablecoin = ['USDT', 'USDC', 'BUSD', 'DAI', 'FDUSD'].includes(item.asset);
+
+    if (isStablecoin) {
+      usdtBalance += totalBalance; // krwBalance 합산용
     }
 
-    // USDT 마켓의 코인으로 등록
     holdings.push({
       exchange: 'binance',
       symbol: item.asset,
       currency: 'USDT',
       balance: free,
       lockedBalance: locked,
-      avgBuyPrice: 0, // 바이낸스 API는 매수 평균가를 제공하지 않음
-      currentPrice: 0, // ticker API에서 별도 조회 필요
-      evaluationAmount: 0, // 현재가 조회 후 계산
+      avgBuyPrice: isStablecoin ? 1 : 0,
+      currentPrice: isStablecoin ? 1 : 0, // 스테이블코인은 1 USDT, 나머지는 ticker에서 조회
+      evaluationAmount: isStablecoin ? totalBalance : 0,
       profitLoss: 0,
       profitLossRate: 0,
     });
@@ -162,7 +163,8 @@ export function normalizeBinanceTicker(rawResponse: unknown): NormalizedTicker {
       continue;
     }
 
-    const coinSymbol = item.symbol.replace('USDT', '');
+    // 접미사 'USDT'(4글자)를 안전하게 제거 (replace는 첫 번째 매칭만 제거하므로 USDTUSDT 같은 케이스에서 오동작 가능)
+    const coinSymbol = item.symbol.slice(0, -4);
     if (!coinSymbol) {
       continue;
     }
@@ -185,7 +187,7 @@ export function normalizeBinanceTicker(rawResponse: unknown): NormalizedTicker {
       highPrice,
       lowPrice,
       prevClosePrice,
-      changeRate: priceChangePercent / 100, // 비율로 변환
+      changeRate: priceChangePercent, // 바이낸스는 이미 %(예: 2.5 = 2.5%)로 제공
       changePrice: priceChange,
       volume24h: volume,
       volumeAmount24h: quoteVolume, // USDT 기준 거래금액
@@ -261,7 +263,7 @@ export function normalizeBinanceOrderHistory(rawResponse: unknown): NormalizedOr
 
     // 심볼에서 USDT 접미사 제거 (예: "BTCUSDT" -> "BTC")
     const symbol = item.symbol?.endsWith('USDT')
-      ? item.symbol.replace('USDT', '')
+      ? item.symbol.slice(0, -4)
       : item.symbol;
 
     // 바이낸스 주문 상태 매핑

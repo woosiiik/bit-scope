@@ -52,6 +52,10 @@ const EXCHANGE_COLORS: Record<ExchangeType, string> = {
   bithumb: 'hsl(30, 80%, 55%)',         // 빗썸: 주황색
   coinone: 'hsl(160, 60%, 45%)',        // 코인원: 초록색
   binance: 'hsl(50, 80%, 50%)',         // 바이낸스: 노란색
+  bybit: 'hsl(15, 85%, 55%)',           // 바이빗: 주홍색
+  okx: 'hsl(0, 0%, 20%)',              // OKX: 다크 그레이 (OKX 브랜드 색상)
+  gate: 'hsl(210, 70%, 50%)',           // Gate.io: 블루 (Gate.io 브랜드 색상)
+  bitget: 'hsl(170, 65%, 45%)',         // Bitget: 틸 (Bitget 브랜드 색상)
 };
 
 // ===== 차트 데이터 타입 =====

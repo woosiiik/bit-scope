@@ -362,6 +362,68 @@
   - `apps/api/src/modules/price/price-monitor.service.ts`: unsubscribeFromSymbols에 'binance' 추가
   - 테스트 수정: normalizer/index, signer-factory, route-handlers, rate-limiter, settings-page, snapshot-dto, entity spec 등에서 'binance' 관련 테스트 업데이트
 
+- [x] 23. 바이빗(Bybit) 거래소 포트폴리오 연동
+  - `packages/shared/src/types/exchange.ts`: ExchangeType에 'bybit' 추가
+  - `packages/shared/src/constants/exchanges.ts`: BYBIT_CONFIG, BYBIT_ENDPOINTS 추가, EXCHANGE_CONFIGS/EXCHANGE_ENDPOINTS/SUPPORTED_EXCHANGES에 bybit 등록
+  - `packages/shared/src/utils/validation.ts`: validateBybitApiKeyFormat 함수 추가, validateApiKeyFormat에 bybit 케이스 추가
+  - `packages/shared/src/index.ts`, `constants/index.ts`, `utils/index.ts`: 바이빗 관련 상수/함수 export 추가
+  - `apps/web/lib/exchange/bybit-signer.ts`: HMAC-SHA256 서명 구현 (timestamp + apiKey + recvWindow + queryString, X-BAPI-* 헤더), validateApiKey, getExchangeType
+  - `apps/web/lib/exchange/signer-factory.ts`: bybitSigner 어댑터 등록
+  - `apps/web/app/api/exchange/_lib/normalizer/bybit.ts`: normalizeBybitBalance (result.list[0].coin, USDT 기준), normalizeBybitTicker, normalizeBybitOrderbook, normalizeBybitOrderHistory
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: 4개 디스패치 함수에 bybit 케이스 추가
+  - `apps/web/app/api/exchange/[exchange]/ticker/route.ts`: buildTickerUrl에 bybit 케이스 추가
+  - `apps/web/lib/api-client.ts`: signBalanceRequest에 bybit accountType=UNIFIED 추가, getValidKrwSymbols에 bybit 케이스 추가
+  - `apps/web/lib/crypto/encryption-service.ts`: removeAllEncryptedKeys, getRegisteredExchanges에 'bybit' 추가
+  - `apps/web/app/(dashboard)/page.tsx`: 거래소 필터에 'bybit' 추가
+  - `apps/web/components/charts/asset-distribution-chart.tsx`: EXCHANGE_COLORS에 bybit 색상 추가
+  - `apps/api/src/modules/alert/dto/create-alert.dto.ts`, `update-alert.dto.ts`: @IsIn에 'bybit' 추가
+  - `apps/api/src/modules/snapshot/dto/create-snapshot.dto.ts`: @IsIn에 'bybit' 추가
+  - `apps/api/src/modules/price/price-monitor.service.ts`: unsubscribeFromSymbols에 'bybit' 추가
+  - `apps/web/lib/i18n/ko.ts`, `en.ts`: 바이빗 관련 i18n 키(거래소명, 가이드 URL/설명) 추가
+  - 테스트 파일 업데이트: signer-factory, price-history entity, snapshot-holding entity, create-snapshot dto spec 등에서 'bybit' 추가
+
+- [x] 24. OKX 거래소 포트폴리오 연동
+  - `packages/shared/src/types/exchange.ts`: ExchangeType에 'okx' 추가
+  - `packages/shared/src/constants/exchanges.ts`: OKX_CONFIG, OKX_ENDPOINTS 추가, EXCHANGE_CONFIGS/EXCHANGE_ENDPOINTS/SUPPORTED_EXCHANGES에 okx 등록
+  - `packages/shared/src/utils/validation.ts`: validateOkxApiKeyFormat 함수 추가, validateApiKeyFormat에 okx 케이스 추가
+  - `packages/shared/src/index.ts`, `constants/index.ts`, `utils/index.ts`: OKX 관련 상수/함수 export 추가
+  - `apps/web/lib/exchange/okx-signer.ts`: HMAC-SHA256 + Base64 서명 구현 (ISO 8601 타임스탬프, OK-ACCESS-* 헤더, Passphrase 분리), validateApiKey, getExchangeType
+  - `apps/web/lib/exchange/signer-factory.ts`: okxSigner 어댑터 등록
+  - `apps/web/app/api/exchange/_lib/normalizer/okx.ts`: normalizeOkxBalance (data[0].details, USDT 기준), normalizeOkxTicker, normalizeOkxOrderbook, normalizeOkxOrderHistory
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: 4개 디스패치 함수에 okx 케이스 추가
+  - `apps/web/app/api/exchange/[exchange]/ticker/route.ts`: buildTickerUrl에 okx 케이스 추가 (instType=SPOT)
+  - `apps/web/lib/api-client.ts`: getValidKrwSymbols에 okx 케이스 추가, signOrderHistoryRequest에 okx instType=SPOT 추가, OKX markets URL에 instType=SPOT 추가
+  - `apps/web/lib/crypto/encryption-service.ts`: removeAllEncryptedKeys, getRegisteredExchanges에 'okx' 추가
+  - `apps/web/app/(dashboard)/page.tsx`: 거래소 필터에 'okx' 추가
+  - `apps/web/components/charts/asset-distribution-chart.tsx`: EXCHANGE_COLORS에 okx 색상 추가
+  - `apps/api/src/modules/alert/dto/create-alert.dto.ts`, `update-alert.dto.ts`: @IsIn에 'okx' 추가
+  - `apps/api/src/modules/snapshot/dto/create-snapshot.dto.ts`: @IsIn에 'okx' 추가
+  - `apps/api/src/modules/price/price-monitor.service.ts`: unsubscribeFromSymbols에 'okx' 추가
+  - `apps/web/lib/i18n/ko.ts`, `en.ts`: OKX 관련 i18n 키(거래소명, 가이드 URL/설명, Passphrase 안내) 추가
+  - 테스트 파일 업데이트: signer-factory, price-history entity, snapshot-holding entity, create-snapshot dto spec 등에서 'okx' 추가
+
+- [x] 25. Gate.io 및 Bitget 거래소 포트폴리오 연동
+  - `packages/shared/src/types/exchange.ts`: ExchangeType에 'gate' | 'bitget' 추가
+  - `packages/shared/src/constants/exchanges.ts`: GATE_CONFIG, GATE_ENDPOINTS, BITGET_CONFIG, BITGET_ENDPOINTS 추가, EXCHANGE_CONFIGS/EXCHANGE_ENDPOINTS/SUPPORTED_EXCHANGES에 gate, bitget 등록
+  - `packages/shared/src/utils/validation.ts`: validateGateApiKeyFormat, validateBitgetApiKeyFormat 함수 추가, validateApiKeyFormat에 gate, bitget 케이스 추가
+  - `packages/shared/src/index.ts`, `constants/index.ts`, `utils/index.ts`: Gate.io/Bitget 관련 상수/함수 export 추가
+  - `apps/web/lib/exchange/gate-signer.ts`: HMAC-SHA512 서명 구현 (SHA512(body) 해시, KEY/SIGN/Timestamp 헤더), validateApiKey, getExchangeType
+  - `apps/web/lib/exchange/bitget-signer.ts`: HMAC-SHA256 + Base64 서명 구현 (OKX와 동일 패턴, ACCESS-KEY/ACCESS-SIGN/ACCESS-TIMESTAMP/ACCESS-PASSPHRASE 헤더, Passphrase 분리), validateApiKey, getExchangeType
+  - `apps/web/lib/exchange/signer-factory.ts`: gateSigner, bitgetSigner 어댑터 등록
+  - `apps/web/app/api/exchange/_lib/normalizer/gate.ts`: normalizeGateBalance (배열 직접 반환, USDT 기준), normalizeGateTicker (currency_pair "BTC_USDT" -> "BTC"), normalizeGateOrderbook, normalizeGateOrderHistory
+  - `apps/web/app/api/exchange/_lib/normalizer/bitget.ts`: normalizeBitgetBalance (data 배열, USDT 기준), normalizeBitgetTicker (symbol "BTCUSDT" -> "BTC"), normalizeBitgetOrderbook, normalizeBitgetOrderHistory
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: 4개 디스패치 함수에 gate, bitget 케이스 추가
+  - `apps/web/app/api/exchange/[exchange]/ticker/route.ts`: buildTickerUrl에 gate, bitget 케이스 추가
+  - `apps/web/lib/api-client.ts`: getValidKrwSymbols에 gate, bitget 마켓 파싱 추가
+  - `apps/web/lib/crypto/encryption-service.ts`: removeAllEncryptedKeys, getRegisteredExchanges에 'gate', 'bitget' 추가
+  - `apps/web/app/(dashboard)/page.tsx`: 거래소 필터에 'gate', 'bitget' 추가
+  - `apps/web/components/charts/asset-distribution-chart.tsx`: EXCHANGE_COLORS에 gate, bitget 색상 추가
+  - `apps/api/src/modules/alert/dto/create-alert.dto.ts`, `update-alert.dto.ts`: @IsIn에 'gate', 'bitget' 추가
+  - `apps/api/src/modules/snapshot/dto/create-snapshot.dto.ts`: @IsIn에 'gate', 'bitget' 추가
+  - `apps/api/src/modules/price/price-monitor.service.ts`: unsubscribeFromSymbols에 'gate', 'bitget' 추가
+  - `apps/web/lib/i18n/ko.ts`, `en.ts`: Gate.io/Bitget 관련 i18n 키(거래소명, 가이드 URL/설명, Bitget Passphrase 안내) 추가
+  - 테스트 파일 업데이트: signer-factory, normalizer/index, price-history entity, snapshot-holding entity, create-snapshot dto spec 등에서 'gate', 'bitget' 추가
+
 - [ ] 20. E2E 테스트 작성
   - Playwright 설정 및 MSW 기반 모의 거래소 서버 구성
   - 핵심 시나리오 E2E 테스트: 지갑 연결 → API Key 등록 → 대시보드 조회

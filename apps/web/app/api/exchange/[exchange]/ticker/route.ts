@@ -106,6 +106,30 @@ function buildTickerUrl(exchange: ExchangeType, symbols?: string[], upbitMarkets
       }
       return `${baseUrl}${endpoint}`;
     }
+    case 'bybit': {
+      // 바이빗: /v5/market/tickers?category=spot
+      return `${baseUrl}${endpoint}?category=spot`;
+    }
+    case 'okx': {
+      // OKX: /api/v5/market/tickers?instType=SPOT
+      return `${baseUrl}${endpoint}?instType=SPOT`;
+    }
+    case 'gate': {
+      // Gate.io: /api/v4/spot/tickers (전체) 또는 ?currency_pair=BTC_USDT
+      const gateSymbol = symbols?.[0];
+      if (gateSymbol && symbols.length === 1) {
+        return `${baseUrl}${endpoint}?currency_pair=${gateSymbol.toUpperCase()}_USDT`;
+      }
+      return `${baseUrl}${endpoint}`;
+    }
+    case 'bitget': {
+      // Bitget: /api/v2/spot/market/tickers (전체) 또는 ?symbol=BTCUSDT
+      const bitgetSymbol = symbols?.[0];
+      if (bitgetSymbol && symbols.length === 1) {
+        return `${baseUrl}${endpoint}?symbol=${bitgetSymbol.toUpperCase()}USDT`;
+      }
+      return `${baseUrl}${endpoint}`;
+    }
     default:
       return `${baseUrl}${endpoint}`;
   }

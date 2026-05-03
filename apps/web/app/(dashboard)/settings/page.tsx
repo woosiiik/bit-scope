@@ -1,7 +1,7 @@
 /**
  * API Key 등록/관리 페이지
  *
- * 업비트, 빗썸, 코인원 3개 거래소의 API Key를 안전하게 등록/관리하는 페이지이다.
+ * 8개 거래소(업비트, 빗썸, 코인원, 바이낸스, 바이빗, OKX, Gate.io, Bitget)의 API Key를 안전하게 등록/관리하는 페이지이다.
  * 지갑 서명 기반 암호화로 API Key를 localStorage에 안전하게 저장하며,
  * 거래소 API를 통해 Key 유효성을 검증한다.
  *
@@ -84,10 +84,14 @@ interface RegisteredKeyInfo {
 }
 
 /** API Key 등록 폼 상태 */
+/** Passphrase가 필요한 거래소 */
+const PASSPHRASE_EXCHANGES: ExchangeType[] = ['okx', 'bitget'];
+
 interface RegisterFormState {
   exchange: ExchangeType | '';
   accessKey: string;
   secretKey: string;
+  passphrase: string;
   isValidating: boolean;
   isRegistering: boolean;
   showSecretKey: boolean;
@@ -149,6 +153,7 @@ export default function SettingsPage() {
     exchange: '',
     accessKey: '',
     secretKey: '',
+    passphrase: '',
     isValidating: false,
     isRegistering: false,
     showSecretKey: false,
@@ -295,6 +300,7 @@ export default function SettingsPage() {
       exchange: '',
       accessKey: '',
       secretKey: '',
+      passphrase: '',
       isValidating: false,
       isRegistering: false,
       showSecretKey: false,
@@ -336,9 +342,19 @@ export default function SettingsPage() {
     if (!form.exchange || !form.accessKey || !form.secretKey) return;
 
     const exchange = form.exchange as ExchangeType;
+    const needsPassphrase = PASSPHRASE_EXCHANGES.includes(exchange);
+
+    // Passphrase가 필요한 거래소인데 입력 안 했으면 중단
+    if (needsPassphrase && !form.passphrase) return;
+
+    // OKX/Bitget: secretKey에 passphrase를 "|||"로 합쳐서 저장
+    const finalSecretKey = needsPassphrase
+      ? `${form.secretKey}|||${form.passphrase}`
+      : form.secretKey;
+
     const apiKeyPair: ApiKeyPair = {
       accessKey: form.accessKey,
-      secretKey: form.secretKey,
+      secretKey: finalSecretKey,
     };
 
     setForm((prev) => ({ ...prev, isValidating: true, validationResult: null }));
@@ -776,7 +792,9 @@ function RegisterForm({
   t,
 }: RegisterFormProps) {
   /** 폼 유효성 확인 */
-  const isFormValid = form.exchange !== '' && form.accessKey.trim() !== '' && form.secretKey.trim() !== '';
+  const needsPassphrase = form.exchange !== '' && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType);
+  const isFormValid = form.exchange !== '' && form.accessKey.trim() !== '' && form.secretKey.trim() !== ''
+    && (!needsPassphrase || form.passphrase.trim() !== '');
 
   /** 등록/검증 진행 중 여부 */
   const isProcessing = form.isValidating || form.isRegistering;
@@ -887,6 +905,32 @@ function RegisterForm({
             </button>
           </div>
         </div>
+
+        {/* Passphrase 입력 (OKX, Bitget만) */}
+        {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
+          <div className="space-y-2">
+            <Label htmlFor="passphrase">Passphrase</Label>
+            <Input
+              id="passphrase"
+              type="password"
+              placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
+              value={form.passphrase}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  passphrase: e.target.value,
+                  validationResult: null,
+                }))
+              }
+              disabled={isProcessing}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t.apiKey.settingsPage.passphraseDescription}
+            </p>
+          </div>
+        )}
 
         {/* 유효성 검증 결과 */}
         {form.validationResult && (

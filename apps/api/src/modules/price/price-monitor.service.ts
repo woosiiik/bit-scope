@@ -12,7 +12,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import type { ExchangeType, PriceUpdate } from '@bitscope/shared';
-import { MAJOR_COIN_SYMBOLS, UPBIT_CONFIG } from '@bitscope/shared';
+import { MAJOR_COIN_SYMBOLS, SUPPORTED_EXCHANGES, UPBIT_CONFIG } from '@bitscope/shared';
 
 import { UpbitWsClient } from './exchange-ws/upbit-ws.client';
 import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
@@ -277,7 +277,7 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
 
     // 가격 맵에서도 제거
     for (const symbol of symbols) {
-      for (const exchange of ['upbit', 'bithumb', 'coinone', 'binance'] as ExchangeType[]) {
+      for (const exchange of SUPPORTED_EXCHANGES) {
         this.priceMap.delete(`${exchange}:${symbol}`);
       }
     }

@@ -15,6 +15,7 @@
 
 import CryptoJS from 'crypto-js';
 import type { ApiKeyPair, EncryptedApiKey, ExchangeType } from '@bitscope/shared';
+import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
 
 /** sessionStorage 키: 도출된 AES 암호화 키 */
 const ENCRYPTION_KEY_SESSION_KEY = 'bitscope:encryptionKey';
@@ -280,8 +281,7 @@ export function removeEncryptedKey(walletAddress: string, exchange: ExchangeType
  * @param walletAddress 지갑 주소 (0x...)
  */
 export function removeAllEncryptedKeys(walletAddress: string): void {
-  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone', 'binance'];
-  for (const exchange of exchanges) {
+  for (const exchange of SUPPORTED_EXCHANGES) {
     removeEncryptedKey(walletAddress, exchange);
   }
 }
@@ -293,10 +293,9 @@ export function removeAllEncryptedKeys(walletAddress: string): void {
  * @returns 등록된 거래소 식별자 목록
  */
 export function getRegisteredExchanges(walletAddress: string): ExchangeType[] {
-  const exchanges: ExchangeType[] = ['upbit', 'bithumb', 'coinone', 'binance'];
   const registered: ExchangeType[] = [];
 
-  for (const exchange of exchanges) {
+  for (const exchange of SUPPORTED_EXCHANGES) {
     const data = loadEncryptedKey(walletAddress, exchange);
     if (data) {
       registered.push(exchange);

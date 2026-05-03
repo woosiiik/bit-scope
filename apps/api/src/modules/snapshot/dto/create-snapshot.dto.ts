@@ -25,7 +25,7 @@ export class CreateSnapshotHoldingDto {
 
   /** 거래소 식별자 */
   @IsString()
-  @IsIn(['upbit', 'bithumb', 'coinone', 'binance'])
+  @IsIn(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])
   exchange!: string;
 
   /** 보유 수량 */

@@ -1,20 +1,21 @@
 /**
- * 바이낸스 거래소 요청 서명 모듈 (BinanceSigner)
+ * 바이빗 거래소 요청 서명 모듈 (BybitSigner)
  *
- * 바이낸스 API 인증 방식에 따라 HMAC-SHA256 서명을 생성하고,
- * 서명된 요청을 구성한다. timestamp와 signature를 쿼리 파라미터에 추가하고,
- * X-MBX-APIKEY 헤더에 Access Key를 포함한다.
+ * 바이빗 API v5 인증 방식에 따라 HMAC-SHA256 서명을 생성하고,
+ * 서명된 요청을 구성한다.
  *
- * 바이낸스 인증 방식:
- * - X-MBX-APIKEY 헤더: Access Key
- * - 쿼리 파라미터: timestamp (epoch 밀리초) + signature (HMAC-SHA256)
- * - signature = HMAC-SHA256(queryString, secretKey)
+ * 바이빗 인증 방식:
+ * - X-BAPI-API-KEY 헤더: API Key
+ * - X-BAPI-TIMESTAMP 헤더: 타임스탬프 (밀리초)
+ * - X-BAPI-SIGN 헤더: HMAC-SHA256 서명
+ * - X-BAPI-RECV-WINDOW 헤더: 수신 윈도우 (기본 5000)
+ * - 서명 문자열: timestamp + apiKey + recvWindow + queryString (GET) 또는 body (POST)
  *
  * 보안 원칙:
  * - API Key(Secret Key)는 절대 브라우저 밖으로 전송되지 않는다.
  * - timestamp 기반으로 서명하여 서명된 요청이 일회성이 되도록 한다.
  *
- * @see https://binance-docs.github.io/apidocs/spot/en/#signed-trade-and-user_data-endpoint-security
+ * @see https://bybit-exchange.github.io/docs/v5/guide
  */
 
 import CryptoJS from 'crypto-js';
@@ -25,7 +26,10 @@ import type {
   SignedRequest,
   SignRequestParams,
 } from '@bitscope/shared';
-import { BINANCE_CONFIG, BINANCE_ENDPOINTS } from '@bitscope/shared';
+import { BYBIT_CONFIG, BYBIT_ENDPOINTS } from '@bitscope/shared';
+
+/** recvWindow 기본값 (밀리초) */
+const DEFAULT_RECV_WINDOW = '5000';
 
 /**
  * 현재 시각의 epoch 밀리초 타임스탬프를 반환한다.
@@ -56,76 +60,71 @@ export function buildQueryString(params: Record<string, string>): string {
 /**
  * HMAC-SHA256 서명을 생성한다.
  *
- * 바이낸스 API에서는 쿼리 스트링 전체를 HMAC-SHA256으로 서명하고,
- * 결과를 hex 인코딩하여 signature 쿼리 파라미터에 추가한다.
+ * 바이빗 API v5에서는 timestamp + apiKey + recvWindow + params 문자열을
+ * HMAC-SHA256으로 서명한다.
  *
- * @param queryString 서명 대상 쿼리 스트링
- * @param secretKey 바이낸스 API Secret Key
+ * @param signString 서명 대상 문자열 (timestamp + apiKey + recvWindow + params)
+ * @param secretKey 바이빗 API Secret Key
  * @returns HMAC-SHA256 서명 (hex, 소문자)
  */
-export function createSignature(queryString: string, secretKey: string): string {
-  return CryptoJS.HmacSHA256(queryString, secretKey).toString(CryptoJS.enc.Hex);
+export function createSignature(signString: string, secretKey: string): string {
+  return CryptoJS.HmacSHA256(signString, secretKey).toString(CryptoJS.enc.Hex);
 }
 
 /**
- * 바이낸스 거래소 API 요청에 대한 서명을 생성한다.
+ * 바이빗 거래소 API 요청에 대한 서명을 생성한다.
  *
  * 요청 파라미터를 기반으로 HMAC-SHA256 서명을 생성하고,
- * X-MBX-APIKEY 헤더와 timestamp + signature 쿼리 파라미터를 포함하여
- * 서명된 요청 객체를 반환한다.
+ * X-BAPI-API-KEY, X-BAPI-TIMESTAMP, X-BAPI-SIGN, X-BAPI-RECV-WINDOW 헤더를
+ * 포함하여 서명된 요청 객체를 반환한다.
  *
  * @param params 서명 요청 파라미터 (method, endpoint, queryParams, body, apiKey)
  * @returns 서명이 포함된 요청 객체
- * @throws Access Key가 빈 문자열인 경우
+ * @throws API Key가 빈 문자열인 경우
  * @throws Secret Key가 빈 문자열인 경우
  */
 export function signRequest(params: SignRequestParams): SignedRequest {
   const { method, endpoint, queryParams, body, apiKey } = params;
 
   if (!apiKey.accessKey) {
-    throw new Error('바이낸스 API Key가 필요합니다.');
+    throw new Error('바이빗 API Key가 필요합니다.');
   }
   if (!apiKey.secretKey) {
-    throw new Error('바이낸스 Secret Key가 필요합니다.');
+    throw new Error('바이빗 Secret Key가 필요합니다.');
   }
 
-  // timestamp 추가
-  const timestamp = generateTimestamp();
-  const allParams: Record<string, string> = {
-    ...(queryParams || {}),
-    timestamp: String(timestamp),
-  };
+  const timestamp = String(generateTimestamp());
+  const recvWindow = DEFAULT_RECV_WINDOW;
 
-  // 쿼리 스트링 구성 (signature 제외)
-  const queryString = buildQueryString(allParams);
-
-  // totalParams = queryString + bodyString (바이낸스 공식 문서 기준)
-  // POST 요청 시 body를 queryString 뒤에 이어붙여 서명 대상으로 사용한다.
-  let bodyString = '';
-  if (method === 'POST' && body) {
-    bodyString = buildQueryString(
-      Object.fromEntries(
-        Object.entries(body).map(([k, v]) => [k, String(v)])
-      )
-    );
+  // GET 요청: queryString, POST 요청: body JSON 문자열
+  let paramString = '';
+  if (method === 'GET' && queryParams && Object.keys(queryParams).length > 0) {
+    paramString = buildQueryString(queryParams);
+  } else if (method === 'POST' && body) {
+    paramString = JSON.stringify(body);
   }
-  const totalParams = bodyString ? `${queryString}${bodyString}` : queryString;
+
+  // 서명 문자열: timestamp + apiKey + recvWindow + paramString
+  const signString = timestamp + apiKey.accessKey + recvWindow + paramString;
 
   // HMAC-SHA256 서명 생성
-  const signature = createSignature(totalParams, apiKey.secretKey);
+  const signature = createSignature(signString, apiKey.secretKey);
 
   // URL 구성
-  const baseUrl = BINANCE_CONFIG.restBaseUrl;
-  const url = `${baseUrl}${endpoint}?${queryString}&signature=${signature}`;
+  const baseUrl = BYBIT_CONFIG.restBaseUrl;
+  let url = `${baseUrl}${endpoint}`;
+  if (method === 'GET' && paramString) {
+    url = `${url}?${paramString}`;
+  }
 
   // 헤더 구성
   const headers: Record<string, string> = {
-    'X-MBX-APIKEY': apiKey.accessKey,
+    'X-BAPI-API-KEY': apiKey.accessKey,
+    'X-BAPI-TIMESTAMP': timestamp,
+    'X-BAPI-SIGN': signature,
+    'X-BAPI-RECV-WINDOW': recvWindow,
+    'Content-Type': 'application/json',
   };
-
-  if (method === 'POST') {
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-  }
 
   const signedRequest: SignedRequest = {
     url,
@@ -133,18 +132,19 @@ export function signRequest(params: SignRequestParams): SignedRequest {
     headers,
   };
 
-  // POST 요청인 경우 body 추가 (form-urlencoded 형식)
-  if (method === 'POST' && bodyString) {
-    signedRequest.body = `${bodyString}&signature=${signature}`;
+  // POST 요청인 경우 body 추가
+  if (method === 'POST' && body) {
+    signedRequest.body = JSON.stringify(body);
   }
 
   return signedRequest;
 }
 
 /**
- * 바이낸스 API Key의 유효성을 검증한다.
+ * 바이빗 API Key의 유효성을 검증한다.
  *
- * 계정 정보 조회 API(/api/v3/account)를 호출하여 API Key가 유효한지 확인한다.
+ * 지갑 잔고 조회 API(/v5/account/wallet-balance?accountType=UNIFIED)를 호출하여
+ * API Key가 유효한지 확인한다.
  * Next.js Route Handler를 통해 릴레이되는 서명된 요청을 생성하고,
  * 실제 거래소 API 호출은 프록시를 통해 수행된다.
  *
@@ -153,15 +153,18 @@ export function signRequest(params: SignRequestParams): SignedRequest {
  */
 export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidationResult> {
   try {
-    // 계정 조회 요청 서명 생성
+    // 잔고 조회 요청 서명 생성 (accountType=UNIFIED 필수)
     const signed = signRequest({
       method: 'GET',
-      endpoint: BINANCE_ENDPOINTS.balance,
+      endpoint: BYBIT_ENDPOINTS.balance,
+      queryParams: {
+        accountType: 'UNIFIED',
+      },
       apiKey,
     });
 
     // Next.js Route Handler를 통해 프록시 호출
-    const response = await fetch('/api/exchange/binance/balance', {
+    const response = await fetch('/api/exchange/bybit/balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -215,10 +218,10 @@ export async function validateApiKey(apiKey: ApiKeyPair): Promise<ApiKeyValidati
 }
 
 /**
- * 바이낸스 거래소 식별자를 반환한다.
+ * 바이빗 거래소 식별자를 반환한다.
  *
- * @returns 'binance'
+ * @returns 'bybit'
  */
 export function getExchangeType(): ExchangeType {
-  return 'binance';
+  return 'bybit';
 }

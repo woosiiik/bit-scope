@@ -48,6 +48,34 @@ import {
   normalizeBinanceOrderHistory,
 } from './binance';
 
+import {
+  normalizeBybitBalance,
+  normalizeBybitTicker,
+  normalizeBybitOrderbook,
+  normalizeBybitOrderHistory,
+} from './bybit';
+
+import {
+  normalizeOkxBalance,
+  normalizeOkxTicker,
+  normalizeOkxOrderbook,
+  normalizeOkxOrderHistory,
+} from './okx';
+
+import {
+  normalizeGateBalance,
+  normalizeGateTicker,
+  normalizeGateOrderbook,
+  normalizeGateOrderHistory,
+} from './gate';
+
+import {
+  normalizeBitgetBalance,
+  normalizeBitgetTicker,
+  normalizeBitgetOrderbook,
+  normalizeBitgetOrderHistory,
+} from './bitget';
+
 // 타입 re-export
 export type {
   NormalizedBalance,
@@ -81,6 +109,14 @@ export function normalizeBalance(
       return normalizeCoinoneBalance(rawResponse);
     case 'binance':
       return normalizeBinanceBalance(rawResponse);
+    case 'bybit':
+      return normalizeBybitBalance(rawResponse);
+    case 'okx':
+      return normalizeOkxBalance(rawResponse);
+    case 'gate':
+      return normalizeGateBalance(rawResponse);
+    case 'bitget':
+      return normalizeBitgetBalance(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -112,6 +148,14 @@ export function normalizeTicker(
       return normalizeCoinoneTicker(rawResponse);
     case 'binance':
       return normalizeBinanceTicker(rawResponse);
+    case 'bybit':
+      return normalizeBybitTicker(rawResponse);
+    case 'okx':
+      return normalizeOkxTicker(rawResponse);
+    case 'gate':
+      return normalizeGateTicker(rawResponse);
+    case 'bitget':
+      return normalizeBitgetTicker(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -141,6 +185,14 @@ export function normalizeOrderbook(
       return normalizeCoinoneOrderbook(rawResponse);
     case 'binance':
       return normalizeBinanceOrderbook(rawResponse);
+    case 'bybit':
+      return normalizeBybitOrderbook(rawResponse);
+    case 'okx':
+      return normalizeOkxOrderbook(rawResponse);
+    case 'gate':
+      return normalizeGateOrderbook(rawResponse);
+    case 'bitget':
+      return normalizeBitgetOrderbook(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -170,6 +222,14 @@ export function normalizeOrderHistory(
       return normalizeCoinoneOrderHistory(rawResponse);
     case 'binance':
       return normalizeBinanceOrderHistory(rawResponse);
+    case 'bybit':
+      return normalizeBybitOrderHistory(rawResponse);
+    case 'okx':
+      return normalizeOkxOrderHistory(rawResponse);
+    case 'gate':
+      return normalizeGateOrderHistory(rawResponse);
+    case 'bitget':
+      return normalizeBitgetOrderHistory(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }

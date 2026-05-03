@@ -83,7 +83,7 @@ describe('ExchangeSignerFactory', () => {
   });
 
   describe('ExchangeSigner 인터페이스 준수', () => {
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
       '%s 서명기가 signRequest 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -91,7 +91,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
       '%s 서명기가 validateApiKey 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -99,7 +99,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
       '%s 서명기가 getExchangeType 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);

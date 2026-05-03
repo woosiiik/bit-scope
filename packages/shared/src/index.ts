@@ -74,6 +74,7 @@ export {
   EXCHANGE_ENDPOINTS,
   SUPPORTED_EXCHANGES,
   DOMESTIC_EXCHANGES,
+  FOREIGN_EXCHANGES,
   DEFAULT_CACHE_TTL_MS,
   DEFAULT_REFRESH_INTERVAL_MS,
   COINONE_POLLING_INTERVAL_MS,
@@ -85,6 +86,18 @@ export {
   BINANCE_ENDPOINTS,
   BINANCE_PRICE_ENDPOINTS,
   BINANCE_POLLING_INTERVAL_MS,
+  // 바이빗 설정 (포트폴리오 + 김치 프리미엄 비교용)
+  BYBIT_CONFIG,
+  BYBIT_ENDPOINTS,
+  // OKX 설정 (포트폴리오 + 김치 프리미엄 비교용)
+  OKX_CONFIG,
+  OKX_ENDPOINTS,
+  // Gate.io 설정 (포트폴리오 + 김치 프리미엄 비교용)
+  GATE_CONFIG,
+  GATE_ENDPOINTS,
+  // Bitget 설정 (포트폴리오 + 김치 프리미엄 비교용)
+  BITGET_CONFIG,
+  BITGET_ENDPOINTS,
   // 코인 심볼
   MAJOR_COINS,
   MAJOR_COIN_SYMBOLS,
@@ -118,6 +131,10 @@ export {
   validateBithumbApiKeyFormat,
   validateCoinoneApiKeyFormat,
   validateBinanceApiKeyFormat,
+  validateBybitApiKeyFormat,
+  validateOkxApiKeyFormat,
+  validateGateApiKeyFormat,
+  validateBitgetApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

@@ -9,6 +9,11 @@
  * - 업비트 (upbit): JWT(HS256) 토큰 기반 인증
  * - 빗썸 (bithumb): JWT(HS256) 토큰 기반 인증 (v2 API)
  * - 코인원 (coinone): HMAC-SHA512 서명 + Base64 payload 기반 인증
+ * - 바이낸스 (binance): HMAC-SHA256 서명 기반 인증
+ * - 바이빗 (bybit): HMAC-SHA256 서명 기반 인증
+ * - OKX (okx): HMAC-SHA256 + Base64 서명 기반 인증 (Passphrase 필요)
+ * - Gate.io (gate): HMAC-SHA512 서명 기반 인증
+ * - Bitget (bitget): HMAC-SHA256 + Base64 서명 기반 인증 (Passphrase 필요)
  *
  * 보안 원칙:
  * - API Key(Secret Key)는 절대 브라우저 밖으로 전송되지 않는다.
@@ -31,6 +36,10 @@ import * as UpbitSigner from './upbit-signer';
 import * as BithumbSigner from './bithumb-signer';
 import * as CoinoneSigner from './coinone-signer';
 import * as BinanceSigner from './binance-signer';
+import * as BybitSigner from './bybit-signer';
+import * as OkxSigner from './okx-signer';
+import * as GateSigner from './gate-signer';
+import * as BitgetSigner from './bitget-signer';
 
 /**
  * 거래소 요청 서명기 인터페이스
@@ -92,6 +101,50 @@ const binanceSigner: ExchangeSigner = {
 };
 
 /**
+ * 바이빗 서명기 어댑터
+ *
+ * bybit-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const bybitSigner: ExchangeSigner = {
+  signRequest: BybitSigner.signRequest,
+  validateApiKey: BybitSigner.validateApiKey,
+  getExchangeType: BybitSigner.getExchangeType,
+};
+
+/**
+ * OKX 서명기 어댑터
+ *
+ * okx-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const okxSigner: ExchangeSigner = {
+  signRequest: OkxSigner.signRequest,
+  validateApiKey: OkxSigner.validateApiKey,
+  getExchangeType: OkxSigner.getExchangeType,
+};
+
+/**
+ * Gate.io 서명기 어댑터
+ *
+ * gate-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const gateSigner: ExchangeSigner = {
+  signRequest: GateSigner.signRequest,
+  validateApiKey: GateSigner.validateApiKey,
+  getExchangeType: GateSigner.getExchangeType,
+};
+
+/**
+ * Bitget 서명기 어댑터
+ *
+ * bitget-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const bitgetSigner: ExchangeSigner = {
+  signRequest: BitgetSigner.signRequest,
+  validateApiKey: BitgetSigner.validateApiKey,
+  getExchangeType: BitgetSigner.getExchangeType,
+};
+
+/**
  * 거래소 서명기 레지스트리
  *
  * ExchangeType을 키로 사용하여 해당 거래소의 서명기 인스턴스를 보관한다.
@@ -102,6 +155,10 @@ const signerRegistry: Record<ExchangeType, ExchangeSigner> = {
   bithumb: bithumbSigner,
   coinone: coinoneSigner,
   binance: binanceSigner,
+  bybit: bybitSigner,
+  okx: okxSigner,
+  gate: gateSigner,
+  bitget: bitgetSigner,
 };
 
 /**

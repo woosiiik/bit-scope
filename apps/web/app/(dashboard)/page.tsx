@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS, SUPPORTED_EXCHANGES } from '@bitscope/shared';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -616,7 +616,7 @@ function TableControls({
 
       <div className="flex flex-wrap items-center gap-2">
         {/* 거래소 필터 */}
-        {(['upbit', 'bithumb', 'coinone', 'binance'] as ExchangeType[]).map((exchange) => {
+        {SUPPORTED_EXCHANGES.map((exchange) => {
           const config = EXCHANGE_CONFIGS[exchange];
           const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
           return (

@@ -26,7 +26,7 @@ import type {
   SignedRequest,
   Ticker,
 } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS, FOREIGN_EXCHANGES } from '@bitscope/shared';
 import { createSigner } from './exchange/signer-factory';
 
 // ===== Route Handler 응답 타입 =====
@@ -170,6 +170,60 @@ function buildRouteHandlerUrl(
   return `/api/exchange/${exchange}/${endpoint}`;
 }
 
+// ===== USDT/KRW 환율 =====
+
+/** USDT/KRW 환율 캐시 */
+let usdtKrwRateCache: { rate: number; fetchedAt: number } | null = null;
+
+/** USDT/KRW 환율 캐시 유효 시간: 1분 */
+const USDT_KRW_RATE_CACHE_TTL = 60 * 1000;
+
+/**
+ * 업비트 공개 API에서 USDT/KRW 환율을 조회한다.
+ *
+ * 업비트의 KRW-USDT 마켓 현재가를 기반으로 한다.
+ * 결과는 1분간 캐싱하여 불필요한 API 호출을 줄인다.
+ * 조회 실패 시 0을 반환한다.
+ *
+ * @returns USDT/KRW 환율 (예: 1400)
+ */
+async function getUsdtKrwRate(): Promise<number> {
+  // 캐시 확인
+  if (usdtKrwRateCache && Date.now() - usdtKrwRateCache.fetchedAt < USDT_KRW_RATE_CACHE_TTL) {
+    return usdtKrwRateCache.rate;
+  }
+
+  try {
+    const response = await fetch('https://api.upbit.com/v1/ticker?markets=KRW-USDT', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      return usdtKrwRateCache?.rate ?? 0;
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0 && typeof data[0].trade_price === 'number') {
+      const rate = data[0].trade_price;
+      usdtKrwRateCache = { rate, fetchedAt: Date.now() };
+      return rate;
+    }
+
+    return usdtKrwRateCache?.rate ?? 0;
+  } catch {
+    return usdtKrwRateCache?.rate ?? 0;
+  }
+}
+
+/**
+ * 해외 거래소인지 확인한다 (USDT 기준 잔고 → KRW 환산 필요).
+ */
+function isForeignExchange(exchange: ExchangeType): boolean {
+  return (FOREIGN_EXCHANGES as readonly string[]).includes(exchange);
+}
+
 // ===== 유효 마켓 심볼 필터링 =====
 
 /** 거래소별 KRW 마켓 심볼 캐시 (세션 동안 유지) */
@@ -179,15 +233,16 @@ const krwMarketCache = new Map<ExchangeType, { symbols: Set<string>; fetchedAt: 
 const KRW_MARKET_CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * 거래소의 KRW 마켓에 상장된 유효한 심볼만 필터링한다.
+ * 거래소의 유효 마켓에 상장된 심볼만 필터링한다.
  *
- * 거래소의 전체 마켓 목록을 조회하여 KRW 마켓에 존재하는 심볼만 반환한다.
+ * 거래소의 전체 마켓 목록을 조회하여 활성 마켓에 존재하는 심볼만 반환한다.
+ * 국내 거래소는 KRW 마켓, 해외 거래소는 USDT 마켓 기준으로 필터링한다.
  * 에어드랍 등으로 받은 비상장 코인을 걸러내는 데 사용한다.
  * 결과는 5분간 캐싱하여 불필요한 API 호출을 줄인다.
  *
  * @param exchange 거래소 식별자
  * @param symbols 필터링할 심볼 배열
- * @returns KRW 마켓에 상장된 유효한 심볼 배열
+ * @returns 유효 마켓에 상장된 심볼 배열
  */
 async function getValidKrwSymbols(
   exchange: ExchangeType,
@@ -204,7 +259,14 @@ async function getValidKrwSymbols(
     // 브라우저 환경에서 CORS 오류가 발생할 수 있으므로 try-catch로 감싼다.
     const config = EXCHANGE_CONFIGS[exchange];
     const endpoint = EXCHANGE_ENDPOINTS[exchange].markets;
-    const url = `${config.restBaseUrl}${endpoint}`;
+    // 일부 해외 거래소 markets 엔드포인트는 쿼리 파라미터가 필수
+    let marketsSuffix = '';
+    if (exchange === 'okx') {
+      marketsSuffix = '?instType=SPOT';
+    } else if (exchange === 'bybit') {
+      marketsSuffix = '?category=spot';
+    }
+    const url = `${config.restBaseUrl}${endpoint}${marketsSuffix}`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -258,6 +320,63 @@ async function getValidKrwSymbols(
           }
         }
       }
+    } else if (exchange === 'bybit') {
+      // 바이빗: { retCode: 0, result: { list: [{ symbol: "BTCUSDT", status: "Trading", baseCoin: "BTC", quoteCoin: "USDT", ... }] } }
+      const resultList = markets?.result?.list;
+      if (Array.isArray(resultList)) {
+        for (const s of resultList) {
+          if (
+            s.quoteCoin === 'USDT' &&
+            s.status === 'Trading' &&
+            s.baseCoin
+          ) {
+            krwSymbols.add(s.baseCoin.toUpperCase());
+          }
+        }
+      }
+    } else if (exchange === 'okx') {
+      // OKX: { code: "0", data: [{ instId: "BTC-USDT", state: "live", baseCcy: "BTC", quoteCcy: "USDT", ... }] }
+      const dataList = markets?.data;
+      if (Array.isArray(dataList)) {
+        for (const s of dataList) {
+          if (
+            s.quoteCcy === 'USDT' &&
+            s.state === 'live' &&
+            s.baseCcy
+          ) {
+            krwSymbols.add(s.baseCcy.toUpperCase());
+          }
+        }
+      }
+    } else if (exchange === 'gate') {
+      // Gate.io: 배열 직접 반환 [{ id: "BTC_USDT", base: "BTC", quote: "USDT", trade_status: "tradable", ... }]
+      if (Array.isArray(markets)) {
+        for (const s of markets) {
+          if (
+            s.quote === 'USDT' &&
+            s.trade_status === 'tradable' &&
+            s.base
+          ) {
+            krwSymbols.add(s.base.toUpperCase());
+          }
+        }
+      }
+    } else if (exchange === 'bitget') {
+      // Bitget: { code: "00000", data: [{ symbol: "BTCUSDT", ... }] }
+      const dataList = markets?.data;
+      if (Array.isArray(dataList)) {
+        for (const s of dataList) {
+          if (
+            s.symbol?.endsWith('USDT') &&
+            s.symbol
+          ) {
+            const baseCoin = s.symbol.replace('USDT', '');
+            if (baseCoin) {
+              krwSymbols.add(baseCoin.toUpperCase());
+            }
+          }
+        }
+      }
     }
 
     // 캐시 저장
@@ -288,12 +407,18 @@ export function signBalanceRequest(
   const signer = createSigner(exchange);
 
   // 코인원 private API는 POST만 지원하므로 거래소별로 메서드를 분기한다.
-  // 업비트, 빗썸 v2, 바이낸스는 GET 방식으로 전체 잔고를 반환한다.
+  // 업비트, 빗썸 v2, 바이낸스, 바이빗은 GET 방식으로 전체 잔고를 반환한다.
   const method = exchange === 'coinone' ? 'POST' : 'GET';
+
+  // 바이빗 잔고 조회 시 accountType=UNIFIED 쿼리 파라미터 필수
+  const queryParams = exchange === 'bybit'
+    ? { accountType: 'UNIFIED' }
+    : undefined;
 
   return signer.signRequest({
     method,
     endpoint: EXCHANGE_ENDPOINTS[exchange].balance,
+    queryParams,
     apiKey,
   });
 }
@@ -322,6 +447,11 @@ export function signOrderHistoryRequest(
   }
   if (params?.limit) {
     queryParams.limit = String(params.limit);
+  }
+
+  // OKX 주문 내역 조회 시 instType=SPOT 쿼리 파라미터 필수
+  if (exchange === 'okx') {
+    queryParams.instType = 'SPOT';
   }
 
   // 코인원은 POST body로, 업비트/빗썸은 query parameter로 파라미터를 전달한다.
@@ -420,7 +550,7 @@ export async function fetchBalance(
   // 거래소 잔고 API는 현재가를 반환하지 않으므로 별도 조회 필요
   if (balanceData.holdings.length > 0) {
     try {
-      // 유효한 KRW 마켓 심볼만 필터링하여 ticker 조회
+      // 유효 마켓 심볼만 필터링하여 ticker 조회
       // 잔고에 에어드랍 등으로 받은 비상장 코인이 포함될 수 있으므로
       // 먼저 거래소의 마켓 목록을 조회하여 유효한 심볼만 추출
       const allSymbols = balanceData.holdings.map((h) => h.symbol);
@@ -451,7 +581,7 @@ export async function fetchBalance(
         }
       }
 
-      // 유효한 KRW 마켓에 없는 코인은 대시보드에서 제외
+      // 유효 마켓에 없는 코인은 대시보드에서 제외
       // (에어드랍, 상장폐지 등으로 거래 불가능한 코인)
       const validSymbolSet = new Set(validSymbols);
       balanceData.holdings = balanceData.holdings.filter(
@@ -459,6 +589,29 @@ export async function fetchBalance(
       );
     } catch (error) {
       // ticker 조회 실패 시 매수평균가를 현재가로 유지 (graceful degradation)
+    }
+  }
+
+  // 5. 해외 거래소의 USDT 기준 잔고를 KRW로 환산
+  // 해외 거래소(바이낸스, 바이빗, OKX, Gate.io, Bitget)는 USDT 기준 시세이므로
+  // 대시보드에서 국내 거래소(KRW 기준)와 합산하려면 KRW 환산이 필요하다.
+  if (isForeignExchange(exchange)) {
+    try {
+      const usdtKrwRate = await getUsdtKrwRate();
+      if (usdtKrwRate > 0) {
+        // 보유 코인의 평가금액, 현재가, 매수평균가, 손익을 KRW로 환산
+        for (const holding of balanceData.holdings) {
+          holding.currentPrice = holding.currentPrice * usdtKrwRate;
+          holding.avgBuyPrice = holding.avgBuyPrice * usdtKrwRate;
+          holding.evaluationAmount = holding.evaluationAmount * usdtKrwRate;
+          holding.profitLoss = holding.profitLoss * usdtKrwRate;
+          // 수익률은 비율이므로 환산 불필요 (USDT든 KRW든 동일)
+        }
+        // USDT 잔고(krwBalance 필드에 임시 저장됨)도 KRW로 환산
+        balanceData.krwBalance = balanceData.krwBalance * usdtKrwRate;
+      }
+    } catch {
+      // USDT/KRW 환율 조회 실패 시 USDT 기준 금액 그대로 유지 (graceful degradation)
     }
   }
 

@@ -130,6 +130,30 @@ describe('normalizeBalance', () => {
     expect(result.holdings[0].symbol).toBe('BTC');
   });
 
+  it('Gate.io 응답을 올바르게 디스패치한다', () => {
+    const gateFixture = [
+      { currency: 'BTC', available: '0.5', locked: '0' },
+    ];
+    const result = normalizeBalance('gate', gateFixture);
+
+    expect(result.exchange).toBe('gate');
+    expect(result.holdings).toHaveLength(1);
+    expect(result.holdings[0].symbol).toBe('BTC');
+  });
+
+  it('Bitget 응답을 올바르게 디스패치한다', () => {
+    const bitgetFixture = {
+      code: '00000',
+      msg: 'success',
+      data: [{ coin: 'BTC', available: '0.5', frozen: '0', usdtValue: '40000' }],
+    };
+    const result = normalizeBalance('bitget', bitgetFixture);
+
+    expect(result.exchange).toBe('bitget');
+    expect(result.holdings).toHaveLength(1);
+    expect(result.holdings[0].symbol).toBe('BTC');
+  });
+
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
       normalizeBalance('kraken' as never, {});
@@ -160,6 +184,51 @@ describe('normalizeTicker', () => {
     const result = normalizeTicker('coinone', coinoneTickerFixture);
 
     expect(result.exchange).toBe('coinone');
+    expect(result.tickers).toHaveLength(1);
+    expect(result.tickers[0].symbol).toBe('BTC');
+  });
+
+  it('Gate.io 응답을 올바르게 디스패치한다', () => {
+    const gateFixture = [
+      {
+        currency_pair: 'BTC_USDT',
+        last: '80000',
+        change_percentage: '2.5',
+        base_volume: '1000',
+        quote_volume: '80000000',
+        high_24h: '81000',
+        low_24h: '79000',
+        lowest_ask: '80100',
+        highest_bid: '79900',
+      },
+    ];
+    const result = normalizeTicker('gate', gateFixture);
+
+    expect(result.exchange).toBe('gate');
+    expect(result.tickers).toHaveLength(1);
+    expect(result.tickers[0].symbol).toBe('BTC');
+  });
+
+  it('Bitget 응답을 올바르게 디스패치한다', () => {
+    const bitgetFixture = {
+      code: '00000',
+      msg: 'success',
+      data: [
+        {
+          symbol: 'BTCUSDT',
+          lastPr: '80000',
+          high24h: '81000',
+          low24h: '79000',
+          open: '78000',
+          change24h: '0.025',
+          baseVolume: '1000',
+          quoteVolume: '80000000',
+        },
+      ],
+    };
+    const result = normalizeTicker('bitget', bitgetFixture);
+
+    expect(result.exchange).toBe('bitget');
     expect(result.tickers).toHaveLength(1);
     expect(result.tickers[0].symbol).toBe('BTC');
   });
