@@ -87,7 +87,6 @@ RUN addgroup --system --gid 1001 nestjs && \
 # 프로덕션 의존성 복사
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY --from=production-deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=production-deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # 빌드된 공유 패키지 복사
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
