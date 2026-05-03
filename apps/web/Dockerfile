@@ -53,8 +53,18 @@ COPY . .
 RUN pnpm --filter @bitscope/shared build
 
 # Next.js standalone 빌드
-# 환경 변수는 빌드 시점에 주입 가능
+# NEXT_PUBLIC_ 환경변수는 빌드 시점에 주입해야 한다
+ARG NEXT_PUBLIC_API_URL=http://localhost/api/backend
+ARG NEXT_PUBLIC_WS_URL=http://localhost
+ARG NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=placeholder
+ARG NEXT_PUBLIC_API_BASE_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+ENV NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID}
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
 RUN pnpm --filter @bitscope/web build
 
 # -----------------------------------------------------------------------------
