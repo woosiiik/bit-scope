@@ -16,6 +16,9 @@ import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowki
 import '@rainbow-me/rainbowkit/styles.css';
 
 import { wagmiConfig } from '@/lib/wallet';
+import { I18nProvider } from '@/lib/i18n/i18n-context';
+import { useSettingsStore } from '@/store/settings-store';
+import type { Locale } from '@/lib/i18n';
 
 /** Providers 컴포넌트 Props */
 interface ProvidersProps {
@@ -56,11 +59,14 @@ export function Providers({ children }: ProvidersProps) {
       })
   );
 
+  const language = useSettingsStore((s) => s.settings.language);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
-          locale="ko"
+          locale={language === 'en' ? 'en' : 'ko'}
           theme={{
             lightMode: lightTheme({
               accentColor: '#3B82F6',
@@ -74,7 +80,9 @@ export function Providers({ children }: ProvidersProps) {
             }),
           }}
         >
-          {children}
+          <I18nProvider locale={language as Locale} onLocaleChange={(loc) => setLanguage(loc)}>
+            {children}
+          </I18nProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

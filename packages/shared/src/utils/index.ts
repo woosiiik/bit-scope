@@ -29,6 +29,7 @@ export {
   validateOkxApiKeyFormat,
   validateGateApiKeyFormat,
   validateBitgetApiKeyFormat,
+  validateHyperliquidApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

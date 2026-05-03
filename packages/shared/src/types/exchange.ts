@@ -6,10 +6,10 @@
  */
 
 /** 지원하는 거래소 식별자 */
-export type ExchangeType = 'upbit' | 'bithumb' | 'coinone' | 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget';
+export type ExchangeType = 'upbit' | 'bithumb' | 'coinone' | 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget' | 'hyperliquid';
 
 /** 마켓 통화 단위 */
-export type Currency = 'KRW' | 'BTC' | 'USDT';
+export type Currency = 'KRW' | 'BTC' | 'USDT' | 'USDC';
 
 /** 거래소 API Key 쌍 (평문) */
 export interface ApiKeyPair {

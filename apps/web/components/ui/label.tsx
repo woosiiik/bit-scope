@@ -12,7 +12,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /** Label 컴포넌트 Props */
-export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {}
+export type LabelProps = React.ComponentProps<"label">;
 
 /**
  * 폼 Label 컴포넌트

@@ -33,10 +33,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { ExchangeType, ApiKeyPair } from '@bitscope/shared';
-import { SUPPORTED_EXCHANGES, EXCHANGE_CONFIGS } from '@bitscope/shared';
+import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
 import { useTranslation } from '@/lib/i18n/i18n-context';
+import { getExchangeName } from '@/lib/utils';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
-import type { UseOnboardingReturn, OnboardingStep } from '@/hooks/useOnboarding';
+import type { UseOnboardingReturn } from '@/hooks/useOnboarding';
 import {
   encryptApiKey,
   storeEncryptedKey,
@@ -230,7 +231,7 @@ interface ExchangeSelectStepProps {
  * @see 요구사항 11.2 (거래소 건너뛰기 허용)
  */
 function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <Card>
@@ -240,7 +241,6 @@ function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {SUPPORTED_EXCHANGES.map((exchange) => {
-          const config = EXCHANGE_CONFIGS[exchange];
           const isSelected = onboarding.selectedExchanges.includes(exchange);
 
           return (
@@ -254,7 +254,7 @@ function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
               }`}
               onClick={() => onboarding.toggleExchange(exchange)}
               aria-pressed={isSelected}
-              aria-label={`${config.nameKo} ${isSelected ? '선택됨' : '선택 안 됨'}`}
+              aria-label={`${getExchangeName(exchange, locale)} ${isSelected ? '선택됨' : '선택 안 됨'}`}
             >
               <div
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
@@ -268,7 +268,7 @@ function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
                 )}
               </div>
               <div>
-                <span className="font-semibold text-foreground">{config.nameKo}</span>
+                <span className="font-semibold text-foreground">{getExchangeName(exchange, locale)}</span>
                 <p className="text-xs text-muted-foreground">
                   {t.exchange[exchange]}
                 </p>
@@ -324,7 +324,7 @@ interface ExchangeKeyFormState {
  * @see 요구사항 11.2 (특정 거래소 건너뛰기)
  */
 function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { signMessage } = useWalletAuth();
 
   /** 거래소별 폼 상태 */
@@ -438,7 +438,7 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
   const hasAnyRegistered = Object.values(forms).some((f) => f.isRegistered);
 
   /** 모든 거래소가 등록 또는 처리 완료되었는지 확인 */
-  const allProcessed = Object.values(forms).every(
+  const _allProcessed = Object.values(forms).every(
     (f) => f.isRegistered || !f.accessKey,
   );
 
@@ -465,7 +465,6 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
           const form = forms[exchange];
           if (!form) return null;
 
-          const config = EXCHANGE_CONFIGS[exchange];
           const isProcessing = form.isValidating || form.isRegistering;
 
           return (
@@ -476,7 +475,7 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
               {/* 거래소 헤더 */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{config.nameKo}</span>
+                  <span className="font-semibold text-foreground">{getExchangeName(exchange, locale)}</span>
                   {form.isRegistered && (
                     <Badge variant="success" className="gap-1">
                       <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
@@ -621,7 +620,7 @@ interface VerifyStepProps {
  * @see 요구사항 11.4 (온보딩 완료 후 대시보드 이동)
  */
 function VerifyStep({ onboarding, walletAddress }: VerifyStepProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   /** 등록된 거래소 목록 확인 */
   const registeredExchanges = getRegisteredExchanges(walletAddress);
@@ -639,7 +638,6 @@ function VerifyStep({ onboarding, walletAddress }: VerifyStepProps) {
             {/* 등록된 거래소 목록 표시 */}
             <div className="space-y-2">
               {registeredExchanges.map((exchange) => {
-                const config = EXCHANGE_CONFIGS[exchange];
                 return (
                   <div
                     key={exchange}
@@ -651,7 +649,7 @@ function VerifyStep({ onboarding, walletAddress }: VerifyStepProps) {
                     />
                     <div>
                       <span className="text-sm font-medium text-foreground">
-                        {config.nameKo}
+                        {getExchangeName(exchange, locale)}
                       </span>
                       <p className="text-xs text-muted-foreground">
                         {t.apiKey.settingsPage.registerSuccess}

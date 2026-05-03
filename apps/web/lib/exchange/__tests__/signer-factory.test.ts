@@ -8,13 +8,12 @@
  * @see 요구사항 NF2.1 (거래소 어댑터 패턴)
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   createSigner,
   getAllSigners,
   isSupportedExchange,
 } from '../signer-factory';
-import type { ExchangeSigner } from '../signer-factory';
 import type { ApiKeyPair, ExchangeType, SignRequestParams } from '@bitscope/shared';
 import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
 
@@ -83,7 +82,7 @@ describe('ExchangeSignerFactory', () => {
   });
 
   describe('ExchangeSigner 인터페이스 준수', () => {
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'])(
       '%s 서명기가 signRequest 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -91,7 +90,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'])(
       '%s 서명기가 validateApiKey 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);
@@ -99,7 +98,7 @@ describe('ExchangeSignerFactory', () => {
       }
     );
 
-    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'])(
+    it.each<ExchangeType>(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'])(
       '%s 서명기가 getExchangeType 메서드를 가지고 있다',
       (exchange) => {
         const signer = createSigner(exchange);

@@ -154,6 +154,39 @@ describe('normalizeBalance', () => {
     expect(result.holdings[0].symbol).toBe('BTC');
   });
 
+  it('하이퍼리퀴드 응답을 올바르게 디스패치한다', () => {
+    const hyperliquidFixture = {
+      perps: {
+        marginSummary: {
+          accountValue: '29780.01',
+          totalNtlPos: '5000.0',
+          totalRawUsd: '24780.01',
+          totalMarginUsed: '2500.0',
+        },
+        crossMarginSummary: {
+          accountValue: '29780.01',
+          totalNtlPos: '5000.0',
+          totalRawUsd: '24780.01',
+          totalMarginUsed: '2500.0',
+        },
+        withdrawable: '22280.01',
+        assetPositions: [],
+        time: 1733968369395,
+      },
+      spot: {
+        balances: [
+          { coin: 'USDC', token: 0, total: '1000.22', hold: '0.0', entryNtl: '0.0' },
+          { coin: 'PURR', token: 1, total: '500.0', hold: '0.0', entryNtl: '250.0' },
+        ],
+      },
+    };
+    const result = normalizeBalance('hyperliquid', hyperliquidFixture);
+
+    expect(result.exchange).toBe('hyperliquid');
+    expect(result.holdings.length).toBeGreaterThan(0);
+    expect(result.walletSummary).toBeDefined();
+  });
+
   it('지원하지 않는 거래소 입력 시 오류를 발생시킨다', () => {
     expect(() => {
       normalizeBalance('kraken' as never, {});

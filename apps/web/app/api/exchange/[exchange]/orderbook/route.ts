@@ -16,7 +16,7 @@
  * @see 요구사항 12.4 (응답 데이터 통일된 내부 데이터 모델 정규화)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import type { ExchangeType, SignedRequest } from '@bitscope/shared';
 import {
   SUPPORTED_EXCHANGES,

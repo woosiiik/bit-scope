@@ -18,7 +18,7 @@
  * @see 요구사항 8.15, 8.16 (API Key 원문 서버 전송 금지)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import type { ExchangeType, SignedRequest } from '@bitscope/shared';
 import { SUPPORTED_EXCHANGES, EXCHANGE_ENDPOINTS } from '@bitscope/shared';
 import { relayRequest } from '../../_lib/proxy';

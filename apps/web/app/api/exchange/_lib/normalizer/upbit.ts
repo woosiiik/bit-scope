@@ -14,7 +14,7 @@
  * @see https://docs.upbit.com/reference
  */
 
-import type { Holding, Ticker, Orderbook, OrderbookEntry } from '@bitscope/shared';
+import type { Holding, Ticker, OrderbookEntry } from '@bitscope/shared';
 import type {
   NormalizedBalance,
   NormalizedTicker,

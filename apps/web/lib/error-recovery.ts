@@ -364,7 +364,7 @@ export class ErrorStateManager {
    * @param exchange 거래소 식별자
    */
   clearError(exchange: ExchangeType): void {
-    const existingState = this.errorStates.get(exchange);
+    const _existingState = this.errorStates.get(exchange);
 
     // 오류 상태를 제거하되, 마지막 성공 시각은 보존하기 위해
     // 다음 오류 발생 시 참조할 수 있도록 별도 맵에는 저장하지 않고

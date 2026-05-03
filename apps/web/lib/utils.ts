@@ -7,6 +7,8 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { ExchangeType, CoinInfo } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS } from '@bitscope/shared';
 
 /**
  * Tailwind CSS 클래스를 안전하게 병합한다.
@@ -23,4 +25,28 @@ import { twMerge } from 'tailwind-merge';
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * 거래소 이름을 로케일에 따라 반환한다.
+ *
+ * @param exchange 거래소 식별자
+ * @param locale 현재 로케일 ('ko' | 'en')
+ * @returns 로케일에 맞는 거래소 이름
+ */
+export function getExchangeName(exchange: ExchangeType, locale: string = 'ko'): string {
+  const config = EXCHANGE_CONFIGS[exchange];
+  if (!config) return exchange;
+  return locale === 'en' ? config.nameEn : config.nameKo;
+}
+
+/**
+ * 코인 이름을 로케일에 따라 반환한다.
+ *
+ * @param coin 코인 정보 객체 (nameKo, nameEn 포함)
+ * @param locale 현재 로케일 ('ko' | 'en')
+ * @returns 로케일에 맞는 코인 이름
+ */
+export function getCoinName(coin: CoinInfo, locale: string = 'ko'): string {
+  return locale === 'en' ? coin.nameEn : coin.nameKo;
 }

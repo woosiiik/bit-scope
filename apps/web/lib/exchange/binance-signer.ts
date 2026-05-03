@@ -27,6 +27,11 @@ import type {
 } from '@bitscope/shared';
 import { BINANCE_CONFIG, BINANCE_ENDPOINTS } from '@bitscope/shared';
 
+/** 바이낸스 Futures 엔드포인트 경로 목록 (fapi.binance.com 도메인 사용) */
+const FUTURES_ENDPOINTS = [
+  BINANCE_ENDPOINTS.futures,
+].filter(Boolean) as string[];
+
 /**
  * 현재 시각의 epoch 밀리초 타임스탬프를 반환한다.
  *
@@ -114,8 +119,11 @@ export function signRequest(params: SignRequestParams): SignedRequest {
   // HMAC-SHA256 서명 생성
   const signature = createSignature(totalParams, apiKey.secretKey);
 
-  // URL 구성
-  const baseUrl = BINANCE_CONFIG.restBaseUrl;
+  // URL 구성: Futures 엔드포인트는 fapi.binance.com 도메인을 사용한다
+  const isFuturesEndpoint = FUTURES_ENDPOINTS.includes(endpoint);
+  const baseUrl = isFuturesEndpoint && BINANCE_CONFIG.futuresBaseUrl
+    ? BINANCE_CONFIG.futuresBaseUrl
+    : BINANCE_CONFIG.restBaseUrl;
   const url = `${baseUrl}${endpoint}?${queryString}&signature=${signature}`;
 
   // 헤더 구성

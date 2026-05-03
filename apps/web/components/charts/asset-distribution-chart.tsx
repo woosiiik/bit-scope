@@ -9,19 +9,17 @@
 
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import {
   PieChart,
   Pie,
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import type { ExchangeType, AssetDistribution } from '@bitscope/shared';
 import { formatCompactKRW, formatPercent } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { cn, getExchangeName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -56,6 +54,7 @@ const EXCHANGE_COLORS: Record<ExchangeType, string> = {
   okx: 'hsl(0, 0%, 20%)',              // OKX: 다크 그레이 (OKX 브랜드 색상)
   gate: 'hsl(210, 70%, 50%)',           // Gate.io: 블루 (Gate.io 브랜드 색상)
   bitget: 'hsl(170, 65%, 45%)',         // Bitget: 틸 (Bitget 브랜드 색상)
+  hyperliquid: 'hsl(145, 70%, 50%)',    // 하이퍼리퀴드: 민트 (Hyperliquid 브랜드 색상)
 };
 
 // ===== 차트 데이터 타입 =====
@@ -276,7 +275,7 @@ export function AssetDistributionCharts({
   distribution,
   className,
 }: AssetDistributionChartsProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 코인별 분포 데이터를 차트 데이터로 변환한다
   const coinChartData: ChartDataItem[] = useMemo(() => {
@@ -291,7 +290,7 @@ export function AssetDistributionCharts({
   // 거래소별 분포 데이터를 차트 데이터로 변환한다
   const exchangeChartData: ChartDataItem[] = useMemo(() => {
     return distribution.byExchange.map((item) => ({
-      name: EXCHANGE_CONFIGS[item.exchange]?.nameKo ?? item.exchange,
+      name: getExchangeName(item.exchange, locale),
       value: item.amount,
       ratio: item.ratio,
       color: EXCHANGE_COLORS[item.exchange] ?? COIN_COLORS[0]!,

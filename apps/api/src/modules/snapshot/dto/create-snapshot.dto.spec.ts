@@ -130,8 +130,8 @@ describe('CreateSnapshotHoldingDto', () => {
     expect(exchangeError).toBeDefined();
   });
 
-  it('각 거래소(upbit, bithumb, coinone, binance, bybit, okx, gate, bitget) 값을 허용해야 한다', async () => {
-    const exchanges = ['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'];
+  it('각 거래소(upbit, bithumb, coinone, binance, bybit, okx, gate, bitget, hyperliquid) 값을 허용해야 한다', async () => {
+    const exchanges = ['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'];
 
     for (const exchange of exchanges) {
       const data = {

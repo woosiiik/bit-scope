@@ -40,6 +40,7 @@ import * as BybitSigner from './bybit-signer';
 import * as OkxSigner from './okx-signer';
 import * as GateSigner from './gate-signer';
 import * as BitgetSigner from './bitget-signer';
+import * as HyperliquidSigner from './hyperliquid-signer';
 
 /**
  * 거래소 요청 서명기 인터페이스
@@ -145,6 +146,18 @@ const bitgetSigner: ExchangeSigner = {
 };
 
 /**
+ * 하이퍼리퀴드 서명기 어댑터
+ *
+ * hyperliquid-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ * 하이퍼리퀴드는 실제 서명을 수행하지 않으며, 요청 구성만 담당한다.
+ */
+const hyperliquidSigner: ExchangeSigner = {
+  signRequest: HyperliquidSigner.signRequest,
+  validateApiKey: HyperliquidSigner.validateApiKey,
+  getExchangeType: HyperliquidSigner.getExchangeType,
+};
+
+/**
  * 거래소 서명기 레지스트리
  *
  * ExchangeType을 키로 사용하여 해당 거래소의 서명기 인스턴스를 보관한다.
@@ -159,6 +172,7 @@ const signerRegistry: Record<ExchangeType, ExchangeSigner> = {
   okx: okxSigner,
   gate: gateSigner,
   bitget: bitgetSigner,
+  hyperliquid: hyperliquidSigner,
 };
 
 /**

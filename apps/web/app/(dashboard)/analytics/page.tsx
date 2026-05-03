@@ -51,14 +51,11 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
-  BarChart,
-  Bar,
-  Cell,
 } from 'recharts';
 import { useAccount } from 'wagmi';
-import type { ExchangeType, AggregationInterval, PortfolioSnapshot, SnapshotHolding, ReportType } from '@bitscope/shared';
-import { formatCompactKRW, formatPercent, formatKRW, EXCHANGE_CONFIGS } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import type { ExchangeType, AggregationInterval } from '@bitscope/shared';
+import { formatCompactKRW, formatPercent } from '@bitscope/shared';
+import { cn, getExchangeName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { usePortfolioStore } from '@/store/portfolio-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1050,7 +1047,7 @@ interface CoinRankingListProps {
 /**
  * 코인 수익률 랭킹 리스트 컴포넌트
  */
-function CoinRankingList({ coins, type, onSelectCoin }: CoinRankingListProps) {
+function CoinRankingList({ coins, type: _type, onSelectCoin }: CoinRankingListProps) {
   if (coins.length === 0) return null;
 
   return (
@@ -1127,7 +1124,7 @@ interface CoinDetailSectionProps {
  * @see 요구사항 4.8 (실현 손익 / 미실현 손익 구분)
  */
 function CoinDetailSection({ data, onBack }: CoinDetailSectionProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 매수가 대비 현재가 비율
   const priceChangeRate = data.avgBuyPrice > 0
@@ -1245,11 +1242,10 @@ function CoinDetailSection({ data, onBack }: CoinDetailSectionProps) {
                 </thead>
                 <tbody>
                   {data.exchanges.map((ex) => {
-                    const config = EXCHANGE_CONFIGS[ex.exchange];
                     return (
                       <tr key={ex.exchange} className="border-b border-border last:border-b-0">
                         <td className="px-4 py-2">
-                          <Badge variant="outline">{config?.nameKo ?? ex.exchange}</Badge>
+                          <Badge variant="outline">{getExchangeName(ex.exchange, locale)}</Badge>
                         </td>
                         <td className="px-4 py-2 text-right text-sm">
                           {ex.balance.toFixed(8).replace(/\.?0+$/, '')}
@@ -1306,14 +1302,14 @@ function BenchmarkSection({ aggregatedData, latestSnapshots }: BenchmarkSectionP
 
     // BTC 가격 변화를 스냅샷에서 추출 (사용 가능한 경우)
     // 첫 번째 스냅샷과 마지막 스냅샷의 BTC 보유 내역에서 현재가를 추출
-    let baseBtcPrice: number | null = null;
+    let _baseBtcPrice: number | null = null;
     if (latestSnapshots.length > 0) {
       // 가장 오래된 스냅샷에서 BTC 가격 검색
       const oldestSnapshot = latestSnapshots[latestSnapshots.length - 1];
       if (oldestSnapshot) {
         const btcHolding = oldestSnapshot.holdings.find((h) => h.symbol === 'BTC');
         if (btcHolding) {
-          baseBtcPrice = Number(btcHolding.currentPrice);
+          _baseBtcPrice = Number(btcHolding.currentPrice);
         }
       }
     }
@@ -1418,7 +1414,7 @@ function BenchmarkTooltip({
   active?: boolean;
   payload?: { name: string; value: number; color: string }[];
 }) {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   if (!active || !payload || payload.length === 0) return null;
 

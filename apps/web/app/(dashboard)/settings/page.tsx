@@ -66,7 +66,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { TelegramSection } from '@/components/settings/telegram-section';
 
 /** 거래소별 API Key 등록 상태 */
@@ -438,12 +437,51 @@ export default function SettingsPage() {
   );
 
   /**
+   * 하이퍼리퀴드 활성화/비활성화를 토글한다.
+   *
+   * 하이퍼리퀴드는 API Key가 필요 없으므로 지갑 주소를 accessKey로,
+   * 'none'을 secretKey로 저장하여 기존 아키텍처와 통합한다.
+   */
+  const handleHyperliquidToggle = useCallback(async () => {
+    if (!wallet.address) return;
+
+    const isRegistered = registeredKeys.some((k) => k.exchange === 'hyperliquid');
+
+    if (isRegistered) {
+      // 비활성화: 저장된 데이터 삭제
+      removeEncryptedKey(wallet.address, 'hyperliquid');
+      loadRegisteredKeys();
+      showNotification('success', t.apiKey.settingsPage.hyperliquidDisabled);
+    } else {
+      // 활성화: 지갑 주소를 accessKey로 저장
+      try {
+        const { key: encryptionKey, nonce } = await ensureEncryptionKey();
+        const apiKeyPair: ApiKeyPair = {
+          accessKey: wallet.address,
+          secretKey: 'none',
+        };
+        const encrypted = encryptApiKey(apiKeyPair, encryptionKey);
+        storeEncryptedKey(wallet.address, 'hyperliquid', encrypted, nonce);
+        loadRegisteredKeys();
+        showNotification('success', t.apiKey.settingsPage.hyperliquidEnabled);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : t.apiKey.settingsPage.registerFailed;
+        showNotification('error', message);
+      }
+    }
+  }, [wallet.address, registeredKeys, ensureEncryptionKey, loadRegisteredKeys, showNotification, t]);
+
+  /** 하이퍼리퀴드 활성화 여부 */
+  const isHyperliquidEnabled = registeredKeys.some((k) => k.exchange === 'hyperliquid');
+
+  /**
    * 등록 가능한 거래소 목록을 반환한다.
    *
-   * 이미 등록된 거래소를 제외하고 반환한다.
+   * 이미 등록된 거래소를 제외하고, 하이퍼리퀴드는 별도 섹션에서 관리하므로 제외한다.
    */
   const availableExchanges = SUPPORTED_EXCHANGES.filter(
-    (ex) => !registeredKeys.some((k) => k.exchange === ex),
+    (ex) => ex !== 'hyperliquid' && !registeredKeys.some((k) => k.exchange === ex),
   );
 
   return (
@@ -517,7 +555,8 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {registeredKeys.length === 0 && !showRegisterForm ? (
+        {/* 하이퍼리퀴드는 별도 섹션에서 관리하므로 목록에서 제외 */}
+        {registeredKeys.filter((k) => k.exchange !== 'hyperliquid').length === 0 && !showRegisterForm ? (
           /* 등록된 키가 없는 경우 */
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -543,7 +582,9 @@ export default function SettingsPage() {
         ) : (
           /* 등록된 키 목록 */
           <div className="space-y-3">
-            {registeredKeys.map((keyInfo) => (
+            {registeredKeys
+              .filter((keyInfo) => keyInfo.exchange !== 'hyperliquid')
+              .map((keyInfo) => (
               <RegisteredKeyCard
                 key={keyInfo.exchange}
                 keyInfo={keyInfo}
@@ -569,6 +610,43 @@ export default function SettingsPage() {
           t={t}
         />
       )}
+
+      {/* 하이퍼리퀴드 섹션 (API Key 불필요) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {t.apiKey.settingsPage.hyperliquidTitle}
+          </CardTitle>
+          <CardDescription>
+            {t.apiKey.settingsPage.hyperliquidDescription}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline">{t.apiKey.settingsPage.hyperliquidNoApiKey}</Badge>
+            <Badge variant="outline">{t.apiKey.settingsPage.hyperliquidWalletOnly}</Badge>
+            <Badge variant="outline">{t.apiKey.settingsPage.hyperliquidCurrency}</Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isHyperliquidEnabled ? (
+                <Badge variant="success">{t.apiKey.settingsPage.connected}</Badge>
+              ) : (
+                <Badge variant="secondary">{t.apiKey.settingsPage.disconnected}</Badge>
+              )}
+            </div>
+            <Button
+              variant={isHyperliquidEnabled ? 'outline' : 'default'}
+              size="sm"
+              onClick={handleHyperliquidToggle}
+            >
+              {isHyperliquidEnabled
+                ? t.apiKey.settingsPage.hyperliquidDisable
+                : t.apiKey.settingsPage.hyperliquidEnable}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* API 키 발급 가이드 */}
       <Card>

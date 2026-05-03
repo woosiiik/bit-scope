@@ -29,18 +29,14 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
-  TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import type { ExchangeType } from '@bitscope/shared';
 import {
   MAJOR_COINS,
   MAJOR_COIN_SYMBOLS,
-  EXCHANGE_CONFIGS,
-  SUPPORTED_EXCHANGES,
   formatCompactKRW,
 } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { cn, getCoinName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { useWatchlist } from '@/hooks/useWatchlist';
@@ -55,7 +51,7 @@ import {
   FormattedPrice,
   FormattedPercent,
 } from '@/components/ui/formatted-number';
-import { Skeleton, TableRowSkeleton } from '@/components/ui/skeleton';
+import { TableRowSkeleton } from '@/components/ui/skeleton';
 
 // ===== 상수 =====
 
@@ -395,7 +391,7 @@ function AddCoinSection({
   tickerData,
   getPricesBySymbol,
 }: AddCoinSectionProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 검색 필터 적용된 코인 목록
   const filteredCoins = useMemo(() => {
@@ -405,10 +401,9 @@ function AddCoinSection({
     return MAJOR_COINS.filter(
       (coin) =>
         coin.symbol.includes(query) ||
-        coin.nameKo.includes(searchQuery.trim()) ||
-        coin.nameEn.toUpperCase().includes(query),
+        getCoinName(coin, locale).toUpperCase().includes(query),
     );
-  }, [searchQuery]);
+  }, [searchQuery, locale]);
 
   return (
     <Card>
@@ -488,7 +483,7 @@ function AddCoinSection({
                     ? 'border-primary/30 bg-primary/5 cursor-default'
                     : 'border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer',
                 )}
-                aria-label={`${coin.symbol} ${coin.nameKo}`}
+                aria-label={`${coin.symbol} ${getCoinName(coin, locale)}`}
               >
                 <div className="flex items-center gap-3">
                   {inWatchlist ? (
@@ -498,7 +493,7 @@ function AddCoinSection({
                   )}
                   <div>
                     <span className="font-semibold text-foreground">{coin.symbol}</span>
-                    <span className="ml-1.5 text-xs text-muted-foreground">{coin.nameKo}</span>
+                    <span className="ml-1.5 text-xs text-muted-foreground">{getCoinName(coin, locale)}</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -647,8 +642,8 @@ interface WatchlistTableRowProps {
  *
  * 코인 심볼, 현재가, 24시간 변동률, 거래량, 액션 버튼을 표시한다.
  */
-function WatchlistTableRow({ item, onRemove, walletAddress }: WatchlistTableRowProps) {
-  const { t } = useTranslation();
+function WatchlistTableRow({ item, onRemove, walletAddress: _walletAddress }: WatchlistTableRowProps) {
+  const { t, locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === item.symbol);
   const [showAlertLink, setShowAlertLink] = useState(false);
 
@@ -665,7 +660,7 @@ function WatchlistTableRow({ item, onRemove, walletAddress }: WatchlistTableRowP
           <div className="flex flex-col">
             <span className="font-semibold text-foreground">{item.symbol}</span>
             {coinInfo && (
-              <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+              <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
             )}
           </div>
         </div>
@@ -749,8 +744,8 @@ interface WatchlistMobileCardProps {
  *
  * @see 요구사항 9.1 (모바일 최적화 레이아웃)
  */
-function WatchlistMobileCard({ item, onRemove, walletAddress }: WatchlistMobileCardProps) {
-  const { t } = useTranslation();
+function WatchlistMobileCard({ item, onRemove, walletAddress: _walletAddress }: WatchlistMobileCardProps) {
+  const { t, locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === item.symbol);
 
   return (
@@ -761,7 +756,7 @@ function WatchlistMobileCard({ item, onRemove, walletAddress }: WatchlistMobileC
           <Star className="h-4 w-4 fill-primary text-primary shrink-0" aria-hidden="true" />
           <span className="font-semibold text-foreground">{item.symbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
         </div>
         {item.changeRate !== null ? (

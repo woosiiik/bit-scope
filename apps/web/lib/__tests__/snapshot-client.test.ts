@@ -20,7 +20,6 @@ import type {
   AggregatedPortfolio,
   ExchangePortfolio,
   Holding,
-  MergedHolding,
 } from '@bitscope/shared';
 
 // ===== fetch 모킹 =====

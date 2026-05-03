@@ -9,7 +9,6 @@
  */
 
 import type {
-  ExchangeType,
   Holding,
   ExchangePortfolio,
   MergedHolding,

@@ -38,8 +38,9 @@ import {
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS, SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
+import type { WalletSummary } from '@/lib/api-client';
+import { cn, getExchangeName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -56,7 +57,7 @@ import {
   FormattedQuantity,
   ProfitLossIndicator,
 } from '@/components/ui/formatted-number';
-import { DashboardSkeleton, CardSkeleton, TableRowSkeleton } from '@/components/ui/skeleton';
+import { DashboardSkeleton } from '@/components/ui/skeleton';
 import { ErrorDisplay, ExchangeErrorBadge } from '@/components/ui/error-display';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AssetDistributionCharts } from '@/components/charts';
@@ -68,7 +69,7 @@ import { usePortfolioStore } from '@/store/portfolio-store';
 
 export default function DashboardPage() {
   const { address } = useAccount();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { signMessage } = useWalletAuth();
   const walletAddress = address ?? '';
 
@@ -169,7 +170,7 @@ export default function DashboardPage() {
     // 필터 레이블 생성
     const labels: string[] = [];
     if (portfolio.filter.exchanges && portfolio.filter.exchanges.length > 0) {
-      const names = portfolio.filter.exchanges.map((e) => EXCHANGE_CONFIGS[e]?.nameKo ?? e);
+      const names = portfolio.filter.exchanges.map((e) => getExchangeName(e, locale));
       labels.push(names.join(', '));
     }
 
@@ -290,6 +291,12 @@ export default function DashboardPage() {
         lastUpdated={portfolio.lastUpdated}
         isLoading={portfolio.isLoading}
         onRefresh={portfolio.refetchAll}
+      />
+
+      {/* 거래소 필터 (맨 위) */}
+      <ExchangeFilterBar
+        filter={portfolio.filter}
+        onFilterChange={portfolio.setFilter}
       />
 
       {/* 거래소별 오류 배지 */}
@@ -430,7 +437,7 @@ interface ExchangeErrorBadgesProps {
  * @see 요구사항 2.6 (거래소 오류 시 마지막 성공 시점 데이터 표시)
  */
 function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const errorExchanges = Object.values(exchangeStates).filter(
     (s) => s?.errorMessage,
   );
@@ -441,11 +448,10 @@ function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesPro
     <div className="flex flex-wrap gap-2" role="status" aria-label={t.dashboard.exchangeConnectionStatus}>
       {errorExchanges.map((state) => {
         if (!state) return null;
-        const config = EXCHANGE_CONFIGS[state.exchange];
         return (
           <div key={state.exchange} className="flex items-center gap-1">
             <ExchangeErrorBadge
-              exchangeName={config?.nameKo ?? state.exchange}
+              exchangeName={getExchangeName(state.exchange, locale)}
               lastUpdated={state.lastUpdated ?? undefined}
             />
             <Button
@@ -453,7 +459,7 @@ function ExchangeErrorBadges({ exchangeStates, onRetry }: ExchangeErrorBadgesPro
               size="sm"
               className="h-6 px-1.5 text-xs"
               onClick={() => onRetry(state.exchange)}
-              aria-label={t.dashboard.exchangeRetry(config?.nameKo ?? state.exchange)}
+              aria-label={t.dashboard.exchangeRetry(getExchangeName(state.exchange, locale))}
             >
               <RefreshCw className="h-3 w-3" aria-hidden="true" />
             </Button>
@@ -571,7 +577,7 @@ function SummaryCards({
 
 interface ExchangeAssetSummaryProps {
   exchangeStates: ReturnType<typeof usePortfolio>['exchangeStates'];
-  walletSummaries: Partial<Record<ExchangeType, import('@/lib/api-client').WalletSummary>>;
+  walletSummaries: Partial<Record<ExchangeType, WalletSummary>>;
 }
 
 /**
@@ -583,7 +589,7 @@ interface ExchangeAssetSummaryProps {
  * - 해외 거래소(바이낸스/Gate/Bitget): Spot 합계만 표시(USDT) + KRW 환산
  */
 function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAssetSummaryProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 등록된 거래소만 필터링 (데이터가 있는 거래소)
   const registeredExchanges = SUPPORTED_EXCHANGES.filter(
@@ -595,111 +601,207 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">
-          {t.dashboard.exchangeAssetSummary}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <div className="space-y-2">
+      <h3 className="text-base font-semibold text-foreground">
+        {t.dashboard.exchangeAssetSummary}
+      </h3>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {registeredExchanges.map((exchange) => {
           const state = exchangeStates[exchange];
           if (!state?.data) return null;
 
-          const config = EXCHANGE_CONFIGS[exchange];
           const isDomestic = (DOMESTIC_EXCHANGES as readonly string[]).includes(exchange);
-          const isForeign = (FOREIGN_EXCHANGES as readonly string[]).includes(exchange);
+          const dexList = DEX_EXCHANGES ?? [];
+          const isForeign = (FOREIGN_EXCHANGES as readonly string[]).includes(exchange)
+            || (dexList as readonly string[]).includes(exchange);
           const walletSummary = walletSummaries[exchange];
 
-          // 국내 거래소 총 자산 = 코인 평가금액 합계 + 원화 잔고
           const domesticTotal = isDomestic
             ? (state.data.holdings?.reduce((sum: number, h: { evaluationAmount?: number }) => sum + (h.evaluationAmount ?? 0), 0) ?? 0) + (state.data.krwBalance ?? 0)
             : 0;
 
           return (
-            <div
-              key={exchange}
-              className="flex flex-col gap-1 rounded-lg border border-border p-3"
-            >
-              {/* 거래소 이름 + 전체 합계 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">
-                    {config.nameKo}
+            <Card key={exchange} className="p-0">
+              <CardContent className="p-3">
+                {/* 거래소 이름 + 뱃지 */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-sm font-medium text-foreground truncate">
+                    {getExchangeName(exchange, locale)}
                   </span>
-                  {/* Unified 또는 Spot-only 뱃지 */}
                   {isForeign && walletSummary && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] px-1.5 py-0"
-                    >
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">
                       {walletSummary.wallets.length === 1 && walletSummary.wallets[0]?.name === 'Unified'
-                        ? t.dashboard.unifiedAccount
-                        : walletSummary.wallets.length === 1 && walletSummary.wallets[0]?.name === 'Spot'
-                          ? t.dashboard.spotOnly
-                          : t.dashboard.walletTotal}
+                        ? 'Unified'
+                        : walletSummary.wallets.some((w) => w.name === 'Futures')
+                          ? t.dashboard.spotAndFutures
+                          : 'Spot'}
                     </Badge>
                   )}
                 </div>
-                <div className="text-right">
+
+                {/* 금액 */}
+                <div>
                   {isDomestic ? (
-                    // 국내 거래소: 코인 평가금액 + 원화 잔고 합계
                     <FormattedCurrency
                       value={domesticTotal}
                       currency="KRW"
-                      className="font-semibold text-foreground"
+                      compact
+                      className="text-sm font-semibold text-foreground"
                     />
                   ) : isForeign && walletSummary ? (
-                    // 해외 거래소: USDT 합계 + KRW 환산
-                    <div className="flex flex-col items-end gap-0.5">
+                    <>
                       <FormattedCurrency
                         value={walletSummary.totalEquityUsdt}
                         currency="USD"
-                        className="font-semibold text-foreground"
+                        className="text-sm font-semibold text-foreground"
                       />
                       {state.data.krwBalance > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          {t.dashboard.approximateKrw(
-                            new Intl.NumberFormat('ko-KR', {
-                              style: 'currency',
-                              currency: 'KRW',
-                              maximumFractionDigits: 0,
-                            }).format(state.data.krwBalance),
-                          )}
-                        </span>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          ≈ {new Intl.NumberFormat('ko-KR', {
+                            style: 'currency',
+                            currency: 'KRW',
+                            maximumFractionDigits: 0,
+                            notation: 'compact',
+                          }).format(state.data.krwBalance)}
+                        </p>
                       )}
-                    </div>
+                    </>
                   ) : (
-                    // 해외 거래소이지만 walletSummary가 없는 경우 KRW 표시
                     <FormattedCurrency
                       value={state.data.krwBalance}
                       currency="KRW"
-                      className="font-semibold text-foreground"
+                      compact
+                      className="text-sm font-semibold text-foreground"
                     />
                   )}
                 </div>
-              </div>
 
-              {/* 해외 거래소: 지갑별 상세 (2개 이상 지갑이 있을 때만) */}
-              {isForeign && walletSummary && walletSummary.wallets.length > 1 && (
-                <div className="flex flex-wrap gap-3 pl-2 text-xs text-muted-foreground">
-                  {walletSummary.wallets.map((wallet) => (
-                    <span key={wallet.name} className="flex items-center gap-1">
-                      <span className="font-medium">{wallet.name}</span>
-                      <FormattedCurrency
-                        value={wallet.balanceUsdt}
-                        currency="USD"
-                        className="text-xs"
-                      />
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+                {/* 해외 거래소: 지갑별 상세 (2개 이상) */}
+                {isForeign && walletSummary && walletSummary.wallets.length > 1 && (
+                  <div className="mt-1.5 pt-1.5 border-t border-border space-y-0.5">
+                    {walletSummary.wallets.map((wallet) => (
+                      <div key={wallet.name} className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>{wallet.name}</span>
+                        <FormattedCurrency value={wallet.balanceUsdt} currency="USD" className="text-[10px]" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+  );
+}
+
+// ----- 거래소 필터 바 (화면 상단) -----
+
+interface ExchangeFilterBarProps {
+  filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' };
+  onFilterChange: (filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' }) => void;
+}
+
+/**
+ * 거래소 필터 바
+ *
+ * 그룹 필터(전체/국내/해외/DEX) + 개별 거래소 필터를 제공한다.
+ * 대시보드 헤더 바로 아래에 배치된다.
+ */
+function ExchangeFilterBar({ filter, onFilterChange }: ExchangeFilterBarProps) {
+  const { t, locale } = useTranslation();
+
+  /** 그룹 필터 핸들러 */
+  const handleGroupFilter = useCallback(
+    (group: 'all' | 'domestic' | 'foreign' | 'dex') => {
+      if (group === 'all') {
+        onFilterChange({ ...filter, exchanges: undefined });
+      } else {
+        const domestic = DOMESTIC_EXCHANGES ?? [];
+        const foreign = FOREIGN_EXCHANGES ?? [];
+        const dex = DEX_EXCHANGES ?? [];
+        const exchanges = group === 'domestic'
+          ? [...domestic]
+          : group === 'foreign'
+            ? [...foreign]
+            : [...dex];
+        onFilterChange({ ...filter, exchanges: exchanges as ExchangeType[] });
+      }
+    },
+    [filter, onFilterChange],
+  );
+
+  /** 개별 거래소 토글 */
+  const handleExchangeToggle = useCallback(
+    (exchange: ExchangeType) => {
+      const current = filter.exchanges ?? [];
+      const isSelected = current.includes(exchange);
+      const newExchanges = isSelected
+        ? current.filter((e) => e !== exchange)
+        : [...current, exchange];
+      onFilterChange({ ...filter, exchanges: newExchanges.length > 0 ? newExchanges : undefined });
+    },
+    [filter, onFilterChange],
+  );
+
+  /** 현재 활성 그룹 계산 */
+  const activeGroup = useMemo(() => {
+    if (!filter.exchanges) return 'all';
+    const selected = new Set(filter.exchanges);
+    if (selected.size === 0) return 'all';
+    const domestic = DOMESTIC_EXCHANGES ?? [];
+    const foreign = FOREIGN_EXCHANGES ?? [];
+    const dex = DEX_EXCHANGES ?? [];
+    if (domestic.length > 0 && domestic.every((e) => selected.has(e)) && selected.size === domestic.length) return 'domestic';
+    if (foreign.length > 0 && foreign.every((e) => selected.has(e)) && selected.size === foreign.length) return 'foreign';
+    if (dex.length > 0 && dex.every((e) => selected.has(e)) && selected.size === dex.length) return 'dex';
+    return null;
+  }, [filter.exchanges]);
+
+  const groups = [
+    { key: 'all' as const, label: t.dashboard.allLabel },
+    { key: 'domestic' as const, label: t.dashboard.domesticLabel },
+    { key: 'foreign' as const, label: t.dashboard.foreignLabel },
+    { key: 'dex' as const, label: t.dashboard.dexLabel },
+  ];
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* 그룹 필터 */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {groups.map((group) => (
+          <Button
+            key={group.key}
+            variant={activeGroup === group.key ? 'default' : 'outline'}
+            size="sm"
+            className="h-7 px-3 text-xs"
+            onClick={() => handleGroupFilter(group.key)}
+          >
+            {group.label}
+          </Button>
+        ))}
+        <div className="w-px h-5 bg-border mx-1" />
+        {/* 개별 거래소 필터 */}
+        {SUPPORTED_EXCHANGES.map((exchange) => {
+          const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
+          return (
+            <Button
+              key={exchange}
+              variant={isActive ? 'secondary' : 'ghost'}
+              size="sm"
+              className={cn(
+                'h-6 px-2 text-[11px]',
+                !isActive && 'opacity-40',
+              )}
+              onClick={() => handleExchangeToggle(exchange)}
+            >
+              {getExchangeName(exchange, locale)}
+            </Button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -722,15 +824,15 @@ interface TableControlsProps {
  * @see 요구사항 2.10 (필터 적용)
  */
 function TableControls({
-  viewMode,
-  sortCriteria,
-  sortDirection,
+  viewMode: _viewMode,
+  sortCriteria: _sortCriteria,
+  sortDirection: _sortDirection,
   filter,
-  onViewModeChange,
-  onToggleSort,
+  onViewModeChange: _onViewModeChange,
+  onToggleSort: _onToggleSort,
   onFilterChange,
 }: TableControlsProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   /** 수익/손실 필터 버튼 핸들러 */
   const handleProfitLossFilter = useCallback(
@@ -762,7 +864,6 @@ function TableControls({
       <div className="flex flex-wrap items-center gap-2">
         {/* 거래소 필터 */}
         {SUPPORTED_EXCHANGES.map((exchange) => {
-          const config = EXCHANGE_CONFIGS[exchange];
           const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
           return (
             <Button
@@ -772,9 +873,9 @@ function TableControls({
               className="h-7 px-2 text-xs"
               onClick={() => handleExchangeFilter(exchange)}
               aria-pressed={isActive}
-              aria-label={t.dashboard.exchangeFilter(config.nameKo)}
+              aria-label={t.dashboard.exchangeFilter(getExchangeName(exchange, locale))}
             >
-              {config.nameKo}
+              {getExchangeName(exchange, locale)}
             </Button>
           );
         })}
@@ -888,7 +989,7 @@ function HoldingsTable({
   sortCriteria,
   sortDirection,
   isLoading,
-  loadingStates,
+  loadingStates: _loadingStates,
   onToggleSort,
   onSelectCoin,
 }: HoldingsTableProps) {
@@ -1027,6 +1128,8 @@ interface HoldingRowProps {
  * @see 요구사항 2.3 (동일 코인 다중 거래소 보유 시 통합 + 개별 내역)
  */
 function HoldingRow({ holding, onSelect }: HoldingRowProps) {
+  const { locale } = useTranslation();
+
   return (
     <tr
       className="border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"
@@ -1052,7 +1155,7 @@ function HoldingRow({ holding, onSelect }: HoldingRowProps) {
                 variant="secondary"
                 className="text-[10px] px-1.5 py-0"
               >
-                {EXCHANGE_CONFIGS[ex.exchange]?.nameKo ?? ex.exchange}
+                {getExchangeName(ex.exchange, locale)}
               </Badge>
             ))}
           </div>
@@ -1103,7 +1206,7 @@ interface HoldingCardProps {
  * @see 요구사항 9.1 (모바일에 최적화된 레이아웃)
  */
 function HoldingCard({ holding, onSelect }: HoldingCardProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <button
@@ -1123,7 +1226,7 @@ function HoldingCard({ holding, onSelect }: HoldingCardProps) {
                 variant="secondary"
                 className="text-[10px] px-1 py-0"
               >
-                {EXCHANGE_CONFIGS[ex.exchange]?.nameKo?.[0] ?? ex.exchange[0]}
+                {getExchangeName(ex.exchange, locale)[0]}
               </Badge>
             ))}
           </div>
@@ -1195,7 +1298,7 @@ interface CoinDetailViewProps {
  * @see 요구사항 2.8 (특정 코인 선택 시 거래소별 보유 상세 비교)
  */
 function CoinDetailView({ coinSummary, onBack }: CoinDetailViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <Card>
@@ -1276,7 +1379,6 @@ function CoinDetailView({ coinSummary, onBack }: CoinDetailViewProps) {
             </thead>
             <tbody>
               {coinSummary.exchanges.map((ex) => {
-                const config = EXCHANGE_CONFIGS[ex.exchange];
                 return (
                   <tr
                     key={ex.exchange}
@@ -1284,7 +1386,7 @@ function CoinDetailView({ coinSummary, onBack }: CoinDetailViewProps) {
                   >
                     <td className="px-4 py-2">
                       <Badge variant="outline">
-                        {config?.nameKo ?? ex.exchange}
+                        {getExchangeName(ex.exchange, locale)}
                       </Badge>
                     </td>
                     <td className="px-4 py-2 text-right">

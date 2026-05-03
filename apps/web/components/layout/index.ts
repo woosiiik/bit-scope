@@ -5,7 +5,7 @@
  */
 
 export { AppShell } from './app-shell';
-export { SidebarNav, navigationItems, isActiveRoute, type NavItem } from './sidebar-nav';
-export { BottomTabNav, mobileTabItems } from './bottom-tab-nav';
+export { SidebarNav, isActiveRoute, type NavItem } from './sidebar-nav';
+export { BottomTabNav } from './bottom-tab-nav';
 export { Header } from './header';
 export { WalletButton } from './wallet-button';

@@ -73,6 +73,14 @@ export interface BinanceOrderItem {
   time: number;
 }
 
+/** 바이낸스 USD-M Futures 잔고 항목 (GET /fapi/v2/balance) */
+export interface BinanceFuturesBalanceItem {
+  asset: string;
+  balance: string;
+  crossWalletBalance: string;
+  availableBalance: string;
+}
+
 // ===== 정규화 함수 =====
 
 /**
@@ -316,4 +324,40 @@ export function normalizeBinanceOrderHistory(rawResponse: unknown): NormalizedOr
     orders,
     timestamp: Date.now(),
   };
+}
+
+/**
+ * 바이낸스 USD-M Futures 잔고 응답에서 USDT 합계를 추출한다.
+ *
+ * GET /fapi/v2/balance 응답은 [{ asset, balance, crossWalletBalance, ... }, ...] 형태이다.
+ * USDT 등 스테이블코인의 balance를 합산하여 Futures 총 잔고를 반환한다.
+ *
+ * @param rawResponse 바이낸스 /fapi/v2/balance API 원본 응답
+ * @returns Futures 총 잔고 (USDT 합계)
+ */
+export function normalizeBinanceFuturesBalance(rawResponse: unknown): number {
+  const items = rawResponse as BinanceFuturesBalanceItem[];
+
+  if (!Array.isArray(items)) {
+    return 0;
+  }
+
+  let totalUsdt = 0;
+
+  for (const item of items) {
+    const balance = parseFloat(item.balance) || 0;
+
+    // balance가 0인 자산은 건너뛴다
+    if (balance <= 0) {
+      continue;
+    }
+
+    // 스테이블코인(USDT, USDC, BUSD 등)의 balance를 합산한다
+    // Futures 계좌는 마진 자산이 USDT/USDC 등이므로 이 값이 곧 Futures 잔고이다
+    if (['USDT', 'USDC', 'BUSD', 'FDUSD'].includes(item.asset)) {
+      totalUsdt += balance;
+    }
+  }
+
+  return totalUsdt;
 }

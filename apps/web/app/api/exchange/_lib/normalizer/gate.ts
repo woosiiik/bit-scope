@@ -69,6 +69,15 @@ export interface GateOrderItem {
   create_time: string;
 }
 
+/** Gate.io Futures USDT 계좌 응답 (GET /api/v4/futures/usdt/accounts) */
+export interface GateFuturesAccountResponse {
+  total: string;
+  unrealised_pnl: string;
+  position_margin: string;
+  order_margin: string;
+  available: string;
+}
+
 // ===== 정규화 함수 =====
 
 /**
@@ -333,4 +342,23 @@ export function normalizeGateOrderHistory(rawResponse: unknown): NormalizedOrder
     orders,
     timestamp: Date.now(),
   };
+}
+
+/**
+ * Gate.io Futures USDT 계좌 응답에서 total 값을 추출한다.
+ *
+ * GET /api/v4/futures/usdt/accounts 응답의 total 필드가
+ * Futures 계좌의 전체 USDT 잔고이다.
+ *
+ * @param rawResponse Gate.io /api/v4/futures/usdt/accounts API 원본 응답
+ * @returns Futures 총 잔고 (USDT)
+ */
+export function normalizeGateFuturesBalance(rawResponse: unknown): number {
+  const response = rawResponse as GateFuturesAccountResponse;
+
+  if (!response || typeof response.total !== 'string') {
+    return 0;
+  }
+
+  return parseFloat(response.total) || 0;
 }

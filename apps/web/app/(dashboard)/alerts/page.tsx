@@ -21,7 +21,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Bell,
@@ -29,7 +29,6 @@ import {
   BellOff,
   Plus,
   Trash2,
-  ArrowUpDown,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -44,11 +43,10 @@ import {
 } from 'lucide-react';
 import type { AlertCondition, ExchangeType } from '@bitscope/shared';
 import {
-  EXCHANGE_CONFIGS,
   SUPPORTED_EXCHANGES,
   MAJOR_COINS,
 } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { cn, getExchangeName, getCoinName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import {
@@ -67,7 +65,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton, TableRowSkeleton } from '@/components/ui/skeleton';
+import { TableRowSkeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // ===== 상수 =====
@@ -400,7 +398,7 @@ function CreateAlertForm({
   onSubmit,
   onCancel,
 }: CreateAlertFormProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 폼 상태
   const [symbol, setSymbol] = useState('');
@@ -416,7 +414,9 @@ function CreateAlertForm({
     e.preventDefault();
 
     const parsedValue = parseFloat(targetValue);
-    if (!symbol || isNaN(parsedValue) || parsedValue < 0) return;
+    if (!symbol || isNaN(parsedValue)) return;
+    // 가격 알림은 0 이상만, 김프 알림은 음수도 허용
+    if (type === 'price' && parsedValue < 0) return;
 
     onSubmit({
       symbol: symbol.toUpperCase(),
@@ -430,7 +430,7 @@ function CreateAlertForm({
     symbol.trim() !== '' &&
     targetValue.trim() !== '' &&
     !isNaN(parseFloat(targetValue)) &&
-    parseFloat(targetValue) >= 0;
+    (type === 'premium' || parseFloat(targetValue) >= 0);
 
   return (
     <Card>
@@ -459,7 +459,7 @@ function CreateAlertForm({
                 <option value="">{t.alert.selectCoin}</option>
                 {MAJOR_COINS.map((coin) => (
                   <option key={coin.symbol} value={coin.symbol}>
-                    {coin.symbol} - {coin.nameKo}
+                    {coin.symbol} - {getCoinName(coin, locale)}
                   </option>
                 ))}
               </select>
@@ -482,7 +482,7 @@ function CreateAlertForm({
                   <option value="">{t.alert.allExchanges}</option>
                   {SUPPORTED_EXCHANGES.map((ex) => (
                     <option key={ex} value={ex}>
-                      {EXCHANGE_CONFIGS[ex].nameKo}
+                      {getExchangeName(ex, locale)}
                     </option>
                   ))}
                 </select>
@@ -520,7 +520,7 @@ function CreateAlertForm({
                 id="alert-target"
                 type="number"
                 step={type === 'price' ? '1' : '0.01'}
-                min="0"
+                min={type === 'price' ? '0' : undefined}
                 placeholder={
                   type === 'price'
                     ? t.alert.enterTargetPrice
@@ -664,13 +664,13 @@ interface AlertTableRowProps {
  * 알림 테이블의 개별 행 (데스크톱)
  */
 function AlertTableRow({ alert, onToggleActive, onDelete }: AlertTableRowProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const isPremium = alert.condition === 'premium_above' || alert.condition === 'premium_below';
   const conditionLabel = getConditionLabel(alert.condition as AlertCondition, t);
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === alert.symbol);
   const exchangeName = alert.exchange
-    ? EXCHANGE_CONFIGS[alert.exchange as ExchangeType]?.nameKo ?? alert.exchange
+    ? getExchangeName(alert.exchange as ExchangeType, locale)
     : t.alert.allExchanges;
 
   return (
@@ -690,7 +690,7 @@ function AlertTableRow({ alert, onToggleActive, onDelete }: AlertTableRowProps) 
         <div className="flex flex-col">
           <span className="font-semibold text-foreground">{alert.symbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
         </div>
       </td>
@@ -773,13 +773,13 @@ interface AlertMobileCardProps {
  * 모바일 환경에서 알림 정보를 카드 형태로 표시한다.
  */
 function AlertMobileCard({ alert, onToggleActive, onDelete }: AlertMobileCardProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const isPremium = alert.condition === 'premium_above' || alert.condition === 'premium_below';
   const conditionLabel = getConditionLabel(alert.condition as AlertCondition, t);
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === alert.symbol);
   const exchangeName = alert.exchange
-    ? EXCHANGE_CONFIGS[alert.exchange as ExchangeType]?.nameKo ?? alert.exchange
+    ? getExchangeName(alert.exchange as ExchangeType, locale)
     : t.alert.allExchanges;
 
   return (
@@ -789,7 +789,7 @@ function AlertMobileCard({ alert, onToggleActive, onDelete }: AlertMobileCardPro
         <div className="flex items-center gap-2">
           <span className="font-semibold text-foreground">{alert.symbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
           <Badge variant={isPremium ? 'secondary' : 'outline'} className="text-[10px]">
             {isPremium ? t.alert.premiumAlert : t.alert.priceAlert}
@@ -958,6 +958,7 @@ interface AlertHistoryRowProps {
  * 알림 이력 테이블 행 (데스크톱)
  */
 function AlertHistoryRow({ item }: AlertHistoryRowProps) {
+  const { locale } = useTranslation();
   const triggeredDate = new Date(item.triggeredAt);
   const formattedDate = triggeredDate.toLocaleString('ko-KR', {
     year: 'numeric',
@@ -983,7 +984,7 @@ function AlertHistoryRow({ item }: AlertHistoryRowProps) {
         <div className="flex flex-col">
           <span className="font-semibold text-foreground">{alertSymbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
         </div>
       </td>

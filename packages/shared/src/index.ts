@@ -75,6 +75,7 @@ export {
   SUPPORTED_EXCHANGES,
   DOMESTIC_EXCHANGES,
   FOREIGN_EXCHANGES,
+  DEX_EXCHANGES,
   DEFAULT_CACHE_TTL_MS,
   DEFAULT_REFRESH_INTERVAL_MS,
   COINONE_POLLING_INTERVAL_MS,
@@ -98,6 +99,9 @@ export {
   // Bitget 설정 (포트폴리오 + 김치 프리미엄 비교용)
   BITGET_CONFIG,
   BITGET_ENDPOINTS,
+  // 하이퍼리퀴드 설정 (포트폴리오 - API Key 불필요, 지갑 주소로 조회)
+  HYPERLIQUID_CONFIG,
+  HYPERLIQUID_ENDPOINTS,
   // 코인 심볼
   MAJOR_COINS,
   MAJOR_COIN_SYMBOLS,
@@ -135,6 +139,7 @@ export {
   validateOkxApiKeyFormat,
   validateGateApiKeyFormat,
   validateBitgetApiKeyFormat,
+  validateHyperliquidApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

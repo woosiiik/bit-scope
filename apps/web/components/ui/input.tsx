@@ -11,7 +11,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /** Input 컴포넌트 Props */
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type InputProps = React.ComponentProps<"input">;
 
 /**
  * 범용 Input 컴포넌트

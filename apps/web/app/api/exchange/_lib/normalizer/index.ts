@@ -46,6 +46,7 @@ import {
   normalizeBinanceTicker,
   normalizeBinanceOrderbook,
   normalizeBinanceOrderHistory,
+  normalizeBinanceFuturesBalance,
 } from './binance';
 
 import {
@@ -67,6 +68,7 @@ import {
   normalizeGateTicker,
   normalizeGateOrderbook,
   normalizeGateOrderHistory,
+  normalizeGateFuturesBalance,
 } from './gate';
 
 import {
@@ -74,7 +76,15 @@ import {
   normalizeBitgetTicker,
   normalizeBitgetOrderbook,
   normalizeBitgetOrderHistory,
+  normalizeBitgetFuturesBalance,
 } from './bitget';
+
+import {
+  normalizeHyperliquidBalance,
+  normalizeHyperliquidTicker,
+  normalizeHyperliquidOrderbook,
+  normalizeHyperliquidOrderHistory,
+} from './hyperliquid';
 
 // 타입 re-export
 export type {
@@ -119,6 +129,8 @@ export function normalizeBalance(
       return normalizeGateBalance(rawResponse);
     case 'bitget':
       return normalizeBitgetBalance(rawResponse);
+    case 'hyperliquid':
+      return normalizeHyperliquidBalance(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -158,6 +170,8 @@ export function normalizeTicker(
       return normalizeGateTicker(rawResponse);
     case 'bitget':
       return normalizeBitgetTicker(rawResponse);
+    case 'hyperliquid':
+      return normalizeHyperliquidTicker(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -195,8 +209,36 @@ export function normalizeOrderbook(
       return normalizeGateOrderbook(rawResponse);
     case 'bitget':
       return normalizeBitgetOrderbook(rawResponse);
+    case 'hyperliquid':
+      return normalizeHyperliquidOrderbook(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
+  }
+}
+
+/**
+ * 거래소별 Futures 잔고 응답에서 USDT 합계를 추출한다.
+ *
+ * 바이낸스, Gate.io, Bitget의 Futures 잔고 API 응답을 파싱하여
+ * USDT 합계만 반환한다. Futures가 지원되지 않는 거래소는 0을 반환한다.
+ *
+ * @param exchange 거래소 식별자
+ * @param rawResponse 거래소 Futures API 원본 응답
+ * @returns Futures 총 잔고 (USDT)
+ */
+export function normalizeFuturesBalance(
+  exchange: ExchangeType,
+  rawResponse: unknown,
+): number {
+  switch (exchange) {
+    case 'binance':
+      return normalizeBinanceFuturesBalance(rawResponse);
+    case 'gate':
+      return normalizeGateFuturesBalance(rawResponse);
+    case 'bitget':
+      return normalizeBitgetFuturesBalance(rawResponse);
+    default:
+      return 0;
   }
 }
 
@@ -232,6 +274,8 @@ export function normalizeOrderHistory(
       return normalizeGateOrderHistory(rawResponse);
     case 'bitget':
       return normalizeBitgetOrderHistory(rawResponse);
+    case 'hyperliquid':
+      return normalizeHyperliquidOrderHistory(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }

@@ -24,69 +24,28 @@ import {
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/i18n-context';
 
 /** 네비게이션 메뉴 항목 정의 */
 export interface NavItem {
-  /** 메뉴 표시 텍스트 */
-  label: string;
+  /** i18n 키 (nav 섹션) */
+  labelKey: string;
   /** 링크 경로 */
   href: string;
   /** 아이콘 컴포넌트 */
   icon: React.ComponentType<{ className?: string }>;
-  /** 접근성 설명 */
-  ariaLabel?: string;
 }
 
-/** 기본 네비게이션 메뉴 목록 */
-export const navigationItems: NavItem[] = [
-  {
-    label: '대시보드',
-    href: '/',
-    icon: LayoutDashboard,
-    ariaLabel: '포트폴리오 대시보드',
-  },
-  {
-    label: '마켓',
-    href: '/market',
-    icon: TrendingUp,
-    ariaLabel: '실시간 마켓 시세',
-  },
-  {
-    label: '김치 프리미엄',
-    href: '/premium',
-    icon: BarChart3,
-    ariaLabel: '거래소 간 김치 프리미엄 분석',
-  },
-  {
-    label: '성과 분석',
-    href: '/analytics',
-    icon: LineChart,
-    ariaLabel: '포트폴리오 성과 분석',
-  },
-  {
-    label: '알림',
-    href: '/alerts',
-    icon: Bell,
-    ariaLabel: '가격 알림 관리',
-  },
-  {
-    label: '리포트',
-    href: '/reports',
-    icon: FileText,
-    ariaLabel: '리포트 및 데이터 내보내기',
-  },
-  {
-    label: '워치리스트',
-    href: '/watchlist',
-    icon: Star,
-    ariaLabel: '관심 코인 목록',
-  },
-  {
-    label: '설정',
-    href: '/settings',
-    icon: Settings,
-    ariaLabel: 'API 키 관리 및 설정',
-  },
+/** 네비게이션 메뉴 정의 (i18n 키 기반) */
+const NAV_ITEMS: NavItem[] = [
+  { labelKey: 'dashboard', href: '/', icon: LayoutDashboard },
+  { labelKey: 'market', href: '/market', icon: TrendingUp },
+  { labelKey: 'premium', href: '/premium', icon: BarChart3 },
+  { labelKey: 'analytics', href: '/analytics', icon: LineChart },
+  { labelKey: 'alerts', href: '/alerts', icon: Bell },
+  { labelKey: 'reports', href: '/reports', icon: FileText },
+  { labelKey: 'watchlist', href: '/watchlist', icon: Star },
+  { labelKey: 'settings', href: '/settings', icon: Settings },
 ];
 
 /** SidebarNav Props */
@@ -120,15 +79,17 @@ export function isActiveRoute(pathname: string, href: string): boolean {
  */
 export function SidebarNav({ className }: SidebarNavProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
+  const nav = t.nav as Record<string, string>;
 
   return (
     <aside
       className={cn(
-        'hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0',
+        'hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 z-50',
         'border-r border-sidebar-border bg-sidebar',
         className,
       )}
-      aria-label="메인 네비게이션"
+      aria-label={t.common.appName}
     >
       {/* 로고/서비스명 영역 */}
       <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
@@ -137,11 +98,12 @@ export function SidebarNav({ className }: SidebarNavProps) {
       </div>
 
       {/* 네비게이션 메뉴 목록 */}
-      <nav className="flex-1 overflow-y-auto py-4" aria-label="사이드바 메뉴">
+      <nav className="flex-1 overflow-y-auto py-4" aria-label={t.common.appName}>
         <ul className="space-y-1 px-3" role="list">
-          {navigationItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = isActiveRoute(pathname, item.href);
             const Icon = item.icon;
+            const label = nav[item.labelKey] ?? item.labelKey;
 
             return (
               <li key={item.href}>
@@ -154,11 +116,10 @@ export function SidebarNav({ className }: SidebarNavProps) {
                       ? 'bg-sidebar-accent text-sidebar-primary'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                   )}
-                  aria-label={item.ariaLabel || item.label}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  <span>{label}</span>
                 </Link>
               </li>
             );

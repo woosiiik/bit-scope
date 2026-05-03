@@ -24,8 +24,8 @@ export class UpdateAlertDto {
   /** 대상 거래소 (null이면 모든 거래소) */
   @IsOptional()
   @IsString()
-  @IsIn(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'], {
-    message: 'exchange는 upbit, bithumb, coinone, binance, bybit, okx, gate, bitget 중 하나여야 합니다.',
+  @IsIn(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'], {
+    message: 'exchange는 upbit, bithumb, coinone, binance, bybit, okx, gate, bitget, hyperliquid 중 하나여야 합니다.',
   })
   exchange?: string | null;
 

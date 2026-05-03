@@ -15,7 +15,7 @@
  * @see https://docs.coinone.co.kr/reference
  */
 
-import type { Holding, Ticker, Orderbook, OrderbookEntry } from '@bitscope/shared';
+import type { Holding, Ticker, OrderbookEntry } from '@bitscope/shared';
 import type {
   NormalizedBalance,
   NormalizedTicker,

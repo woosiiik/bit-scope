@@ -17,12 +17,13 @@
  * @see 요구사항 12.4 (응답 데이터 통일된 내부 데이터 모델 정규화)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import type { ExchangeType, SignedRequest } from '@bitscope/shared';
 import {
   SUPPORTED_EXCHANGES,
   EXCHANGE_CONFIGS,
   EXCHANGE_ENDPOINTS,
+  HYPERLIQUID_CONFIG,
 } from '@bitscope/shared';
 import { relayRequest } from '../../_lib/proxy';
 import { normalizeTicker } from '../../_lib/normalizer';
@@ -130,6 +131,11 @@ function buildTickerUrl(exchange: ExchangeType, symbols?: string[], upbitMarkets
       }
       return `${baseUrl}${endpoint}`;
     }
+    case 'hyperliquid': {
+      // 하이퍼리퀴드: POST /info로 처리하므로 URL은 기본값 사용
+      // 실제 시세 조회는 GET handler에서 별도 처리
+      return `${baseUrl}${endpoint}`;
+    }
     default:
       return `${baseUrl}${endpoint}`;
   }
@@ -184,6 +190,11 @@ export async function GET(
 
   // 거래소별 시세 조회 URL 생성
   const tickerUrl = buildTickerUrl(exchange, symbols, upbitMarkets);
+
+  // 하이퍼리퀴드 특수 처리: POST /info { type: "allMids" }
+  if (exchange === 'hyperliquid') {
+    return handleHyperliquidTicker();
+  }
 
   // 공개 API이므로 별도 서명 없이 직접 요청
   const signedRequest: SignedRequest = {
@@ -349,6 +360,62 @@ export async function POST(
         },
       },
       { status: 500 },
+    );
+  }
+}
+
+/**
+ * 하이퍼리퀴드 시세 조회 핸들러
+ *
+ * 하이퍼리퀴드는 POST /info { type: "allMids" }로 전체 시세를 조회한다.
+ * 다른 거래소와 달리 GET이 아닌 POST를 사용한다.
+ *
+ * @returns 정규화된 시세 데이터 또는 오류 응답
+ */
+async function handleHyperliquidTicker(): Promise<NextResponse> {
+  try {
+    const response = await fetch(`${HYPERLIQUID_CONFIG.restBaseUrl}/info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'allMids' }),
+      signal: AbortSignal.timeout(HYPERLIQUID_CONFIG.timeoutMs),
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: '하이퍼리퀴드 시세 조회에 실패했습니다.',
+            code: 'EXCHANGE_API_ERROR',
+            statusCode: response.status,
+          },
+        },
+        { status: 502 },
+      );
+    }
+
+    const data = await response.json();
+    const normalizedData = normalizeTicker('hyperliquid', data);
+
+    return NextResponse.json({
+      success: true,
+      data: normalizedData,
+      cached: false,
+    });
+  } catch (error) {
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: isTimeout
+            ? '하이퍼리퀴드 시세 조회 응답 시간이 초과되었습니다.'
+            : `하이퍼리퀴드 시세 조회 실패: ${error instanceof Error ? error.message : String(error)}`,
+          code: isTimeout ? 'TIMEOUT' : 'EXCHANGE_API_ERROR',
+        },
+      },
+      { status: 502 },
     );
   }
 }

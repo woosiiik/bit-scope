@@ -16,6 +16,7 @@
 import { BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { WalletButton } from './wallet-button';
 
 /** Header Props */
@@ -52,6 +53,7 @@ export function Header({ className }: HeaderProps) {
 
       {/* 우측 액션 영역 */}
       <div className="flex items-center gap-2">
+        <LanguageSwitcher />
         <ThemeToggle />
         <WalletButton />
       </div>

@@ -26,8 +26,11 @@ import type {
   SignedRequest,
   Ticker,
 } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS, FOREIGN_EXCHANGES } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
 import { createSigner } from './exchange/signer-factory';
+
+/** Futures 잔고 지원 거래소 목록 (Spot과 별도로 Futures 잔고를 조회해야 하는 거래소) */
+const FUTURES_SUPPORTED_EXCHANGES: readonly ExchangeType[] = ['binance', 'gate', 'bitget'] as const;
 
 // ===== Route Handler 응답 타입 =====
 
@@ -243,7 +246,8 @@ async function getUsdtKrwRate(): Promise<number> {
  * 해외 거래소인지 확인한다 (USDT 기준 잔고 → KRW 환산 필요).
  */
 function isForeignExchange(exchange: ExchangeType): boolean {
-  return (FOREIGN_EXCHANGES as readonly string[]).includes(exchange);
+  return (FOREIGN_EXCHANGES as readonly string[]).includes(exchange)
+    || (DEX_EXCHANGES as readonly string[]).includes(exchange);
 }
 
 // ===== 유효 마켓 심볼 필터링 =====
@@ -399,6 +403,30 @@ async function getValidKrwSymbols(
           }
         }
       }
+    } else if (exchange === 'hyperliquid') {
+      // 하이퍼리퀴드: POST /info { type: "meta" }로 마켓 목록 조회
+      // 응답: { universe: [{ name: "BTC", ... }, ...] }
+      // 하이퍼리퀴드는 별도 마켓 목록 API가 POST이므로 여기서 직접 호출
+      try {
+        const metaResponse = await fetch(`${config.restBaseUrl}/info`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'meta' }),
+        });
+        if (metaResponse.ok) {
+          const metaData = await metaResponse.json();
+          if (metaData?.universe && Array.isArray(metaData.universe)) {
+            for (const s of metaData.universe) {
+              if (s.name) {
+                krwSymbols.add(s.name.toUpperCase());
+              }
+            }
+          }
+        }
+      } catch {
+        // 마켓 조회 실패 시 모든 심볼을 유효한 것으로 간주
+        return symbols;
+      }
     }
 
     // 캐시 저장
@@ -407,7 +435,7 @@ async function getValidKrwSymbols(
     }
 
     return symbols.filter((s) => krwSymbols.has(s));
-  } catch (error) {
+  } catch {
     // CORS 오류 또는 네트워크 오류 시 모든 심볼을 유효한 것으로 간주
     return symbols;
   }
@@ -428,6 +456,15 @@ export function signBalanceRequest(
 ): SignedRequest {
   const signer = createSigner(exchange);
 
+  // 하이퍼리퀴드는 서명 없이 POST /info로 직접 요청한다
+  if (exchange === 'hyperliquid') {
+    return signer.signRequest({
+      method: 'POST',
+      endpoint: EXCHANGE_ENDPOINTS[exchange].balance,
+      apiKey,
+    });
+  }
+
   // 코인원 private API는 POST만 지원하므로 거래소별로 메서드를 분기한다.
   // 업비트, 빗썸 v2, 바이낸스, 바이빗은 GET 방식으로 전체 잔고를 반환한다.
   const method = exchange === 'coinone' ? 'POST' : 'GET';
@@ -440,6 +477,49 @@ export function signBalanceRequest(
   return signer.signRequest({
     method,
     endpoint: EXCHANGE_ENDPOINTS[exchange].balance,
+    queryParams,
+    apiKey,
+  });
+}
+
+/**
+ * 거래소별 서명 생성기를 통해 Futures 잔고 조회 요청에 대한 서명을 생성한다.
+ *
+ * 바이낸스, Gate.io, Bitget에 대해서만 Futures 잔고를 조회한다.
+ * - 바이낸스: GET /fapi/v2/balance (fapi.binance.com 도메인)
+ * - Gate.io: GET /api/v4/futures/usdt/accounts (같은 도메인)
+ * - Bitget: GET /api/v2/mix/account/accounts?productType=USDT-FUTURES (같은 도메인)
+ *
+ * 서명 방식은 각 거래소의 Spot과 동일하며, 엔드포인트와 Base URL만 다르다.
+ *
+ * @param exchange 거래소 식별자
+ * @param apiKey 복호화된 API Key 쌍
+ * @returns 서명된 요청, 또는 Futures 미지원 거래소인 경우 null
+ */
+export function signFuturesBalanceRequest(
+  exchange: ExchangeType,
+  apiKey: ApiKeyPair,
+): SignedRequest | null {
+  const futuresEndpoint = EXCHANGE_ENDPOINTS[exchange].futures;
+
+  if (!futuresEndpoint) {
+    return null;
+  }
+
+  if (!(FUTURES_SUPPORTED_EXCHANGES as readonly string[]).includes(exchange)) {
+    return null;
+  }
+
+  const signer = createSigner(exchange);
+
+  // Bitget Futures는 productType=USDT-FUTURES 쿼리 파라미터가 필수
+  const queryParams = exchange === 'bitget'
+    ? { productType: 'USDT-FUTURES' }
+    : undefined;
+
+  return signer.signRequest({
+    method: 'GET',
+    endpoint: futuresEndpoint,
     queryParams,
     apiKey,
   });
@@ -530,10 +610,65 @@ async function parseApiResponse<T>(
 }
 
 /**
+ * 거래소의 Futures 잔고(USDT 합계)를 조회한다.
+ *
+ * 바이낸스/Gate.io/Bitget에 대해서만 Futures 잔고를 조회한다.
+ * Futures용 서명을 생성하여 동일한 balance Route Handler에 전달하고,
+ * Route Handler에서 Futures API로 릴레이된 응답의 USDT 합계를 반환한다.
+ *
+ * Futures 조회 실패 시 0을 반환한다 (Graceful Degradation).
+ *
+ * @param exchange 거래소 식별자
+ * @param apiKey 복호화된 API Key 쌍
+ * @returns Futures 총 잔고 (USDT). 미지원 거래소이거나 실패 시 0.
+ */
+async function fetchFuturesBalance(
+  exchange: ExchangeType,
+  apiKey: ApiKeyPair,
+): Promise<number> {
+  const futuresSignedRequest = signFuturesBalanceRequest(exchange, apiKey);
+  if (!futuresSignedRequest) {
+    return 0;
+  }
+
+  try {
+    const url = buildRouteHandlerUrl(exchange, 'balance');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Balance-Type': 'futures',
+      },
+      body: JSON.stringify(futuresSignedRequest),
+    });
+
+    if (!response.ok) {
+      return 0;
+    }
+
+    const body = await response.json();
+    if (!body.success || !body.data) {
+      return 0;
+    }
+
+    // Route Handler에서 futuresBalanceUsdt 필드로 반환된다
+    return typeof body.data.futuresBalanceUsdt === 'number'
+      ? body.data.futuresBalanceUsdt
+      : 0;
+  } catch {
+    // Futures 조회 실패 시 0을 반환한다 (Graceful Degradation)
+    return 0;
+  }
+}
+
+/**
  * 거래소 잔고를 조회한다.
  *
  * 클라이언트에서 서명된 요청을 생성하여 Next.js Route Handler에 전달하고,
  * 정규화된 잔고 데이터를 반환한다.
+ *
+ * 바이낸스/Gate.io/Bitget의 경우 Spot과 Futures 잔고를 병렬로 조회하여
+ * walletSummary에 Spot + Futures 분리 표시한다.
  *
  * @param exchange 거래소 식별자
  * @param apiKey 복호화된 API Key 쌍
@@ -544,18 +679,29 @@ export async function fetchBalance(
   exchange: ExchangeType,
   apiKey: ApiKeyPair,
 ): Promise<BalanceResponse> {
-  // 1. 서명 생성
+  // Futures 잔고를 지원하는 거래소인지 확인
+  const supportsFutures = (FUTURES_SUPPORTED_EXCHANGES as readonly string[]).includes(exchange);
+
+  // 1. Spot 서명 생성
   const signedRequest = signBalanceRequest(exchange, apiKey);
 
-  // 2. Route Handler에 서명된 요청 전달
+  // 2. Spot 잔고 조회 (Futures 지원 거래소는 Futures도 병렬 조회)
   const url = buildRouteHandlerUrl(exchange, 'balance');
-  const response = await fetch(url, {
+  const spotPromise = fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(signedRequest),
   });
 
-  // 3. 응답 파싱 및 오류 처리
+  // Futures 잔고 병렬 조회 (바이낸스/Gate/Bitget만)
+  const futuresPromise = supportsFutures
+    ? fetchFuturesBalance(exchange, apiKey)
+    : Promise.resolve(0);
+
+  // Spot과 Futures를 병렬로 대기
+  const [response, futuresBalanceUsdt] = await Promise.all([spotPromise, futuresPromise]);
+
+  // 3. Spot 응답 파싱 및 오류 처리
   const apiResponse = await parseApiResponse<BalanceResponse>(response, exchange);
 
   if (!apiResponse.data) {
@@ -609,12 +755,28 @@ export async function fetchBalance(
       balanceData.holdings = balanceData.holdings.filter(
         (h) => validSymbolSet.has(h.symbol),
       );
-    } catch (error) {
+    } catch {
       // ticker 조회 실패 시 매수평균가를 현재가로 유지 (graceful degradation)
     }
   }
 
-  // 5. 해외 거래소의 USDT 기준 잔고를 KRW로 환산
+  // 5. Futures 잔고를 walletSummary에 병합
+  // Spot walletSummary는 normalizer에서 이미 생성되어 있으므로
+  // Futures 잔고가 있으면 walletSummary에 Futures 항목을 추가한다.
+  if (supportsFutures && futuresBalanceUsdt > 0) {
+    const existingWalletSummary = balanceData.walletSummary;
+    const spotUsdt = existingWalletSummary?.totalEquityUsdt ?? 0;
+
+    balanceData.walletSummary = {
+      totalEquityUsdt: spotUsdt + futuresBalanceUsdt,
+      wallets: [
+        ...(existingWalletSummary?.wallets ?? []),
+        { name: 'Futures', balanceUsdt: futuresBalanceUsdt },
+      ],
+    };
+  }
+
+  // 6. 해외 거래소의 USDT 기준 잔고를 KRW로 환산
   // 해외 거래소(바이낸스, 바이빗, OKX, Gate.io, Bitget)는 USDT 기준 시세이므로
   // 대시보드에서 국내 거래소(KRW 기준)와 합산하려면 KRW 환산이 필요하다.
   if (isForeignExchange(exchange)) {

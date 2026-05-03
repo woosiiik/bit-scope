@@ -16,7 +16,6 @@
  */
 
 import type {
-  ExchangeType,
   PortfolioSnapshot,
   SnapshotHolding,
   AggregatedPortfolio,

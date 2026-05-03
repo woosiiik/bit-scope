@@ -30,14 +30,13 @@ import {
 } from 'lucide-react';
 import type { ExchangeType, Ticker, Orderbook } from '@bitscope/shared';
 import {
-  EXCHANGE_CONFIGS,
   SUPPORTED_EXCHANGES,
   MAJOR_COIN_SYMBOLS,
   MAJOR_COINS,
   formatVolume,
   formatCompactKRW,
 } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { cn, getExchangeName, getCoinName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { useRealTimePrice } from '@/hooks/useRealTimePrice';
 import { usePriceStore } from '@/store/price-store';
@@ -68,7 +67,7 @@ const DEFAULT_EXCHANGE: ExchangeType = 'upbit';
 // ===== 마켓 페이지 메인 =====
 
 export default function MarketPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 상태
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,7 +123,7 @@ export default function MarketPage() {
     const query = searchQuery.trim().toUpperCase();
     // MAJOR_COINS에서 한글 이름도 검색 가능하도록 한다.
     const coinNameMap = new Map(
-      MAJOR_COINS.map((c) => [c.symbol, { nameKo: c.nameKo, nameEn: c.nameEn }]),
+      MAJOR_COINS.map((c) => [c.symbol, c]),
     );
 
     return enrichedTickers.filter((ticker) => {
@@ -132,11 +131,10 @@ export default function MarketPage() {
       const coinInfo = coinNameMap.get(symbol);
       return (
         symbol.includes(query) ||
-        coinInfo?.nameKo.includes(searchQuery.trim()) ||
-        coinInfo?.nameEn.toUpperCase().includes(query)
+        (coinInfo && getCoinName(coinInfo, locale).toUpperCase().includes(query))
       );
     });
-  }, [enrichedTickers, searchQuery]);
+  }, [enrichedTickers, searchQuery, locale]);
 
   // 하이라이트 데이터 계산
   const highlights = useMemo(() => {
@@ -206,7 +204,6 @@ export default function MarketPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           {SUPPORTED_EXCHANGES.map((exchange) => {
-            const config = EXCHANGE_CONFIGS[exchange];
             const isActive = selectedExchange === exchange;
             return (
               <Button
@@ -215,9 +212,9 @@ export default function MarketPage() {
                 size="sm"
                 onClick={() => setSelectedExchange(exchange)}
                 aria-pressed={isActive}
-                aria-label={`${config.nameKo} 시세 보기`}
+                aria-label={`${getExchangeName(exchange, locale)} 시세 보기`}
               >
-                {config.nameKo}
+                {getExchangeName(exchange, locale)}
               </Button>
             );
           })}
@@ -627,7 +624,8 @@ interface MarketTableRowProps {
  * 코인 심볼, 현재가, 24시간 변동률, 거래량을 한 줄로 표시한다.
  */
 function MarketTableRow({ ticker, onSelect }: MarketTableRowProps) {
-  // MAJOR_COINS에서 한글 이름을 찾는다.
+  const { locale } = useTranslation();
+  // MAJOR_COINS에서 코인 이름을 찾는다.
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === ticker.symbol);
 
   return (
@@ -649,7 +647,7 @@ function MarketTableRow({ ticker, onSelect }: MarketTableRowProps) {
         <div className="flex flex-col">
           <span className="font-semibold text-foreground">{ticker.symbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
         </div>
       </td>
@@ -689,6 +687,7 @@ interface MarketMobileCardProps {
  * @see 요구사항 9.1 (모바일 최적화 레이아웃)
  */
 function MarketMobileCard({ ticker, onSelect }: MarketMobileCardProps) {
+  const { locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === ticker.symbol);
 
   return (
@@ -703,7 +702,7 @@ function MarketMobileCard({ ticker, onSelect }: MarketMobileCardProps) {
         <div className="flex items-center gap-2">
           <span className="font-semibold text-foreground">{ticker.symbol}</span>
           {coinInfo && (
-            <span className="text-xs text-muted-foreground">{coinInfo.nameKo}</span>
+            <span className="text-xs text-muted-foreground">{getCoinName(coinInfo, locale)}</span>
           )}
         </div>
         <FormattedPercent
@@ -747,7 +746,7 @@ interface CoinDetailViewProps {
  * @see 요구사항 5.4 (가격 차트, 호가 정보, 최근 체결 내역)
  */
 function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [detailExchange, setDetailExchange] = useState<ExchangeType>(exchange);
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === symbol);
 
@@ -818,7 +817,7 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
             {symbol}
             {coinInfo && (
               <span className="ml-2 text-lg font-normal text-muted-foreground">
-                {coinInfo.nameKo}
+                {getCoinName(coinInfo, locale)}
               </span>
             )}
           </h1>
@@ -828,7 +827,6 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
       {/* 거래소 선택 탭 */}
       <div className="flex items-center gap-2">
         {SUPPORTED_EXCHANGES.map((ex) => {
-          const config = EXCHANGE_CONFIGS[ex];
           const isActive = detailExchange === ex;
           return (
             <Button
@@ -838,7 +836,7 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
               onClick={() => setDetailExchange(ex)}
               aria-pressed={isActive}
             >
-              {config.nameKo}
+              {getExchangeName(ex, locale)}
             </Button>
           );
         })}
@@ -864,7 +862,7 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <p className="text-sm text-muted-foreground">
-              {t.market.cannotFetchPrice(EXCHANGE_CONFIGS[detailExchange].nameKo, symbol)}
+              {t.market.cannotFetchPrice(getExchangeName(detailExchange, locale), symbol)}
             </p>
           </CardContent>
         </Card>
@@ -1103,7 +1101,7 @@ interface ExchangeComparisonPanelProps {
  * 가장 높은 가격과 가장 낮은 가격을 하이라이트한다.
  */
 function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonPanelProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const validPrices = exchangePrices.filter((ep) => ep.ticker !== null);
 
   const maxPrice = validPrices.length > 0
@@ -1132,7 +1130,6 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
           <div className="space-y-3">
             {/* 거래소별 가격 */}
             {exchangePrices.map(({ exchange: ex, ticker: tk }) => {
-              const config = EXCHANGE_CONFIGS[ex];
               const isMax = tk && tk.currentPrice === maxPrice && validPrices.length > 1;
               const isMin = tk && tk.currentPrice === minPrice && validPrices.length > 1;
 
@@ -1148,7 +1145,7 @@ function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonP
                 >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      {config.nameKo}
+                      {getExchangeName(ex, locale)}
                     </Badge>
                     {isMax && (
                       <Badge className="bg-profit/20 text-profit text-[10px] px-1.5">

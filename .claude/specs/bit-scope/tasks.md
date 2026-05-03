@@ -438,6 +438,40 @@
   - `apps/web/lib/i18n/ko.ts`: 거래소별 자산 요약 관련 i18n 키 추가
   - `apps/web/lib/i18n/en.ts`: 거래소별 자산 요약 관련 i18n 키 추가
 
+- [x] 27. 하이퍼리퀴드(Hyperliquid) 거래소 포트폴리오 연동
+  - `packages/shared/src/types/exchange.ts`: ExchangeType에 'hyperliquid' 추가, Currency에 'USDC' 추가
+  - `packages/shared/src/constants/exchanges.ts`: HYPERLIQUID_CONFIG, HYPERLIQUID_ENDPOINTS 추가, EXCHANGE_CONFIGS/EXCHANGE_ENDPOINTS/SUPPORTED_EXCHANGES/FOREIGN_EXCHANGES에 hyperliquid 등록
+  - `packages/shared/src/utils/validation.ts`: validateHyperliquidApiKeyFormat 함수 추가 (지갑 주소 형식만 확인, 항상 유효), validateApiKeyFormat에 hyperliquid 케이스 추가
+  - `packages/shared/src/index.ts`, `constants/index.ts`, `utils/index.ts`: 하이퍼리퀴드 관련 상수/함수 export 추가
+  - `apps/web/lib/exchange/hyperliquid-signer.ts`: 서명 없이 POST /info 요청 구성 (apiKey.accessKey = 지갑 주소), validateApiKey (clearinghouseState 조회로 계정 존재 확인), getExchangeType
+  - `apps/web/lib/exchange/signer-factory.ts`: hyperliquidSigner 어댑터 등록
+  - `apps/web/app/api/exchange/_lib/normalizer/hyperliquid.ts`: normalizeHyperliquidBalance (clearinghouseState + spotClearinghouseState 통합, Perps/Spot 분리 walletSummary, USDC 기준), normalizeHyperliquidTicker (allMids 응답 처리), normalizeHyperliquidOrderbook (l2Book 응답 처리), normalizeHyperliquidOrderHistory (userFills 응답 처리)
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: 4개 디스패치 함수에 hyperliquid 케이스 추가
+  - `apps/web/app/api/exchange/[exchange]/balance/route.ts`: handleHyperliquidBalance 함수 추가 (clearinghouseState + spotClearinghouseState 병렬 호출, 합쳐서 정규화)
+  - `apps/web/app/api/exchange/[exchange]/ticker/route.ts`: buildTickerUrl에 hyperliquid 케이스 추가, handleHyperliquidTicker 함수 추가 (POST /info allMids)
+  - `apps/web/lib/api-client.ts`: signBalanceRequest에 hyperliquid 특수 처리 추가, getValidKrwSymbols에 hyperliquid meta API 추가
+  - `apps/web/lib/crypto/encryption-service.ts`: SUPPORTED_EXCHANGES 사용으로 자동 포함 (별도 변경 불필요)
+  - `apps/web/app/(dashboard)/page.tsx`: SUPPORTED_EXCHANGES 사용으로 거래소 필터에 자동 포함
+  - `apps/web/components/charts/asset-distribution-chart.tsx`: EXCHANGE_COLORS에 hyperliquid 민트 색상 추가
+  - `apps/web/app/(dashboard)/settings/page.tsx`: 하이퍼리퀴드 전용 섹션 추가 (활성화/비활성화 토글, API Key 입력 불필요, 지갑 주소 자동 등록), availableExchanges에서 hyperliquid 제외, 등록된 키 목록에서 hyperliquid 제외
+  - `apps/api/src/modules/alert/dto/create-alert.dto.ts`, `update-alert.dto.ts`: @IsIn에 'hyperliquid' 추가
+  - `apps/api/src/modules/snapshot/dto/create-snapshot.dto.ts`: @IsIn에 'hyperliquid' 추가
+  - `apps/web/lib/i18n/ko.ts`, `en.ts`: 하이퍼리퀴드 관련 i18n 키 추가 (거래소명, 가이드 URL/설명, 설정 페이지 전용 키, walletPerps 추가)
+  - 테스트 파일 업데이트: signer-factory, normalizer/index, price-history entity, snapshot-holding entity, create-snapshot dto spec 등에서 'hyperliquid' 추가
+
+- [x] 28. 바이낸스/Gate.io/Bitget Futures 잔고 조회 및 Spot/Futures 분리 표시
+  - `packages/shared/src/constants/exchanges.ts`: ExchangeConfig에 futuresBaseUrl 필드 추가, ExchangeEndpoints에 futures 필드 추가, BINANCE_CONFIG에 futuresBaseUrl('https://fapi.binance.com') 추가, BINANCE_ENDPOINTS에 futures('/fapi/v2/balance') 추가, GATE_ENDPOINTS에 futures('/api/v4/futures/usdt/accounts') 추가, BITGET_ENDPOINTS에 futures('/api/v2/mix/account/accounts') 추가
+  - `apps/web/lib/exchange/binance-signer.ts`: Futures 엔드포인트 목록 추가, signRequest에서 Futures 엔드포인트일 때 baseUrl을 futuresBaseUrl로 변경
+  - `apps/web/app/api/exchange/_lib/normalizer/binance.ts`: BinanceFuturesBalanceItem 타입 추가, normalizeBinanceFuturesBalance 함수 추가 (USDT 합계 추출)
+  - `apps/web/app/api/exchange/_lib/normalizer/gate.ts`: GateFuturesAccountResponse 타입 추가, normalizeGateFuturesBalance 함수 추가 (total 필드 추출)
+  - `apps/web/app/api/exchange/_lib/normalizer/bitget.ts`: BitgetFuturesAccountItem 타입 추가, normalizeBitgetFuturesBalance 함수 추가 (accountEquity 추출)
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: Futures normalizer import 추가, normalizeFuturesBalance 디스패치 함수 추가
+  - `apps/web/lib/api-client.ts`: FUTURES_SUPPORTED_EXCHANGES 상수 추가, signFuturesBalanceRequest 함수 추가 (Futures 엔드포인트용 서명 생성), fetchFuturesBalance 비공개 함수 추가 (Futures USDT 합계 조회), fetchBalance 수정 (바이낸스/Gate/Bitget일 때 Spot+Futures 병렬 조회, walletSummary에 Futures 항목 추가)
+  - `apps/web/app/api/exchange/[exchange]/balance/route.ts`: FUTURES_EXCHANGES 상수 추가, X-Balance-Type: futures 헤더 감지 로직 추가, handleFuturesBalance 함수 추가 (Futures API 릴레이 및 USDT 합계 반환)
+  - `apps/web/app/(dashboard)/page.tsx`: ExchangeAssetSummary의 뱃지에 Spot+Futures 분리 표시 로직 추가
+  - `apps/web/lib/i18n/ko.ts`: walletFutures, spotAndFutures 키 추가, exchangeAssetSummaryDescription 업데이트
+  - `apps/web/lib/i18n/en.ts`: walletFutures, spotAndFutures 키 추가, exchangeAssetSummaryDescription 업데이트
+
 - [ ] 20. E2E 테스트 작성
   - Playwright 설정 및 MSW 기반 모의 거래소 서버 구성
   - 핵심 시나리오 E2E 테스트: 지갑 연결 → API Key 등록 → 대시보드 조회

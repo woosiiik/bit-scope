@@ -24,7 +24,6 @@ import {
   type TickerResponse,
   type OrderbookResponse,
   type OrderHistoryResponse,
-  type ApiResponse,
 } from '../api-client';
 
 // 전역 fetch를 모킹한다.

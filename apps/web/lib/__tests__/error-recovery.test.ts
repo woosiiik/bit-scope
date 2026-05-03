@@ -29,8 +29,6 @@ import {
   getErrorRecoveryStrategy,
   resetErrorRecoveryStrategy,
   type CachedExchangeData,
-  type ErrorState,
-  type RetryOptions,
 } from '../error-recovery';
 import { ExchangeApiError, type BalanceResponse } from '../api-client';
 import type { ExchangeType, PortfolioSnapshot } from '@bitscope/shared';

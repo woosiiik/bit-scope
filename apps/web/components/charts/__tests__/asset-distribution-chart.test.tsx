@@ -7,7 +7,7 @@
  * @see 요구사항 2.7 (자산 분포를 도넛/파이 차트로 시각화)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { AssetDistribution } from '@bitscope/shared';
 import {
@@ -23,7 +23,7 @@ import type { ChartDataItem } from '../asset-distribution-chart';
 // Recharts의 ResponsiveContainer는 테스트 환경에서 크기를 0으로 잡는다.
 // 이를 방지하기 위해 모킹한다.
 vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts');
+  const actual = await vi.importActual('recharts');
   return {
     ...actual,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (

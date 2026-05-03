@@ -29,7 +29,7 @@ describe('PriceHistoryEntity', () => {
   });
 
   it('유효한 거래소 값을 저장할 수 있어야 한다', () => {
-    const exchanges = ['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget'];
+    const exchanges = ['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'];
 
     exchanges.forEach((exchange) => {
       const entity = new PriceHistoryEntity();

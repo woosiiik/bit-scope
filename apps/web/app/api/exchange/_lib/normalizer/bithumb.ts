@@ -21,7 +21,7 @@
  * @see https://apidocs.bithumb.com/v2
  */
 
-import type { Holding, Ticker, Orderbook, OrderbookEntry } from '@bitscope/shared';
+import type { Holding, Ticker, OrderbookEntry } from '@bitscope/shared';
 import type {
   NormalizedBalance,
   NormalizedTicker,

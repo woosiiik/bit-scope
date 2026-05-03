@@ -9,7 +9,7 @@
  * @see 요구사항 8.3 (MetaMask 미설치 시 안내)
  */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ConnectPage from '../page';
 

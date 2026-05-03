@@ -20,44 +20,16 @@ import {
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/i18n-context';
 import { isActiveRoute, type NavItem } from './sidebar-nav';
 
-/**
- * 모바일 하단 탭에 표시할 메뉴 항목 (최대 5개)
- *
- * 모바일 화면의 제한된 공간에 맞춰 핵심 메뉴만 선별한다.
- */
-export const mobileTabItems: NavItem[] = [
-  {
-    label: '대시보드',
-    href: '/',
-    icon: LayoutDashboard,
-    ariaLabel: '포트폴리오 대시보드',
-  },
-  {
-    label: '마켓',
-    href: '/market',
-    icon: TrendingUp,
-    ariaLabel: '실시간 마켓 시세',
-  },
-  {
-    label: '김프',
-    href: '/premium',
-    icon: BarChart3,
-    ariaLabel: '거래소 간 김치 프리미엄 분석',
-  },
-  {
-    label: '알림',
-    href: '/alerts',
-    icon: Bell,
-    ariaLabel: '가격 알림 관리',
-  },
-  {
-    label: '설정',
-    href: '/settings',
-    icon: Settings,
-    ariaLabel: 'API 키 관리 및 설정',
-  },
+/** 모바일 하단 탭에 표시할 메뉴 항목 (최대 5개, i18n 키 기반) */
+const MOBILE_TAB_ITEMS: NavItem[] = [
+  { labelKey: 'dashboard', href: '/', icon: LayoutDashboard },
+  { labelKey: 'market', href: '/market', icon: TrendingUp },
+  { labelKey: 'premium', href: '/premium', icon: BarChart3 },
+  { labelKey: 'alerts', href: '/alerts', icon: Bell },
+  { labelKey: 'settings', href: '/settings', icon: Settings },
 ];
 
 /** BottomTabNav Props */
@@ -75,6 +47,8 @@ interface BottomTabNavProps {
  */
 export function BottomTabNav({ className }: BottomTabNavProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
+  const nav = t.nav as Record<string, string>;
 
   return (
     <nav
@@ -85,12 +59,13 @@ export function BottomTabNav({ className }: BottomTabNavProps) {
         'safe-area-inset-bottom',
         className,
       )}
-      aria-label="모바일 네비게이션"
+      aria-label={t.common.appName}
     >
       <ul className="flex w-full" role="list">
-        {mobileTabItems.map((item) => {
+        {MOBILE_TAB_ITEMS.map((item) => {
           const isActive = isActiveRoute(pathname, item.href);
           const Icon = item.icon;
+          const label = nav[item.labelKey] ?? item.labelKey;
 
           return (
             <li key={item.href} className="flex-1">
@@ -104,14 +79,13 @@ export function BottomTabNav({ className }: BottomTabNavProps) {
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
-                aria-label={item.ariaLabel || item.label}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon
                   className={cn('h-5 w-5', isActive && 'text-primary')}
                   aria-hidden="true"
                 />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{label}</span>
               </Link>
             </li>
           );

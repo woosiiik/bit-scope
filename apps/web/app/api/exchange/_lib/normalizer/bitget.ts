@@ -75,6 +75,14 @@ export interface BitgetOrderItem {
   cTime: string;
 }
 
+/** Bitget Futures 계좌 항목 (GET /api/v2/mix/account/accounts) */
+export interface BitgetFuturesAccountItem {
+  marginCoin: string;
+  accountEquity: string;
+  available: string;
+  crossedUnrealizedPL: string;
+}
+
 // ===== 정규화 함수 =====
 
 /**
@@ -373,4 +381,35 @@ export function normalizeBitgetOrderHistory(rawResponse: unknown): NormalizedOrd
     orders,
     timestamp: Date.now(),
   };
+}
+
+/**
+ * Bitget Futures 계좌 응답에서 accountEquity 값을 추출한다.
+ *
+ * GET /api/v2/mix/account/accounts?productType=USDT-FUTURES 응답은
+ * { code: "00000", data: [{ marginCoin: "USDT", accountEquity: "3000", ... }] } 형태이다.
+ * data[0].accountEquity가 Futures 계좌의 전체 USDT 잔고이다.
+ *
+ * @param rawResponse Bitget /api/v2/mix/account/accounts API 원본 응답
+ * @returns Futures 총 잔고 (USDT)
+ */
+export function normalizeBitgetFuturesBalance(rawResponse: unknown): number {
+  const response = rawResponse as BitgetApiResponse<BitgetFuturesAccountItem[]>;
+
+  // code !== "00000" 이면 에러 응답
+  if (response?.code !== undefined && response.code !== '00000') {
+    return 0;
+  }
+
+  if (!response?.data || !Array.isArray(response.data) || response.data.length === 0) {
+    return 0;
+  }
+
+  // 첫 번째 항목의 accountEquity가 Futures 전체 자산 (USDT)
+  const firstItem = response.data[0];
+  if (!firstItem) {
+    return 0;
+  }
+
+  return parseFloat(firstItem.accountEquity) || 0;
 }

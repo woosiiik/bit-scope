@@ -405,6 +405,38 @@ export function validateBitgetApiKeyFormat(
 }
 
 /**
+ * 하이퍼리퀴드 API Key 형식을 검증한다.
+ *
+ * 하이퍼리퀴드는 API Key가 불필요하며, 지갑 주소만으로 잔고를 조회한다.
+ * accessKey에 지갑 주소를 저장하므로 지갑 주소 형식만 확인한다.
+ * secretKey는 'none'으로 설정되므로 항상 유효하다.
+ *
+ * @param apiKey - 검증할 API Key 쌍 (accessKey = 지갑 주소, secretKey = 'none')
+ * @returns 형식 검증 결과 (항상 유효)
+ */
+export function validateHyperliquidApiKeyFormat(
+  apiKey: ApiKeyPair,
+): ApiKeyFormatValidation {
+  // accessKey에 지갑 주소가 저장되므로 비어 있지 않으면 유효
+  const accessKeyValid = isNonEmptyString(apiKey.accessKey);
+
+  if (!accessKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: false,
+      isSecretKeyValid: true,
+      errorMessage: '지갑 주소가 필요합니다.',
+    };
+  }
+
+  return {
+    isValid: true,
+    isAccessKeyValid: true,
+    isSecretKeyValid: true,
+  };
+}
+
+/**
  * 거래소 유형에 따라 API Key 형식을 검증한다.
  *
  * @param exchange - 거래소 유형
@@ -432,6 +464,8 @@ export function validateApiKeyFormat(
       return validateGateApiKeyFormat(apiKey);
     case 'bitget':
       return validateBitgetApiKeyFormat(apiKey);
+    case 'hyperliquid':
+      return validateHyperliquidApiKeyFormat(apiKey);
     default: {
       // 타입 안전성: 새로운 거래소 추가 시 컴파일 오류 발생
       const _exhaustiveCheck: never = exchange;

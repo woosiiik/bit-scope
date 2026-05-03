@@ -17,6 +17,8 @@ export interface ExchangeConfig {
   nameEn: string;
   /** REST API 기본 URL */
   restBaseUrl: string;
+  /** Futures REST API 기본 URL (Spot과 다른 도메인을 사용하는 거래소용, 예: 바이낸스 fapi) */
+  futuresBaseUrl?: string;
   /** WebSocket URL (없으면 undefined) */
   wsUrl?: string;
   /** Rate Limit 설정 */
@@ -42,6 +44,8 @@ export interface ExchangeEndpoints {
   orders: string;
   /** 전체 마켓(코인) 목록 조회 */
   markets: string;
+  /** Futures 잔고 조회 (선택, 해당 거래소만) */
+  futures?: string;
 }
 
 /** 업비트 API 설정 */
@@ -128,6 +132,8 @@ export const BINANCE_CONFIG: ExchangeConfig = {
   nameKo: '바이낸스',
   nameEn: 'Binance',
   restBaseUrl: 'https://api.binance.com',
+  /** 바이낸스 USD-M Futures API는 별도 도메인(fapi.binance.com)을 사용한다 */
+  futuresBaseUrl: 'https://fapi.binance.com',
   wsUrl: 'wss://stream.binance.com:9443/ws',
   rateLimit: {
     requestsPerSecond: 20,
@@ -148,6 +154,8 @@ export const BINANCE_ENDPOINTS: ExchangeEndpoints = {
   orders: '/api/v3/allOrders',
   /** 전체 거래 가능 심볼 정보: GET /api/v3/exchangeInfo */
   markets: '/api/v3/exchangeInfo',
+  /** USD-M Futures 잔고 조회: GET /fapi/v2/balance (fapi.binance.com 도메인) */
+  futures: '/fapi/v2/balance',
 } as const;
 
 /** 바이낸스 가격 조회 전용 엔드포인트 (김치 프리미엄용) */
@@ -274,6 +282,8 @@ export const GATE_ENDPOINTS: ExchangeEndpoints = {
   orders: '/api/v4/spot/orders',
   /** 전체 거래 가능 심볼 정보: GET /api/v4/spot/currency_pairs */
   markets: '/api/v4/spot/currency_pairs',
+  /** Futures USDT 계좌 조회: GET /api/v4/futures/usdt/accounts (같은 도메인) */
+  futures: '/api/v4/futures/usdt/accounts',
 } as const;
 
 /**
@@ -316,6 +326,55 @@ export const BITGET_ENDPOINTS: ExchangeEndpoints = {
   orders: '/api/v2/spot/trade/history-orders',
   /** 전체 거래 가능 심볼 정보: GET /api/v2/spot/market/tickers */
   markets: '/api/v2/spot/market/tickers',
+  /** Futures(USDT-FUTURES) 계좌 조회: GET /api/v2/mix/account/accounts?productType=USDT-FUTURES (같은 도메인) */
+  futures: '/api/v2/mix/account/accounts',
+} as const;
+
+/**
+ * 하이퍼리퀴드 API 설정 (해외 거래소 - 포트폴리오용)
+ *
+ * 하이퍼리퀴드는 다른 거래소와 완전히 다른 방식으로 동작한다:
+ * - API Key가 불필요하다. 지갑 주소만으로 잔고 조회가 가능하다.
+ * - 모든 요청이 POST /info에 type 파라미터로 구분된다.
+ * - 서명이 불필요하다 (조회는 공개 API).
+ * - 자산은 USDC 기준이다 (USDT가 아님).
+ * - 선물(Perps) 중심이지만 Spot도 지원한다.
+ *
+ * 설정 페이지에서 API Key 등록이 불필요하며,
+ * 지갑 연결만으로 자동 조회가 가능하다.
+ * accessKey에 지갑 주소를 저장하는 방식으로 기존 아키텍처와 통합한다.
+ */
+export const HYPERLIQUID_CONFIG: ExchangeConfig = {
+  id: 'hyperliquid',
+  nameKo: '하이퍼리퀴드',
+  nameEn: 'Hyperliquid',
+  restBaseUrl: 'https://api.hyperliquid.xyz',
+  wsUrl: undefined,
+  rateLimit: {
+    requestsPerSecond: 10,
+    requestsPerMinute: 600,
+  },
+  timeoutMs: 10_000,
+} as const;
+
+/**
+ * 하이퍼리퀴드 API 엔드포인트
+ *
+ * 하이퍼리퀴드는 모든 요청이 POST /info에 type 파라미터로 구분된다.
+ * - clearinghouseState: Perps 잔고 조회
+ * - spotClearinghouseState: Spot 잔고 조회
+ */
+export const HYPERLIQUID_ENDPOINTS: ExchangeEndpoints = {
+  /** 잔고 조회: POST /info (type: clearinghouseState + spotClearinghouseState) */
+  balance: '/info',
+  /** 시세 조회: POST /info (type: allMids) */
+  ticker: '/info',
+  /** 호가 조회: POST /info (type: l2Book) */
+  orderbook: '/info',
+  /** 주문 내역 조회: POST /info (type: userFills) */
+  orders: '/info',
+  /** 마켓 조회: POST /info (type: meta) */
+  markets: '/info',
 } as const;
 
 /**
@@ -332,6 +391,7 @@ export const EXCHANGE_CONFIGS: Record<ExchangeType, ExchangeConfig> = {
   okx: OKX_CONFIG,
   gate: GATE_CONFIG,
   bitget: BITGET_CONFIG,
+  hyperliquid: HYPERLIQUID_CONFIG,
 } as const;
 
 /**
@@ -348,6 +408,7 @@ export const EXCHANGE_ENDPOINTS: Record<ExchangeType, ExchangeEndpoints> = {
   okx: OKX_ENDPOINTS,
   gate: GATE_ENDPOINTS,
   bitget: BITGET_ENDPOINTS,
+  hyperliquid: HYPERLIQUID_ENDPOINTS,
 } as const;
 
 /** 지원하는 모든 거래소 목록 */
@@ -360,6 +421,7 @@ export const SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
   'okx',
   'gate',
   'bitget',
+  'hyperliquid',
 ] as const;
 
 /** 국내 거래소 목록 (김치 프리미엄 비교 기준) */
@@ -369,13 +431,18 @@ export const DOMESTIC_EXCHANGES: readonly ExchangeType[] = [
   'coinone',
 ] as const;
 
-/** 해외 거래소 목록 (USDT 기준 잔고 → KRW 환산 필요) */
+/** 해외 중앙화 거래소 목록 (CEX, USDT/USDC 기준 잔고 → KRW 환산 필요) */
 export const FOREIGN_EXCHANGES: readonly ExchangeType[] = [
   'binance',
   'bybit',
   'okx',
   'gate',
   'bitget',
+] as const;
+
+/** 탈중앙화 거래소 목록 (DEX, 지갑 기반) */
+export const DEX_EXCHANGES: readonly ExchangeType[] = [
+  'hyperliquid',
 ] as const;
 
 /** 캐시 기본 TTL (밀리초) */

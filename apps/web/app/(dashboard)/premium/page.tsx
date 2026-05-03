@@ -47,14 +47,13 @@ import {
 } from 'recharts';
 import type { ExchangeType, KimchiPremiumData } from '@bitscope/shared';
 import {
-  EXCHANGE_CONFIGS,
   SUPPORTED_EXCHANGES,
   MAJOR_COINS,
   DEFAULT_PREMIUM_COINS,
   formatKRW,
   formatCompactKRW,
 } from '@bitscope/shared';
-import { cn } from '@/lib/utils';
+import { cn, getExchangeName, getCoinName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { useRealTimePrice } from '@/hooks/useRealTimePrice';
 import { useSettingsStore } from '@/store/settings-store';
@@ -214,7 +213,7 @@ interface ExchangeSelectorProps {
  * 업비트/빗썸/코인원 중 김프 비교 기준 국내 거래소를 선택한다.
  */
 function ExchangeSelector({ selected, onSelect }: ExchangeSelectorProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <div
@@ -232,9 +231,9 @@ function ExchangeSelector({ selected, onSelect }: ExchangeSelectorProps) {
             onClick={() => onSelect(exchange)}
             role="tab"
             aria-selected={isActive}
-            aria-label={EXCHANGE_CONFIGS[exchange].nameKo}
+            aria-label={getExchangeName(exchange, locale)}
           >
-            {EXCHANGE_CONFIGS[exchange].nameKo}
+            {getExchangeName(exchange, locale)}
           </Button>
         );
       })}
@@ -615,7 +614,7 @@ function PremiumTableRow({
   premiumThreshold,
   onSelect,
 }: PremiumTableRowProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === data.symbol);
   const isHighlighted = Math.abs(data.premiumRate) >= premiumThreshold;
   const isHighPremium = Math.abs(data.premiumRate) >= PREMIUM_LEVEL.HIGH;
@@ -644,7 +643,7 @@ function PremiumTableRow({
           <span className="font-semibold text-foreground">{data.symbol}</span>
           {coinInfo && (
             <span className="text-xs text-muted-foreground">
-              {coinInfo.nameKo}
+              {getCoinName(coinInfo, locale)}
             </span>
           )}
         </div>
@@ -724,7 +723,7 @@ function PremiumMobileCard({
   premiumThreshold,
   onSelect,
 }: PremiumMobileCardProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === data.symbol);
   const isHighlighted = Math.abs(data.premiumRate) >= premiumThreshold;
   const isHighPremium = Math.abs(data.premiumRate) >= PREMIUM_LEVEL.HIGH;
@@ -746,7 +745,7 @@ function PremiumMobileCard({
           <span className="font-semibold text-foreground">{data.symbol}</span>
           {coinInfo && (
             <span className="text-xs text-muted-foreground">
-              {coinInfo.nameKo}
+              {getCoinName(coinInfo, locale)}
             </span>
           )}
         </div>
@@ -843,7 +842,7 @@ function PremiumDetailView({
   premiumThreshold,
   onBack,
 }: PremiumDetailViewProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === symbol);
 
   // 기간 선택 상태
@@ -908,7 +907,7 @@ function PremiumDetailView({
             {symbol}
             {coinInfo && (
               <span className="ml-2 text-lg font-normal text-muted-foreground">
-                {coinInfo.nameKo}
+                {getCoinName(coinInfo, locale)}
               </span>
             )}
             <span className="ml-2 text-lg font-normal text-muted-foreground">
@@ -916,7 +915,7 @@ function PremiumDetailView({
             </span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            {EXCHANGE_CONFIGS[domesticExchange].nameKo} vs {t.exchange.binance}
+            {getExchangeName(domesticExchange, locale)} vs {t.exchange.binance}
           </p>
         </div>
       </div>
