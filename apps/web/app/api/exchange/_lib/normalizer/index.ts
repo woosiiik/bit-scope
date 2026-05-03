@@ -83,6 +83,8 @@ export type {
   NormalizedOrderbook,
   NormalizedOrderHistory,
   OrderHistoryItem,
+  WalletSummary,
+  WalletBalanceItem,
 } from './types';
 
 /**

@@ -180,6 +180,16 @@ const ko = {
     allLabel: '전체',
     exchangeLabel: '거래소',
     exchangeDetailHoldings: (symbol: string) => `${symbol} 거래소별 보유 상세`,
+    /** 거래소별 자산 요약 섹션 */
+    exchangeAssetSummary: '거래소별 자산 현황',
+    exchangeAssetSummaryDescription: '거래소별 전체 자산 합계를 표시합니다. Unified 계정(바이빗/OKX)은 Spot+Futures+Margin+Earn 합산 금액입니다.',
+    walletSpot: 'Spot',
+    walletUnified: 'Unified',
+    walletDerivativesEarn: 'Derivatives/Earn',
+    walletTotal: '전체',
+    spotOnly: 'Spot만 표시',
+    unifiedAccount: 'Unified 계정',
+    approximateKrw: (krw: string) => `(${krw})`,
   },
 
   /** 포트폴리오 */

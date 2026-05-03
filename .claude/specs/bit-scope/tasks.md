@@ -424,6 +424,20 @@
   - `apps/web/lib/i18n/ko.ts`, `en.ts`: Gate.io/Bitget 관련 i18n 키(거래소명, 가이드 URL/설명, Bitget Passphrase 안내) 추가
   - 테스트 파일 업데이트: signer-factory, normalizer/index, price-history entity, snapshot-holding entity, create-snapshot dto spec 등에서 'gate', 'bitget' 추가
 
+- [x] 26. 해외 거래소 Futures/Margin/Earn 지갑 잔고 합산 표시
+  - `apps/web/app/api/exchange/_lib/normalizer/types.ts`: WalletSummary, WalletBalanceItem 인터페이스 추가, NormalizedBalance에 walletSummary 필드 추가
+  - `apps/web/app/api/exchange/_lib/normalizer/index.ts`: WalletSummary, WalletBalanceItem 타입 re-export 추가
+  - `apps/web/app/api/exchange/_lib/normalizer/bybit.ts`: normalizeBybitBalance에서 result.list[0].totalEquity를 walletSummary로 추출 (Unified 계정)
+  - `apps/web/app/api/exchange/_lib/normalizer/okx.ts`: normalizeOkxBalance에서 data[0].totalEq를 walletSummary로 추출 (Unified 계정)
+  - `apps/web/app/api/exchange/_lib/normalizer/binance.ts`: normalizeBinanceBalance에서 Spot 합계를 walletSummary로 제공
+  - `apps/web/app/api/exchange/_lib/normalizer/gate.ts`: normalizeGateBalance에서 Spot 합계를 walletSummary로 제공
+  - `apps/web/app/api/exchange/_lib/normalizer/bitget.ts`: normalizeBitgetBalance에서 Spot 합계를 walletSummary로 제공
+  - `apps/web/lib/api-client.ts`: BalanceResponse에 walletSummary 필드 추가, WalletSummary/WalletBalanceItem 타입 export
+  - `apps/web/store/portfolio-store.ts`: walletSummaries 상태 필드 추가, setExchangeData/updateAllExchangeData/resetPortfolio에 walletSummary 반영, getWalletSummaries 셀렉터 추가
+  - `apps/web/app/(dashboard)/page.tsx`: ExchangeAssetSummary 컴포넌트 추가 (거래소별 자산 현황 섹션, 국내 KRW/해외 USDT+KRW 환산 표시, Unified/Spot-only 뱃지)
+  - `apps/web/lib/i18n/ko.ts`: 거래소별 자산 요약 관련 i18n 키 추가
+  - `apps/web/lib/i18n/en.ts`: 거래소별 자산 요약 관련 i18n 키 추가
+
 - [ ] 20. E2E 테스트 작성
   - Playwright 설정 및 MSW 기반 모의 거래소 서버 구성
   - 핵심 시나리오 E2E 테스트: 지갑 연결 → API Key 등록 → 대시보드 조회

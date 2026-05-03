@@ -24,6 +24,7 @@ import type {
   NormalizedOrderbook,
   NormalizedOrderHistory,
   OrderHistoryItem,
+  WalletSummary,
 } from './types';
 
 // ===== 바이빗 API 원본 응답 타입 =====
@@ -179,11 +180,36 @@ export function normalizeBybitBalance(rawResponse: unknown): NormalizedBalance {
     });
   }
 
+  // 바이빗 Unified 계정의 totalEquity를 walletSummary로 추출
+  // totalEquity는 모든 지갑(Spot + Futures + Margin + Earn 등)의 USDT 합계
+  const totalEquity = parseFloat(account.totalEquity) || 0;
+
+  // Spot 잔고는 개별 코인의 USD 환산 합계로 계산
+  const spotBalanceUsdt = account.coin.reduce((sum, item) => {
+    return sum + (parseFloat(item.usdValue) || 0);
+  }, 0);
+
+  const walletSummary: WalletSummary = {
+    totalEquityUsdt: totalEquity,
+    wallets: [
+      { name: 'Unified', balanceUsdt: totalEquity },
+    ],
+  };
+
+  // Spot 합계와 totalEquity가 다르면 Spot 외 자산이 있다는 뜻
+  if (totalEquity > 0 && spotBalanceUsdt > 0 && Math.abs(totalEquity - spotBalanceUsdt) > 0.01) {
+    walletSummary.wallets = [
+      { name: 'Spot', balanceUsdt: spotBalanceUsdt },
+      { name: 'Derivatives/Earn', balanceUsdt: totalEquity - spotBalanceUsdt },
+    ];
+  }
+
   return {
     exchange: 'bybit',
     holdings,
     krwBalance: usdtBalance, // USDT 잔고를 krwBalance 필드에 저장 (환산은 프론트에서 처리)
     timestamp: Date.now(),
+    walletSummary,
   };
 }
 

@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS, SUPPORTED_EXCHANGES } from '@bitscope/shared';
+import { EXCHANGE_CONFIGS, SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES } from '@bitscope/shared';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -132,6 +132,9 @@ export default function DashboardPage() {
     if (!onboarding.isDemoMode || !onboarding.demoPortfolio) return null;
     return getAssetDistribution(onboarding.demoPortfolio);
   }, [onboarding.isDemoMode, onboarding.demoPortfolio]);
+
+  // 거래소별 지갑 요약 (해외 거래소의 Unified/Spot 합계)
+  const walletSummaries = usePortfolioStore((s) => s.walletSummaries);
 
   // 자산 분포 데이터 계산 (차트용)
   const aggregatedPortfolio = usePortfolioStore((s) => s.aggregatedPortfolio);
@@ -304,6 +307,12 @@ export default function DashboardPage() {
         totalProfitLoss={filteredSummary.totalProfitLoss}
         profitLossRate={filteredSummary.profitLossRate}
         filterLabel={filteredSummary.filterLabel}
+      />
+
+      {/* 거래소별 자산 요약 (해외 거래소 Spot/Futures/Margin/Earn 합산) */}
+      <ExchangeAssetSummary
+        exchangeStates={portfolio.exchangeStates}
+        walletSummaries={walletSummaries}
       />
 
       {/* 자산 분포 차트 (코인별 비중, 거래소별 비중) */}
@@ -555,6 +564,142 @@ function SummaryCards({
       ))}
       </div>
     </div>
+  );
+}
+
+// ----- 거래소별 자산 요약 섹션 -----
+
+interface ExchangeAssetSummaryProps {
+  exchangeStates: ReturnType<typeof usePortfolio>['exchangeStates'];
+  walletSummaries: Partial<Record<ExchangeType, import('@/lib/api-client').WalletSummary>>;
+}
+
+/**
+ * 거래소별 자산 요약 섹션
+ *
+ * 등록된 각 거래소의 전체 자산 합계를 한눈에 표시한다.
+ * - 국내 거래소(업비트/빗썸/코인원): KRW 기준 표시
+ * - 해외 거래소(바이빗/OKX): Unified 계정 totalEquity(USDT) + KRW 환산
+ * - 해외 거래소(바이낸스/Gate/Bitget): Spot 합계만 표시(USDT) + KRW 환산
+ */
+function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAssetSummaryProps) {
+  const { t } = useTranslation();
+
+  // 등록된 거래소만 필터링 (데이터가 있는 거래소)
+  const registeredExchanges = SUPPORTED_EXCHANGES.filter(
+    (ex) => exchangeStates[ex]?.data,
+  );
+
+  if (registeredExchanges.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">
+          {t.dashboard.exchangeAssetSummary}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {registeredExchanges.map((exchange) => {
+          const state = exchangeStates[exchange];
+          if (!state?.data) return null;
+
+          const config = EXCHANGE_CONFIGS[exchange];
+          const isDomestic = (DOMESTIC_EXCHANGES as readonly string[]).includes(exchange);
+          const isForeign = (FOREIGN_EXCHANGES as readonly string[]).includes(exchange);
+          const walletSummary = walletSummaries[exchange];
+
+          // 국내 거래소 총 자산 = 코인 평가금액 합계 + 원화 잔고
+          const domesticTotal = isDomestic
+            ? (state.data.holdings?.reduce((sum: number, h: { evaluationAmount?: number }) => sum + (h.evaluationAmount ?? 0), 0) ?? 0) + (state.data.krwBalance ?? 0)
+            : 0;
+
+          return (
+            <div
+              key={exchange}
+              className="flex flex-col gap-1 rounded-lg border border-border p-3"
+            >
+              {/* 거래소 이름 + 전체 합계 */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">
+                    {config.nameKo}
+                  </span>
+                  {/* Unified 또는 Spot-only 뱃지 */}
+                  {isForeign && walletSummary && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {walletSummary.wallets.length === 1 && walletSummary.wallets[0]?.name === 'Unified'
+                        ? t.dashboard.unifiedAccount
+                        : walletSummary.wallets.length === 1 && walletSummary.wallets[0]?.name === 'Spot'
+                          ? t.dashboard.spotOnly
+                          : t.dashboard.walletTotal}
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-right">
+                  {isDomestic ? (
+                    // 국내 거래소: 코인 평가금액 + 원화 잔고 합계
+                    <FormattedCurrency
+                      value={domesticTotal}
+                      currency="KRW"
+                      className="font-semibold text-foreground"
+                    />
+                  ) : isForeign && walletSummary ? (
+                    // 해외 거래소: USDT 합계 + KRW 환산
+                    <div className="flex flex-col items-end gap-0.5">
+                      <FormattedCurrency
+                        value={walletSummary.totalEquityUsdt}
+                        currency="USD"
+                        className="font-semibold text-foreground"
+                      />
+                      {state.data.krwBalance > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {t.dashboard.approximateKrw(
+                            new Intl.NumberFormat('ko-KR', {
+                              style: 'currency',
+                              currency: 'KRW',
+                              maximumFractionDigits: 0,
+                            }).format(state.data.krwBalance),
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    // 해외 거래소이지만 walletSummary가 없는 경우 KRW 표시
+                    <FormattedCurrency
+                      value={state.data.krwBalance}
+                      currency="KRW"
+                      className="font-semibold text-foreground"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* 해외 거래소: 지갑별 상세 (2개 이상 지갑이 있을 때만) */}
+              {isForeign && walletSummary && walletSummary.wallets.length > 1 && (
+                <div className="flex flex-wrap gap-3 pl-2 text-xs text-muted-foreground">
+                  {walletSummary.wallets.map((wallet) => (
+                    <span key={wallet.name} className="flex items-center gap-1">
+                      <span className="font-medium">{wallet.name}</span>
+                      <FormattedCurrency
+                        value={wallet.balanceUsdt}
+                        currency="USD"
+                        className="text-xs"
+                      />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 

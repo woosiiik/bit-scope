@@ -184,6 +184,16 @@ const en: Messages = {
     allLabel: 'All',
     exchangeLabel: 'Exchange',
     exchangeDetailHoldings: (symbol: string) => `${symbol} exchange holdings detail`,
+    /** Exchange asset summary section */
+    exchangeAssetSummary: 'Exchange Asset Summary',
+    exchangeAssetSummaryDescription: 'Shows total assets per exchange. Unified accounts (Bybit/OKX) include Spot+Futures+Margin+Earn combined.',
+    walletSpot: 'Spot',
+    walletUnified: 'Unified',
+    walletDerivativesEarn: 'Derivatives/Earn',
+    walletTotal: 'Total',
+    spotOnly: 'Spot only',
+    unifiedAccount: 'Unified Account',
+    approximateKrw: (krw: string) => `(${krw})`,
   },
 
   /** Portfolio */

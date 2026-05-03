@@ -51,6 +51,26 @@ export interface ApiResponse<T> {
   };
 }
 
+/** 지갑별 잔고 항목 */
+export interface WalletBalanceItem {
+  /** 지갑 이름 (예: 'Spot', 'Futures', 'Margin', 'Earn', 'Funding', 'Unified') */
+  name: string;
+  /** 해당 지갑의 USDT 환산 잔고 */
+  balanceUsdt: number;
+}
+
+/**
+ * 거래소별 지갑 요약 정보
+ *
+ * 해외 거래소의 전체 자산(Spot + Futures + Margin + Earn 등)을 USDT 합계로 제공한다.
+ */
+export interface WalletSummary {
+  /** 전체 자산 USDT 환산 합계 */
+  totalEquityUsdt: number;
+  /** 지갑별 USDT 잔고 목록 */
+  wallets: WalletBalanceItem[];
+}
+
 /** 잔고 조회 응답 데이터 */
 export interface BalanceResponse {
   /** 거래소 식별자 */
@@ -61,6 +81,8 @@ export interface BalanceResponse {
   krwBalance: number;
   /** 응답 수신 시각 (밀리초 타임스탬프) */
   timestamp: number;
+  /** 지갑별 요약 (해외 거래소 전용, USDT 기준) */
+  walletSummary?: WalletSummary;
 }
 
 /** 시세 조회 응답 데이터 */

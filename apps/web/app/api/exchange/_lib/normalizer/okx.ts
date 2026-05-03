@@ -25,6 +25,7 @@ import type {
   NormalizedOrderbook,
   NormalizedOrderHistory,
   OrderHistoryItem,
+  WalletSummary,
 } from './types';
 
 // ===== OKX API 원본 응답 타입 =====
@@ -161,11 +162,36 @@ export function normalizeOkxBalance(rawResponse: unknown): NormalizedBalance {
     });
   }
 
+  // OKX Unified 계정의 totalEq를 walletSummary로 추출
+  // totalEq는 모든 자산(Spot + Futures + Margin + Earn 등)의 USD 합계
+  const totalEq = parseFloat(account.totalEq) || 0;
+
+  // 개별 코인의 eqUsd 합계를 Spot 잔고로 사용
+  const spotBalanceUsdt = account.details.reduce((sum, item) => {
+    return sum + (parseFloat(item.eqUsd) || 0);
+  }, 0);
+
+  const walletSummary: WalletSummary = {
+    totalEquityUsdt: totalEq,
+    wallets: [
+      { name: 'Unified', balanceUsdt: totalEq },
+    ],
+  };
+
+  // Spot 합계와 totalEq가 다르면 Spot 외 자산이 있다는 뜻
+  if (totalEq > 0 && spotBalanceUsdt > 0 && Math.abs(totalEq - spotBalanceUsdt) > 0.01) {
+    walletSummary.wallets = [
+      { name: 'Spot', balanceUsdt: spotBalanceUsdt },
+      { name: 'Derivatives/Earn', balanceUsdt: totalEq - spotBalanceUsdt },
+    ];
+  }
+
   return {
     exchange: 'okx',
     holdings,
     krwBalance: usdtBalance, // USDT 잔고를 krwBalance 필드에 저장 (환산은 프론트에서 처리)
     timestamp: Date.now(),
+    walletSummary,
   };
 }
 

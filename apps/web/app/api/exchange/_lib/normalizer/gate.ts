@@ -23,6 +23,7 @@ import type {
   NormalizedOrderbook,
   NormalizedOrderHistory,
   OrderHistoryItem,
+  WalletSummary,
 } from './types';
 
 // ===== Gate.io API 원본 응답 타입 =====
@@ -125,11 +126,23 @@ export function normalizeGateBalance(rawResponse: unknown): NormalizedBalance {
     });
   }
 
+  // Gate.io Spot 합계를 walletSummary로 제공
+  // Futures/Margin은 별도 API가 필요하므로 1차에서는 Spot만 표시
+  const spotTotalUsdt = holdings.reduce((sum, h) => sum + h.evaluationAmount, 0);
+
+  const walletSummary: WalletSummary = {
+    totalEquityUsdt: spotTotalUsdt,
+    wallets: [
+      { name: 'Spot', balanceUsdt: spotTotalUsdt },
+    ],
+  };
+
   return {
     exchange: 'gate',
     holdings,
     krwBalance: usdtBalance, // USDT 잔고를 krwBalance 필드에 저장 (환산은 프론트에서 처리)
     timestamp: Date.now(),
+    walletSummary,
   };
 }
 

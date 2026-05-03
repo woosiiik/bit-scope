@@ -30,7 +30,7 @@ import {
   sortMergedHoldings,
   filterMergedHoldings,
 } from '@/lib/portfolio/aggregator';
-import type { BalanceResponse } from '@/lib/api-client';
+import type { BalanceResponse, WalletSummary } from '@/lib/api-client';
 
 // ===== 타입 정의 =====
 
@@ -60,6 +60,9 @@ interface PortfolioState {
 
   /** 통합 포트폴리오 (aggregatePortfolios 결과) */
   aggregatedPortfolio: AggregatedPortfolio | null;
+
+  /** 거래소별 지갑 요약 (해외 거래소의 Spot/Futures/Margin/Earn 합산) */
+  walletSummaries: Partial<Record<ExchangeType, WalletSummary>>;
 
   // ===== UI 상태 =====
 
@@ -134,6 +137,9 @@ interface PortfolioState {
 
   /** 마지막 업데이트 시각 (가장 최근 성공 시각). */
   getLastUpdated: () => Date | null;
+
+  /** 거래소별 지갑 요약을 반환한다. */
+  getWalletSummaries: () => Partial<Record<ExchangeType, WalletSummary>>;
 }
 
 // ===== 헬퍼 함수 =====
@@ -266,6 +272,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   // 초기 상태
   exchangeStates: {},
   aggregatedPortfolio: null,
+  walletSummaries: {},
   viewMode: 'merged',
   sortCriteria: 'evaluationAmount',
   sortDirection: 'desc',
@@ -302,9 +309,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         lastUpdated: new Date(),
       };
       const newStates = { ...state.exchangeStates, [exchange]: updated };
+      const newWalletSummaries = { ...state.walletSummaries };
+      if (data.walletSummary) {
+        newWalletSummaries[exchange] = data.walletSummary;
+      }
       return {
         exchangeStates: newStates,
         aggregatedPortfolio: recalculateAggregatedPortfolio(newStates),
+        walletSummaries: newWalletSummaries,
       };
     });
   },
@@ -330,6 +342,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   updateAllExchangeData: (results) => {
     set((state) => {
       const newStates = { ...state.exchangeStates };
+      const newWalletSummaries = { ...state.walletSummaries };
 
       for (const result of results) {
         const current = newStates[result.exchange];
@@ -341,6 +354,9 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
             errorMessage: null,
             lastUpdated: new Date(),
           };
+          if (result.data.walletSummary) {
+            newWalletSummaries[result.exchange] = result.data.walletSummary;
+          }
         } else if (result.error) {
           newStates[result.exchange] = {
             exchange: result.exchange,
@@ -355,6 +371,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
       return {
         exchangeStates: newStates,
         aggregatedPortfolio: recalculateAggregatedPortfolio(newStates),
+        walletSummaries: newWalletSummaries,
       };
     });
   },
@@ -386,6 +403,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     set({
       exchangeStates: {},
       aggregatedPortfolio: null,
+      walletSummaries: {},
       viewMode: 'merged',
       sortCriteria: 'evaluationAmount',
       sortDirection: 'desc',
@@ -453,5 +471,9 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 
     if (timestamps.length === 0) return null;
     return new Date(Math.max(...timestamps));
+  },
+
+  getWalletSummaries: () => {
+    return get().walletSummaries;
   },
 }));
