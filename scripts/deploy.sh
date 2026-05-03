@@ -23,7 +23,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 설정
 # ---------------------------------------------------------------------------
-DEPLOY_PATH="${DEPLOY_PATH:-/home/opc/bitscope}"
+DEPLOY_PATH="${DEPLOY_PATH:-/home/ubuntu/bitscope}"
 LOG_FILE="${DEPLOY_PATH}/deploy.log"
 BACKUP_DIR="${DEPLOY_PATH}/backups"
 HEALTH_CHECK_TIMEOUT=120  # 초
