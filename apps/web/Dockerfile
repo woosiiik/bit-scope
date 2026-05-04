@@ -51,9 +51,7 @@ COPY . .
 RUN mkdir -p ./apps/web/public
 
 # 공유 패키지(shared) 빌드
-# pnpm strict hoisting으로 tsup이 루트 .bin에 없을 수 있으므로
-# npx로 설치+실행을 한번에 처리 (캐시 활용)
-RUN cd packages/shared && npx --yes tsup
+RUN pnpm --filter @bitscope/shared build
 
 # Next.js standalone 빌드
 # NEXT_PUBLIC_ 환경변수는 빌드 시점에 주입해야 한다

@@ -47,7 +47,7 @@ COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 
 # 공유 패키지(shared) 빌드
-RUN cd packages/shared && npx --yes tsup
+RUN pnpm --filter @bitscope/shared build
 
 # NestJS 빌드 (TypeScript -> JavaScript 컴파일)
 RUN pnpm --filter @bitscope/api build
