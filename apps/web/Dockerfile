@@ -69,7 +69,7 @@ ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 
 # 빌드 시에도 server-preload.js를 주입하여 indexedDB 등 브라우저 API stub을 등록
 # Next.js가 서버 컴포넌트를 컴파일할 때 MetaMask SDK가 indexedDB를 참조하는 것을 방지
-ENV NODE_OPTIONS="--require ./apps/web/server-preload.js"
+ENV NODE_OPTIONS="--require /app/apps/web/server-preload.js"
 RUN pnpm --filter @bitscope/web build
 
 # -----------------------------------------------------------------------------
