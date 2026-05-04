@@ -9,7 +9,7 @@
 
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowkit';
@@ -61,6 +61,18 @@ export function Providers({ children }: ProvidersProps) {
 
   const language = useSettingsStore((s) => s.settings.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+
+  // SSR/CSR hydration 불일치 방지: 클라이언트 마운트 전까지 Provider 렌더링 지연
+  // wagmi/RainbowKit이 SSR에서 다른 상태를 반환하여 React #418 에러 발생
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // SSR 및 초기 hydration에서는 빈 컨테이너만 반환
+    return <div style={{ visibility: 'hidden' }}>{children}</div>;
+  }
 
   return (
     <WagmiProvider config={wagmiConfig}>
