@@ -28,6 +28,7 @@ import type {
   SignRequestParams,
 } from '@bitscope/shared';
 import { COINONE_CONFIG, COINONE_ENDPOINTS } from '@bitscope/shared';
+import { generateUUID } from '@/lib/utils';
 
 /**
  * UUID v4 형식의 nonce를 생성한다.
@@ -37,7 +38,7 @@ import { COINONE_CONFIG, COINONE_ENDPOINTS } from '@bitscope/shared';
  * @returns UUID v4 형식의 nonce 문자열
  */
 export function generateRequestNonce(): string {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 /**

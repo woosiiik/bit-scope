@@ -27,6 +27,7 @@ import type {
   SignRequestParams,
 } from '@bitscope/shared';
 import { UPBIT_CONFIG, UPBIT_ENDPOINTS } from '@bitscope/shared';
+import { generateUUID } from '@/lib/utils';
 
 /**
  * Base64URL 인코딩을 수행한다.
@@ -50,7 +51,7 @@ function base64UrlEncode(input: string): string {
  * @returns UUID v4 형식의 nonce 문자열
  */
 function generateRequestNonce(): string {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 /**

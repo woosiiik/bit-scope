@@ -35,7 +35,7 @@ import {
 import type { ExchangeType, ApiKeyPair } from '@bitscope/shared';
 import { SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
 import { useTranslation } from '@/lib/i18n/i18n-context';
-import { getExchangeName } from '@/lib/utils';
+import { getExchangeName, generateUUID } from '@/lib/utils';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import type { UseOnboardingReturn } from '@/hooks/useOnboarding';
 import {
@@ -509,7 +509,7 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
         // 암호화 후 저장
         const encrypted = encryptApiKey(apiKeyPair, encryptionKey);
         const existingStored = loadEncryptedKey(walletAddress, exchange);
-        const nonce = existingStored?.nonce || crypto.randomUUID();
+        const nonce = existingStored?.nonce || generateUUID();
         storeEncryptedKey(walletAddress, exchange, encrypted, nonce);
 
         updateForm(exchange, {
