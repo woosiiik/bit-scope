@@ -10,6 +10,10 @@
  * @see 요구사항 NF5.1 (한국어 기본 언어)
  */
 
+// 모든 페이지를 동적 렌더링으로 설정
+// wagmi/RainbowKit이 빌드 시점에 Provider 없이 실행되어 에러 발생 방지
+export const dynamic = 'force-dynamic';
+
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';

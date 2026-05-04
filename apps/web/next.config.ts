@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // standalone 모드: Docker 배포 시 최소한의 파일만 포함
   output: 'standalone',
 
+
   // 모노레포 루트를 명시적으로 설정하여 빌드 경고 방지
   outputFileTracingRoot: path.join(__dirname, '../../'),
 

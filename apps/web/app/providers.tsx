@@ -36,6 +36,26 @@ interface ProvidersProps {
  * QueryClient는 컴포넌트 상태로 관리하여 SSR 시
  * 요청 간 데이터 격리를 보장한다.
  */
+/**
+ * SSR/CSR hydration 불일치 방지 가드
+ *
+ * 클라이언트 마운트 전까지 children을 숨겨서
+ * wagmi/RainbowKit의 SSR 상태와 CSR 상태 차이로 인한
+ * React #418 에러를 방지한다.
+ */
+function MountGuard({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return (
+    <div style={{ visibility: mounted ? 'visible' : 'hidden' }}>
+      {children}
+    </div>
+  );
+}
+
 export function Providers({ children }: ProvidersProps) {
   /**
    * QueryClient를 useState로 생성하여 SSR 환경에서
@@ -62,18 +82,6 @@ export function Providers({ children }: ProvidersProps) {
   const language = useSettingsStore((s) => s.settings.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
 
-  // SSR/CSR hydration 불일치 방지: 클라이언트 마운트 전까지 Provider 렌더링 지연
-  // wagmi/RainbowKit이 SSR에서 다른 상태를 반환하여 React #418 에러 발생
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    // SSR 및 초기 hydration에서는 빈 컨테이너만 반환
-    return <div style={{ visibility: 'hidden' }}>{children}</div>;
-  }
-
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -93,7 +101,7 @@ export function Providers({ children }: ProvidersProps) {
           }}
         >
           <I18nProvider locale={language as Locale} onLocaleChange={(loc) => setLanguage(loc)}>
-            {children}
+            <MountGuard>{children}</MountGuard>
           </I18nProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
