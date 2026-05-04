@@ -90,6 +90,9 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
+# 서버 preload 스크립트 (indexedDB 등 브라우저 API stub)
+COPY apps/web/server-preload.js ./apps/web/server-preload.js
+
 # 파일 소유권을 비루트 사용자로 변경
 RUN chown -R nextjs:nodejs /app
 
@@ -99,5 +102,5 @@ USER nextjs
 EXPOSE 3000
 
 # Next.js standalone 서버 실행
-# standalone 빌드 시 모노레포 구조가 반영되어 apps/web/server.js로 생성됨
-CMD ["node", "apps/web/server.js"]
+# --require로 preload 스크립트를 주입하여 indexedDB 등 브라우저 API stub을 등록
+CMD ["node", "--require", "./apps/web/server-preload.js", "apps/web/server.js"]
