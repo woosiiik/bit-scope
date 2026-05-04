@@ -24,14 +24,14 @@
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     return (
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      process.env.NEXT_PUBLIC_API_URL ??
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
       `${window.location.origin}/api/backend`
     );
   }
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
     'http://localhost:4000'
   );
 }
@@ -45,10 +45,10 @@ export function getApiBaseUrl(): string {
 export function getWsBaseUrl(): string {
   if (typeof window !== 'undefined') {
     return (
-      process.env.NEXT_PUBLIC_WS_URL ??
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.NEXT_PUBLIC_WS_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
       window.location.origin
     );
   }
-  return process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000';
+  return process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:4000';
 }
