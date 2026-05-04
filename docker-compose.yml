@@ -78,7 +78,7 @@ services:
     networks:
       - bitscope-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -158,8 +158,8 @@ services:
       - mysql-data:/var/lib/mysql
       # 초기화 스크립트 (최초 실행 시만 적용)
       - ./infra/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    expose:
-      - "3306"
+    ports:
+      - "3306:3306"
     command:
       # OCI Free Tier 리소스 절약을 위한 MySQL 최적화 설정
       - --character-set-server=utf8mb4
