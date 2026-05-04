@@ -44,10 +44,17 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+# shared는 devDependencies만 있어 pnpm이 로컬 node_modules를 생성하지 않을 수 있다.
+# 디렉토리가 없으면 빈 디렉토리를 생성하여 후속 빌드가 실패하지 않도록 한다.
+RUN mkdir -p ./packages/shared/node_modules
+RUN cp -r /app/node_modules/.pnpm/tsup*/node_modules/* ./packages/shared/node_modules/ 2>/dev/null || true
 
 # 전체 소스 복사
 COPY . .
+
+# public 디렉토리가 비어 있으면(.gitkeep만 존재) standalone 복사 시 실패하므로
+# 빈 디렉토리라도 확실히 존재하도록 보장한다.
+RUN mkdir -p ./apps/web/public
 
 # 공유 패키지(shared) 빌드 (Next.js가 의존)
 RUN pnpm --filter @bitscope/shared build
@@ -63,9 +70,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID}
-# 빌드 버전: 빌드 시간 자동 생성 (캐시 무효화 + 배포 확인용)
-RUN echo "NEXT_PUBLIC_BUILD_VERSION=$(date +%Y%m%d-%H%M%S)" >> .env.local
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
+# 빌드 버전: 빌드 시간 자동 생성 (캐시 무효화 + 배포 확인용)
+# Next.js는 프로젝트 디렉토리(apps/web/)의 .env.local을 읽으므로
+# 반드시 apps/web/.env.local에 작성해야 한다. (루트 .env.local이 아님)
+RUN echo "NEXT_PUBLIC_BUILD_VERSION=$(date +%Y%m%d-%H%M%S)" >> ./apps/web/.env.local
 
 # 빌드 시에도 server-preload.js를 주입하여 indexedDB 등 브라우저 API stub을 등록
 # Next.js가 서버 컴포넌트를 컴파일할 때 MetaMask SDK가 indexedDB를 참조하는 것을 방지
@@ -96,7 +106,8 @@ COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # 서버 preload 스크립트 (indexedDB 등 브라우저 API stub)
-COPY apps/web/server-preload.js ./apps/web/server-preload.js
+# builder 단계에서 복사하여 소스와 일관성을 보장한다.
+COPY --from=builder /app/apps/web/server-preload.js ./apps/web/server-preload.js
 
 # 파일 소유권을 비루트 사용자로 변경
 RUN chown -R nextjs:nodejs /app
@@ -108,4 +119,5 @@ EXPOSE 3000
 
 # Next.js standalone 서버 실행
 # --require로 preload 스크립트를 주입하여 indexedDB 등 브라우저 API stub을 등록
-CMD ["node", "--require", "./apps/web/server-preload.js", "apps/web/server.js"]
+# 경로는 WORKDIR(/app) 기준 절대경로를 사용하여 모호함을 방지
+CMD ["node", "--require", "/app/apps/web/server-preload.js", "apps/web/server.js"]

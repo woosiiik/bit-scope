@@ -43,7 +43,10 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+# shared는 devDependencies만 있어 pnpm이 로컬 node_modules를 생성하지 않을 수 있다.
+# 디렉토리가 없어도 빌드가 실패하지 않도록 빈 디렉토리를 먼저 생성한다.
+RUN mkdir -p ./packages/shared/node_modules
+RUN cp -r /app/node_modules/.pnpm/tsup*/node_modules/* ./packages/shared/node_modules/ 2>/dev/null || true
 
 # 전체 소스 복사
 COPY . .
@@ -87,6 +90,8 @@ RUN addgroup --system --gid 1001 nestjs && \
 # 프로덕션 의존성 복사
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY --from=production-deps /app/apps/api/node_modules ./apps/api/node_modules
+# shared는 프로덕션 의존성이 없어 node_modules가 존재하지 않으므로 복사하지 않는다.
+# 대신 workspace 심볼릭 링크 해소를 위해 shared의 package.json과 dist만 복사한다.
 
 # 빌드된 공유 패키지 복사
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
@@ -95,6 +100,11 @@ COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 # 빌드된 NestJS 앱 복사
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+
+# pnpm workspace의 @bitscope/shared 심볼릭 링크가 production-deps에서 깨질 수 있으므로
+# node_modules 내부에 shared 패키지를 직접 연결한다.
+RUN mkdir -p ./node_modules/@bitscope && \
+    ln -sf /app/packages/shared ./node_modules/@bitscope/shared
 
 # 파일 소유권을 비루트 사용자로 변경
 RUN chown -R nestjs:nestjs /app
