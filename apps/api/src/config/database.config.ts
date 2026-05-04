@@ -43,8 +43,9 @@ export function getDatabaseConfig(): TypeOrmModuleOptions {
     password: process.env.DB_PASSWORD || 'bitscope',
     database: process.env.DB_DATABASE || 'bitscope',
     entities: ENTITIES,
-    // 개발 환경에서만 synchronize 활성화, 프로덕션에서는 마이그레이션 사용
-    synchronize: process.env.NODE_ENV !== 'production',
+    // synchronize: 환경변수로 제어 (기본: 개발 환경에서만 활성화)
+    // 데모/초기 배포 시 DB_SYNCHRONIZE=true로 테이블 자동 생성 가능
+    synchronize: process.env.DB_SYNCHRONIZE === 'true' || process.env.NODE_ENV !== 'production',
     // 커넥션 풀 설정 (OCI Free Tier 리소스 절약)
     extra: {
       connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),

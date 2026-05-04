@@ -103,6 +103,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4000
+      # DB 테이블 자동 생성 (데모/초기 배포용, 상용 시 false로 변경하고 마이그레이션 사용)
+      - DB_SYNCHRONIZE=true
       # MySQL 연결 설정
       - DB_HOST=mysql
       - DB_PORT=3306
