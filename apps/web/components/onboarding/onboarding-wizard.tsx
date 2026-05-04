@@ -33,7 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { ExchangeType, ApiKeyPair } from '@bitscope/shared';
-import { SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
+import { DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { getExchangeName, generateUUID } from '@/lib/utils';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
@@ -50,7 +50,6 @@ import { deriveEncryptionKey } from '@/lib/crypto/key-derivation';
 import { createSigner } from '@/lib/exchange/signer-factory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
