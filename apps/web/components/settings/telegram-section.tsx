@@ -45,10 +45,11 @@ function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     return (
       process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.NEXT_PUBLIC_API_URL ??
       `${window.location.protocol}//${window.location.hostname}:4000`
     );
   }
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 }
 
 /** 텔레그램 연결 상태 */

@@ -569,7 +569,7 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
           return (
             <div key={group.label} className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3">
                 {groupExchanges.map((exchange) => {
                   const form = forms[exchange];
                   if (!form) return null;

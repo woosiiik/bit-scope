@@ -31,8 +31,8 @@ import type {
  */
 const NESTJS_API_BASE_URL =
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000');
+    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 /** 스냅샷 API 경로 */
 const SNAPSHOT_API_PATH = '/snapshots';

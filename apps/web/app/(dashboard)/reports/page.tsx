@@ -71,8 +71,8 @@ import {
  */
 const NESTJS_API_BASE_URL =
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000');
+    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 /** 탭 정의 */
 type TabId = 'reports' | 'export' | 'schedule' | 'backup';

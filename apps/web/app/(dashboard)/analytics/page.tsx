@@ -79,8 +79,8 @@ import { ErrorDisplay } from '@/components/ui/error-display';
  */
 const NESTJS_API_BASE_URL =
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000');
+    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 /** 기간 선택 옵션 */
 type PeriodOption = '7d' | '30d' | '90d' | 'all';
