@@ -70,17 +70,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorDisplay } from '@/components/ui/error-display';
 
-// ===== 상수 =====
+import { getApiBaseUrl } from '@/lib/api-url';
 
-/**
- * NestJS 백엔드 API 기본 URL
- *
- * snapshot-client.ts와 동일한 방식으로 환경 변수를 참조한다.
- */
-const NESTJS_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+// ===== 상수 =====
 
 /** 기간 선택 옵션 */
 type PeriodOption = '7d' | '30d' | '90d' | 'all';
@@ -163,7 +155,7 @@ async function fetchSnapshots(
   if (end) params.set('end', end);
   if (limit) params.set('limit', String(limit));
 
-  const url = `${NESTJS_API_BASE_URL}/snapshots/${walletAddress}?${params.toString()}`;
+  const url = `${getApiBaseUrl()}/snapshots/${walletAddress}?${params.toString()}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -193,7 +185,7 @@ async function fetchAggregatedSnapshots(
   if (start) params.set('start', start);
   if (end) params.set('end', end);
 
-  const url = `${NESTJS_API_BASE_URL}/snapshots/${walletAddress}?${params.toString()}`;
+  const url = `${getApiBaseUrl()}/snapshots/${walletAddress}?${params.toString()}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -1486,7 +1478,7 @@ async function fetchPeriodReports(
     limit: String(limit),
   });
 
-  const url = `${NESTJS_API_BASE_URL}/reports/${walletAddress}?${params.toString()}`;
+  const url = `${getApiBaseUrl()}/reports/${walletAddress}?${params.toString()}`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -1507,7 +1499,7 @@ async function createPeriodReport(
   walletAddress: string,
   type: PeriodReportType,
 ): Promise<PeriodReportResponse> {
-  const response = await fetch(`${NESTJS_API_BASE_URL}/reports`, {
+  const response = await fetch(`${getApiBaseUrl()}/reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ walletAddress, type }),

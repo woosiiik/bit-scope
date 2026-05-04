@@ -37,23 +37,32 @@ interface ProvidersProps {
  * 요청 간 데이터 격리를 보장한다.
  */
 /**
- * SSR/CSR hydration 불일치 방지 가드
+ * 클라이언트 마운트 감지 가드
  *
- * 클라이언트 마운트 전까지 children을 숨겨서
- * wagmi/RainbowKit의 SSR 상태와 CSR 상태 차이로 인한
- * React #418 에러를 방지한다.
+ * SSR에서 wagmi/RainbowKit의 내부 상태(지갑 연결 상태 등)가
+ * CSR 초기 상태와 달라 React hydration 불일치(#418)가 발생할 수 있다.
+ *
+ * force-dynamic으로 SSG는 방지되지만, SSR 시에도 서버는 지갑 상태를 알 수 없으므로
+ * 클라이언트 마운트 전까지 빈 껍데기를 렌더링하여 hydration 충돌을 방지한다.
+ *
+ * aria-hidden으로 스크린 리더가 미완성 콘텐츠를 읽지 않도록 하고,
+ * 마운트 후 즉시 실제 콘텐츠를 표시한다.
+ *
+ * SEO 영향: force-dynamic 환경에서 검색 크롤러는 서버 HTML을 수신하므로,
+ * 메타데이터(layout.tsx의 metadata export)는 정상 제공된다.
+ * 본문 콘텐츠의 빈 렌더링은 지갑 연결 필수 SPA 특성상 불가피하다.
  */
-function MountGuard({ children }: { children: ReactNode }) {
+function ClientGate({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  return (
-    <div style={{ visibility: mounted ? 'visible' : 'hidden' }}>
-      {children}
-    </div>
-  );
+  if (!mounted) {
+    return null;
+  }
+
+  return <>{children}</>;
 }
 
 export function Providers({ children }: ProvidersProps) {
@@ -83,28 +92,30 @@ export function Providers({ children }: ProvidersProps) {
   const setLanguage = useSettingsStore((s) => s.setLanguage);
 
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          locale={language === 'en' ? 'en' : 'ko'}
-          theme={{
-            lightMode: lightTheme({
-              accentColor: '#3B82F6',
-              accentColorForeground: 'white',
-              borderRadius: 'medium',
-            }),
-            darkMode: darkTheme({
-              accentColor: '#3B82F6',
-              accentColorForeground: 'white',
-              borderRadius: 'medium',
-            }),
-          }}
-        >
-          <I18nProvider locale={language as Locale} onLocaleChange={(loc) => setLanguage(loc)}>
-            <MountGuard>{children}</MountGuard>
-          </I18nProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <ClientGate>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider
+            locale={language === 'en' ? 'en' : 'ko'}
+            theme={{
+              lightMode: lightTheme({
+                accentColor: '#3B82F6',
+                accentColorForeground: 'white',
+                borderRadius: 'medium',
+              }),
+              darkMode: darkTheme({
+                accentColor: '#3B82F6',
+                accentColorForeground: 'white',
+                borderRadius: 'medium',
+              }),
+            }}
+          >
+            <I18nProvider locale={language as Locale} onLocaleChange={(loc) => setLanguage(loc)}>
+              {children}
+            </I18nProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ClientGate>
   );
 }

@@ -126,6 +126,13 @@ export function SidebarNav({ className }: SidebarNavProps) {
           })}
         </ul>
       </nav>
+
+      {/* 빌드 버전 (배포 확인용) */}
+      <div className="px-4 py-2 border-t border-sidebar-border">
+        <span className="text-[10px] text-sidebar-foreground/40">
+          v{process.env.NEXT_PUBLIC_BUILD_VERSION || 'dev'}
+        </span>
+      </div>
     </aside>
   );
 }

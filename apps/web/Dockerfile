@@ -63,8 +63,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID}
+# 빌드 버전: 빌드 시간 자동 생성 (캐시 무효화 + 배포 확인용)
+RUN echo "NEXT_PUBLIC_BUILD_VERSION=$(date +%Y%m%d-%H%M%S)" >> .env.local
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 
+# 빌드 시에도 server-preload.js를 주입하여 indexedDB 등 브라우저 API stub을 등록
+# Next.js가 서버 컴포넌트를 컴파일할 때 MetaMask SDK가 indexedDB를 참조하는 것을 방지
+ENV NODE_OPTIONS="--require ./apps/web/server-preload.js"
 RUN pnpm --filter @bitscope/web build
 
 # -----------------------------------------------------------------------------

@@ -10,8 +10,12 @@
  * @see 요구사항 NF5.1 (한국어 기본 언어)
  */
 
-// 모든 페이지를 동적 렌더링으로 설정
-// wagmi/RainbowKit이 빌드 시점에 Provider 없이 실행되어 에러 발생 방지
+// 루트 레이아웃 세그먼트를 동적 렌더링으로 강제 설정
+// 이 설정은 하위 모든 라우트에 전파되어 빌드 시 SSG(정적 페이지 생성)를 방지한다.
+// wagmi/RainbowKit이 빌드 시점에 Provider 컨텍스트 없이 실행되어
+// WagmiProviderNotFoundError가 발생하는 것을 차단한다.
+// 주의: layout.tsx는 서버 컴포넌트이므로 route segment config가 정상 동작한다.
+// 'use client' 파일에서는 export const dynamic이 무시된다.
 export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from 'next';

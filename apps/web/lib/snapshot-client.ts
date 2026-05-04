@@ -20,19 +20,9 @@ import type {
   SnapshotHolding,
   AggregatedPortfolio,
 } from '@bitscope/shared';
+import { getApiBaseUrl } from './api-url';
 
 // ===== 상수 =====
-
-/**
- * NestJS 백엔드 API 기본 URL
- *
- * 환경 변수를 통해 설정 가능하며, 기본값은 같은 호스트의 port 4000이다.
- * nginx 리버스 프록시 환경에서는 /api/v1 같은 경로로 설정할 수 있다.
- */
-const NESTJS_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 /** 스냅샷 API 경로 */
 const SNAPSHOT_API_PATH = '/snapshots';
@@ -84,7 +74,7 @@ export async function sendSnapshot(
   walletAddress: string,
   snapshot: PortfolioSnapshot,
 ): Promise<void> {
-  const url = `${NESTJS_API_BASE_URL}${SNAPSHOT_API_PATH}`;
+  const url = `${getApiBaseUrl()}${SNAPSHOT_API_PATH}`;
 
   const body: CreateSnapshotRequest = {
     walletAddress,

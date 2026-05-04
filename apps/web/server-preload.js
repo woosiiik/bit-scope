@@ -1,5 +1,9 @@
 /**
- * Next.js 서버 시작 전 preload 스크립트
+ * Next.js 서버 preload 스크립트
+ *
+ * 빌드 시(NODE_OPTIONS="--require ./server-preload.js")와
+ * 런타임 시(CMD ["node", "--require", "./server-preload.js", ...])
+ * 양쪽에서 사용된다.
  *
  * MetaMask/WalletConnect SDK가 서버사이드에서 indexedDB를
  * 참조하여 ReferenceError가 발생하는 것을 방지한다.

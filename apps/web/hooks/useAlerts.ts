@@ -24,36 +24,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
 
 import type { AlertCondition, AlertNotification, ExchangeType } from '@bitscope/shared';
+import { getApiBaseUrl, getWsBaseUrl } from '@/lib/api-url';
 
 // ===== 상수 =====
-
-/**
- * NestJS 백엔드 API 기본 URL
- */
-function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    return (
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      process.env.NEXT_PUBLIC_API_URL ??
-      `${window.location.protocol}//${window.location.hostname}:4000`
-    );
-  }
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-}
-
-/**
- * WebSocket 서버 URL
- */
-function getWebSocketUrl(): string {
-  if (typeof window !== 'undefined') {
-    return (
-      process.env.NEXT_PUBLIC_WS_URL ??
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      `${window.location.protocol}//${window.location.hostname}:4000`
-    );
-  }
-  return process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000';
-}
 
 /** 알림 API 경로 */
 const ALERTS_API_PATH = '/alerts';
@@ -488,7 +461,7 @@ export function useAlertNotifications(
   useEffect(() => {
     if (!enabled || !walletAddress) return;
 
-    const wsUrl = getWebSocketUrl();
+    const wsUrl = getWsBaseUrl();
 
     const socket = io(`${wsUrl}/price`, {
       transports: ['websocket', 'polling'],

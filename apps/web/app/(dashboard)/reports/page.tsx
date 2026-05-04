@@ -64,15 +64,9 @@ import {
   FormattedPercent,
 } from '@/components/ui/formatted-number';
 
-// ===== 상수 =====
+import { getApiBaseUrl } from '@/lib/api-url';
 
-/**
- * NestJS 백엔드 API 기본 URL
- */
-const NESTJS_API_BASE_URL =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? `${window.location.protocol}//${window.location.hostname}:4000`)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+// ===== 상수 =====
 
 /** 탭 정의 */
 type TabId = 'reports' | 'export' | 'schedule' | 'backup';
@@ -149,7 +143,7 @@ async function createReport(
   walletAddress: string,
   type: ReportType,
 ): Promise<ReportResponse> {
-  const response = await fetch(`${NESTJS_API_BASE_URL}/reports`, {
+  const response = await fetch(`${getApiBaseUrl()}/reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ walletAddress, type }),
@@ -176,7 +170,7 @@ async function fetchReportHistory(
   params.set('limit', String(limit));
 
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/${walletAddress}?${params.toString()}`,
+    `${getApiBaseUrl()}/reports/${walletAddress}?${params.toString()}`,
   );
 
   if (!response.ok) {
@@ -194,7 +188,7 @@ async function fetchSchedules(
   walletAddress: string,
 ): Promise<ScheduleResponse[]> {
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/schedules/${walletAddress}`,
+    `${getApiBaseUrl()}/reports/schedules/${walletAddress}`,
   );
 
   if (!response.ok) {
@@ -212,7 +206,7 @@ async function createSchedule(
   walletAddress: string,
   type: ReportType,
 ): Promise<ScheduleResponse> {
-  const response = await fetch(`${NESTJS_API_BASE_URL}/reports/schedules`, {
+  const response = await fetch(`${getApiBaseUrl()}/reports/schedules`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ walletAddress, type, isActive: true }),
@@ -233,7 +227,7 @@ async function createSchedule(
  */
 async function deleteSchedule(scheduleId: string): Promise<void> {
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/schedules/${scheduleId}`,
+    `${getApiBaseUrl()}/reports/schedules/${scheduleId}`,
     { method: 'DELETE' },
   );
 
@@ -250,7 +244,7 @@ async function toggleScheduleActive(
   isActive: boolean,
 ): Promise<ScheduleResponse> {
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/schedules/${scheduleId}`,
+    `${getApiBaseUrl()}/reports/schedules/${scheduleId}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -280,7 +274,7 @@ async function exportData(
   if (end) params.set('end', end);
 
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/${walletAddress}/export?${params.toString()}`,
+    `${getApiBaseUrl()}/reports/${walletAddress}/export?${params.toString()}`,
   );
 
   if (!response.ok) {
@@ -309,7 +303,7 @@ async function exportTransactions(
   if (end) params.set('end', end);
 
   const response = await fetch(
-    `${NESTJS_API_BASE_URL}/reports/${walletAddress}/export/transactions?${params.toString()}`,
+    `${getApiBaseUrl()}/reports/${walletAddress}/export/transactions?${params.toString()}`,
   );
 
   if (!response.ok) {

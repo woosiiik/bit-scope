@@ -30,24 +30,9 @@ import {
 } from '@bitscope/shared';
 
 import { usePriceStore, type ConnectionStatus } from '@/store/price-store';
+import { getWsBaseUrl } from '@/lib/api-url';
 
 // ===== 상수 =====
-
-/**
- * NestJS WebSocket 서버 URL
- *
- * 환경 변수를 통해 설정 가능하며, 기본값은 같은 호스트의 port 4000이다.
- */
-function getWebSocketUrl(): string {
-  if (typeof window !== 'undefined') {
-    return (
-      process.env.NEXT_PUBLIC_WS_URL ??
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      `${window.location.protocol}//${window.location.hostname}:4000`
-    );
-  }
-  return process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000';
-}
 
 /** Socket.IO 이벤트 이름 (서버 PriceGateway의 WS_EVENTS와 일치) */
 const WS_EVENTS = {
@@ -290,7 +275,7 @@ export function useRealTimePrice(
     setConnectionStatus('connecting');
     setLastError(null);
 
-    const wsUrl = getWebSocketUrl();
+    const wsUrl = getWsBaseUrl();
 
     const socket = io(`${wsUrl}/price`, {
       transports: ['websocket', 'polling'],

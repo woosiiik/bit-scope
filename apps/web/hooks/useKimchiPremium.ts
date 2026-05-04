@@ -20,24 +20,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { ExchangeType, KimchiPremiumData, KimchiPremiumHistory } from '@bitscope/shared';
+import { getApiBaseUrl } from '@/lib/api-url';
 
 // ===== 상수 =====
-
-/**
- * NestJS 백엔드 API 기본 URL
- *
- * 환경 변수를 통해 설정 가능하며, 기본값은 같은 호스트의 port 4000이다.
- */
-function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    return (
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      process.env.NEXT_PUBLIC_API_URL ??
-      `${window.location.protocol}//${window.location.hostname}:4000`
-    );
-  }
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-}
 
 /** 프리미엄 API 경로 */
 const PREMIUM_API_PATH = '/premium';
