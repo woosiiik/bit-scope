@@ -197,6 +197,7 @@ const ko = {
     spotAndFutures: 'Spot + Futures',
     unifiedAccount: 'Unified 계정',
     approximateKrw: (krw: string) => `(${krw})`,
+    addExchange: '거래소 추가',
   },
 
   /** 포트폴리오 */

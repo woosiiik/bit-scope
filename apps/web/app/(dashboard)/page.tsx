@@ -24,6 +24,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   RefreshCw,
   TrendingUp,
@@ -35,6 +36,7 @@ import {
   ChevronsUpDown,
   ArrowLeft,
   Filter,
+  Plus,
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import type { ExchangeType, SortCriteria, MergedHolding } from '@bitscope/shared';
@@ -293,10 +295,13 @@ export default function DashboardPage() {
         onRefresh={portfolio.refetchAll}
       />
 
-      {/* 거래소 필터 (맨 위) */}
+      {/* 거래소 필터 (맨 위) - 등록된 거래소만 표시 */}
       <ExchangeFilterBar
         filter={portfolio.filter}
         onFilterChange={portfolio.setFilter}
+        registeredExchanges={Object.keys(portfolio.exchangeStates).filter(
+          (ex) => portfolio.exchangeStates[ex as ExchangeType]?.data || portfolio.exchangeStates[ex as ExchangeType]?.errorMessage
+        ) as ExchangeType[]}
       />
 
       {/* 거래소별 오류 배지 */}
@@ -691,6 +696,18 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
             </Card>
           );
         })}
+
+        {/* 거래소 추가 카드 */}
+        <Link href="/settings" className="block">
+          <Card className="p-0 h-full border-dashed hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="p-3 flex flex-col items-center justify-center h-full min-h-[72px] gap-1.5">
+              <Plus className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-xs font-medium text-muted-foreground">
+                {t.dashboard.addExchange}
+              </span>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   );
@@ -701,15 +718,17 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
 interface ExchangeFilterBarProps {
   filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' };
   onFilterChange: (filter: { exchanges?: ExchangeType[]; profitLossType?: 'profit' | 'loss' | 'all' }) => void;
+  /** 등록된(API Key가 있는) 거래소 목록 */
+  registeredExchanges: ExchangeType[];
 }
 
 /**
  * 거래소 필터 바
  *
  * 그룹 필터(전체/국내/해외/DEX) + 개별 거래소 필터를 제공한다.
- * 대시보드 헤더 바로 아래에 배치된다.
+ * 등록된 거래소만 표시한다.
  */
-function ExchangeFilterBar({ filter, onFilterChange }: ExchangeFilterBarProps) {
+function ExchangeFilterBar({ filter, onFilterChange, registeredExchanges }: ExchangeFilterBarProps) {
   const { t, locale } = useTranslation();
 
   /** 그룹 필터 핸들러 */
@@ -759,12 +778,23 @@ function ExchangeFilterBar({ filter, onFilterChange }: ExchangeFilterBarProps) {
     return null;
   }, [filter.exchanges]);
 
+  // 등록된 거래소가 있는 그룹만 표시
+  const registeredSet = new Set(registeredExchanges);
+  const hasDomestic = (DOMESTIC_EXCHANGES ?? []).some((e) => registeredSet.has(e));
+  const hasForeign = (FOREIGN_EXCHANGES ?? []).some((e) => registeredSet.has(e));
+  const hasDex = (DEX_EXCHANGES ?? []).some((e) => registeredSet.has(e));
+
   const groups = [
-    { key: 'all' as const, label: t.dashboard.allLabel },
-    { key: 'domestic' as const, label: t.dashboard.domesticLabel },
-    { key: 'foreign' as const, label: t.dashboard.foreignLabel },
-    { key: 'dex' as const, label: t.dashboard.dexLabel },
-  ];
+    { key: 'all' as const, label: t.dashboard.allLabel, show: true },
+    { key: 'domestic' as const, label: t.dashboard.domesticLabel, show: hasDomestic },
+    { key: 'foreign' as const, label: t.dashboard.foreignLabel, show: hasForeign },
+    { key: 'dex' as const, label: t.dashboard.dexLabel, show: hasDex },
+  ].filter((g) => g.show);
+
+  // 등록된 거래소가 1개 이하면 필터 불필요
+  if (registeredExchanges.length <= 1) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -782,13 +812,13 @@ function ExchangeFilterBar({ filter, onFilterChange }: ExchangeFilterBarProps) {
           </Button>
         ))}
         <div className="w-px h-5 bg-border mx-1" />
-        {/* 개별 거래소 필터 */}
-        {SUPPORTED_EXCHANGES.map((exchange) => {
+        {/* 개별 거래소 필터 (등록된 거래소만) */}
+        {registeredExchanges.map((exchange) => {
           const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
           return (
             <Button
               key={exchange}
-              variant={isActive ? 'secondary' : 'ghost'}
+              variant={isActive ? 'default' : 'outline'}
               size="sm"
               className={cn(
                 'h-6 px-2 text-[11px]',
@@ -832,25 +862,12 @@ function TableControls({
   onToggleSort: _onToggleSort,
   onFilterChange,
 }: TableControlsProps) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
 
   /** 수익/손실 필터 버튼 핸들러 */
   const handleProfitLossFilter = useCallback(
     (type: 'all' | 'profit' | 'loss') => {
       onFilterChange({ ...filter, profitLossType: type });
-    },
-    [filter, onFilterChange],
-  );
-
-  /** 거래소 필터 토글 핸들러 */
-  const handleExchangeFilter = useCallback(
-    (exchange: ExchangeType) => {
-      const current = filter.exchanges ?? [];
-      const isSelected = current.includes(exchange);
-      const newExchanges = isSelected
-        ? current.filter((e) => e !== exchange)
-        : [...current, exchange];
-      onFilterChange({ ...filter, exchanges: newExchanges.length > 0 ? newExchanges : undefined });
     },
     [filter, onFilterChange],
   );
@@ -862,27 +879,6 @@ function TableControls({
       </h2>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* 거래소 필터 */}
-        {SUPPORTED_EXCHANGES.map((exchange) => {
-          const isActive = !filter.exchanges || filter.exchanges.includes(exchange);
-          return (
-            <Button
-              key={exchange}
-              variant={isActive ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => handleExchangeFilter(exchange)}
-              aria-pressed={isActive}
-              aria-label={t.dashboard.exchangeFilter(getExchangeName(exchange, locale))}
-            >
-              {getExchangeName(exchange, locale)}
-            </Button>
-          );
-        })}
-
-        {/* 구분선 */}
-        <div className="hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
-
         {/* 수익/손실 필터 */}
         {(['all', 'profit', 'loss'] as const).map((type) => {
           const labels = { all: t.dashboard.allLabel, profit: t.dashboard.profitLabel, loss: t.dashboard.lossLabel };

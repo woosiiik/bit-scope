@@ -201,6 +201,7 @@ const en: Messages = {
     spotAndFutures: 'Spot + Futures',
     unifiedAccount: 'Unified Account',
     approximateKrw: (krw: string) => `(${krw})`,
+    addExchange: 'Add Exchange',
   },
 
   /** Portfolio */
