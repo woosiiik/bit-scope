@@ -46,11 +46,8 @@ COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 # 전체 소스 복사
 COPY . .
 
-# 디버그: node_modules 상태 확인
-RUN ls -la /app/node_modules/.bin/tsup 2>/dev/null || echo "tsup NOT in root .bin"
-
 # 공유 패키지(shared) 빌드
-RUN /app/node_modules/.bin/tsup --config /app/packages/shared/tsup.config.ts
+RUN cd packages/shared && npx --yes tsup
 
 # NestJS 빌드 (TypeScript -> JavaScript 컴파일)
 RUN pnpm --filter @bitscope/api build
