@@ -33,7 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { ExchangeType, ApiKeyPair } from '@bitscope/shared';
-import { SUPPORTED_EXCHANGES } from '@bitscope/shared';
+import { SUPPORTED_EXCHANGES, DOMESTIC_EXCHANGES, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { getExchangeName } from '@/lib/utils';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
@@ -233,55 +233,62 @@ interface ExchangeSelectStepProps {
 function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
   const { t, locale } = useTranslation();
 
+  const groups = [
+    { label: t.dashboard.domesticLabel, exchanges: DOMESTIC_EXCHANGES as readonly ExchangeType[], highlight: true },
+    { label: t.dashboard.foreignLabel, exchanges: FOREIGN_EXCHANGES as readonly ExchangeType[], highlight: false },
+    { label: t.dashboard.dexLabel, exchanges: DEX_EXCHANGES as readonly ExchangeType[], highlight: false },
+  ];
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">{t.onboarding.step1}</CardTitle>
         <CardDescription>{t.onboarding.step1Description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {SUPPORTED_EXCHANGES.map((exchange) => {
-          const isSelected = onboarding.selectedExchanges.includes(exchange);
-
-          return (
-            <button
-              key={exchange}
-              type="button"
-              className={`flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                isSelected
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border bg-background hover:bg-accent'
-              }`}
-              onClick={() => onboarding.toggleExchange(exchange)}
-              aria-pressed={isSelected}
-              aria-label={`${getExchangeName(exchange, locale)} ${isSelected ? '선택됨' : '선택 안 됨'}`}
-            >
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                  isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}
-              >
-                {isSelected ? (
-                  <Check className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <Key className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                )}
-              </div>
-              <div>
-                <span className="font-semibold text-foreground">{getExchangeName(exchange, locale)}</span>
-                <p className="text-xs text-muted-foreground">
-                  {t.exchange[exchange]}
-                </p>
-              </div>
-            </button>
-          );
-        })}
+      <CardContent className="space-y-5">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <h3 className={`text-sm font-semibold mb-2 ${group.highlight ? 'text-primary' : 'text-muted-foreground'}`}>
+              {group.label}
+            </h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {group.exchanges.map((exchange) => {
+                const isSelected = onboarding.selectedExchanges.includes(exchange);
+                return (
+                  <button
+                    key={exchange}
+                    type="button"
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      isSelected
+                        ? 'border-primary bg-primary/5'
+                        : group.highlight
+                          ? 'border-primary/30 bg-background hover:bg-primary/5'
+                          : 'border-border bg-background hover:bg-accent'
+                    }`}
+                    onClick={() => onboarding.toggleExchange(exchange)}
+                    aria-pressed={isSelected}
+                  >
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}
+                    >
+                      {isSelected ? (
+                        <Check className="h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Key className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-foreground">{getExchangeName(exchange, locale)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </CardContent>
       <CardFooter className="flex justify-between gap-2">
-        <Button
-          variant="ghost"
-          onClick={onboarding.skipOnboarding}
-        >
+        <Button variant="ghost" onClick={onboarding.skipOnboarding}>
           {t.onboarding.skipAll}
         </Button>
         <Button
@@ -293,6 +300,95 @@ function ExchangeSelectStep({ onboarding }: ExchangeSelectStepProps) {
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+// ===== 거래소별 API Key 카드 =====
+
+interface ExchangeKeyCardProps {
+  exchange: ExchangeType;
+  form: ExchangeKeyFormState;
+  locale: string;
+  t: ReturnType<typeof useTranslation>['t'];
+  isProcessing: boolean;
+  onUpdateForm: (exchange: ExchangeType, update: Partial<ExchangeKeyFormState>) => void;
+  onRegister: (exchange: ExchangeType) => void;
+}
+
+function ExchangeKeyCard({ exchange, form, locale, t, isProcessing, onUpdateForm, onRegister }: ExchangeKeyCardProps) {
+  return (
+    <div className="rounded-lg border border-border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-foreground">{getExchangeName(exchange, locale)}</span>
+        {form.isRegistered && (
+          <Badge variant="success" className="gap-1 text-[10px]">
+            <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+            {t.apiKey.settingsPage.connected}
+          </Badge>
+        )}
+      </div>
+
+      {form.isRegistered ? (
+        <p className="text-xs text-muted-foreground">{t.apiKey.settingsPage.registerSuccess}</p>
+      ) : (
+        <>
+          <Input
+            id={`${exchange}-access-key`}
+            type="text"
+            placeholder={t.apiKey.settingsPage.accessKeyPlaceholder}
+            value={form.accessKey}
+            onChange={(e) => onUpdateForm(exchange, { accessKey: e.target.value, error: null })}
+            disabled={isProcessing}
+            autoComplete="off"
+            spellCheck={false}
+            className="h-8 text-xs"
+          />
+          <div className="relative">
+            <Input
+              id={`${exchange}-secret-key`}
+              type={form.showSecretKey ? 'text' : 'password'}
+              placeholder={t.apiKey.settingsPage.secretKeyPlaceholder}
+              value={form.secretKey}
+              onChange={(e) => onUpdateForm(exchange, { secretKey: e.target.value, error: null })}
+              disabled={isProcessing}
+              autoComplete="off"
+              spellCheck={false}
+              className="h-8 pr-8 text-xs"
+            />
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground"
+              onClick={() => onUpdateForm(exchange, { showSecretKey: !form.showSecretKey })}
+            >
+              {form.showSecretKey ? (
+                <EyeOff className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <Eye className="h-3 w-3" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+
+          {form.error && (
+            <div className="flex items-center gap-1.5 text-[10px] text-red-600 dark:text-red-400" role="alert">
+              <XCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span>{form.error}</span>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            onClick={() => onRegister(exchange)}
+            disabled={isProcessing || !form.accessKey.trim() || !form.secretKey.trim()}
+            className="w-full h-7 text-xs"
+          >
+            {isProcessing && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+            {form.isValidating ? t.apiKey.validating
+              : form.isRegistering ? t.apiKey.settingsPage.registering
+              : t.apiKey.settingsPage.registerButton}
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -460,116 +556,38 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
           </p>
         </div>
 
-        {/* 거래소별 API 키 입력 폼 */}
-        {onboarding.selectedExchanges.map((exchange) => {
-          const form = forms[exchange];
-          if (!form) return null;
-
-          const isProcessing = form.isValidating || form.isRegistering;
+        {/* 거래소별 API 키 입력 폼 (그룹별 카드뷰) */}
+        {[
+          { label: t.dashboard.domesticLabel, exchanges: DOMESTIC_EXCHANGES as readonly ExchangeType[] },
+          { label: t.dashboard.foreignLabel, exchanges: FOREIGN_EXCHANGES as readonly ExchangeType[] },
+          { label: t.dashboard.dexLabel, exchanges: DEX_EXCHANGES as readonly ExchangeType[] },
+        ].map((group) => {
+          const groupExchanges = onboarding.selectedExchanges.filter(
+            (ex) => (group.exchanges as readonly string[]).includes(ex),
+          );
+          if (groupExchanges.length === 0) return null;
 
           return (
-            <div
-              key={exchange}
-              className="rounded-lg border border-border p-4 space-y-3"
-            >
-              {/* 거래소 헤더 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{getExchangeName(exchange, locale)}</span>
-                  {form.isRegistered && (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-                      {t.apiKey.settingsPage.connected}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {form.isRegistered ? (
-                /* 등록 완료 상태 */
-                <p className="text-sm text-muted-foreground">
-                  {t.apiKey.settingsPage.registerSuccess}
-                </p>
-              ) : (
-                /* 키 입력 폼 */
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor={`${exchange}-access-key`} className="text-xs">
-                      {t.apiKey.accessKey}
-                    </Label>
-                    <Input
-                      id={`${exchange}-access-key`}
-                      type="text"
-                      placeholder={t.apiKey.settingsPage.accessKeyPlaceholder}
-                      value={form.accessKey}
-                      onChange={(e) => updateForm(exchange, { accessKey: e.target.value, error: null })}
-                      disabled={isProcessing}
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="h-9 text-sm"
+            <div key={group.label} className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {groupExchanges.map((exchange) => {
+                  const form = forms[exchange];
+                  if (!form) return null;
+                  return (
+                    <ExchangeKeyCard
+                      key={exchange}
+                      exchange={exchange}
+                      form={form}
+                      locale={locale}
+                      t={t}
+                      isProcessing={form.isValidating || form.isRegistering}
+                      onUpdateForm={updateForm}
+                      onRegister={handleRegister}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`${exchange}-secret-key`} className="text-xs">
-                      {t.apiKey.secretKey}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id={`${exchange}-secret-key`}
-                        type={form.showSecretKey ? 'text' : 'password'}
-                        placeholder={t.apiKey.settingsPage.secretKeyPlaceholder}
-                        value={form.secretKey}
-                        onChange={(e) => updateForm(exchange, { secretKey: e.target.value, error: null })}
-                        disabled={isProcessing}
-                        autoComplete="off"
-                        spellCheck={false}
-                        className="h-9 pr-10 text-sm"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                        onClick={() => updateForm(exchange, { showSecretKey: !form.showSecretKey })}
-                        aria-label={form.showSecretKey ? 'Secret Key 숨기기' : 'Secret Key 보기'}
-                      >
-                        {form.showSecretKey ? (
-                          <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-                        ) : (
-                          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 오류 표시 */}
-                  {form.error && (
-                    <div
-                      className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
-                      role="alert"
-                    >
-                      <XCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span>{form.error}</span>
-                    </div>
-                  )}
-
-                  {/* 등록 버튼 */}
-                  <Button
-                    size="sm"
-                    onClick={() => handleRegister(exchange)}
-                    disabled={isProcessing || !form.accessKey.trim() || !form.secretKey.trim()}
-                    className="w-full"
-                  >
-                    {isProcessing && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    )}
-                    {form.isValidating
-                      ? t.apiKey.validating
-                      : form.isRegistering
-                        ? t.apiKey.settingsPage.registering
-                        : t.apiKey.settingsPage.registerButton}
-                  </Button>
-                </>
-              )}
+                  );
+                })}
+              </div>
             </div>
           );
         })}

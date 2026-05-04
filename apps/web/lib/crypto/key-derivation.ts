@@ -29,7 +29,18 @@ const SIGNATURE_MESSAGE_PREFIX = 'BitScope:encrypt';
  * @returns UUID v4 형식의 고유 nonce
  */
 export function generateNonce(): string {
-  return crypto.randomUUID();
+  // crypto.randomUUID()는 Secure Context(HTTPS/localhost)에서만 사용 가능
+  // HTTP 환경에서도 동작하도록 폴백 구현
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // 폴백: crypto.getRandomValues로 UUID v4 생성
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant 1
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**
