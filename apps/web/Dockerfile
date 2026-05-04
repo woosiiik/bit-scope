@@ -50,9 +50,15 @@ COPY . .
 # public 디렉토리 보장
 RUN mkdir -p ./apps/web/public
 
+# 디버그: node_modules 상태 확인
+RUN ls -la /app/node_modules/.bin/tsup 2>/dev/null || echo "tsup NOT in root .bin"
+RUN ls -la /app/node_modules/.bin/ | head -5 || echo "root .bin is empty or missing"
+RUN ls -la /app/packages/shared/ || echo "shared dir missing"
+
 # 공유 패키지(shared) 빌드
-# tsup은 루트 node_modules에 hoisted 되어 있으므로 PATH에 추가하여 실행
-RUN PATH="/app/node_modules/.bin:$PATH" pnpm --filter @bitscope/shared build
+# pnpm --filter는 자식 프로세스에서 실행되어 PATH가 전달 안 될 수 있으므로
+# 직접 tsup 절대경로로 실행
+RUN /app/node_modules/.bin/tsup --config /app/packages/shared/tsup.config.ts
 
 # Next.js standalone 빌드
 # NEXT_PUBLIC_ 환경변수는 빌드 시점에 주입해야 한다
