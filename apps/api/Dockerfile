@@ -43,16 +43,12 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-# shared는 devDependencies만 있어 pnpm이 로컬 node_modules를 생성하지 않을 수 있다.
-# 디렉토리가 없어도 빌드가 실패하지 않도록 빈 디렉토리를 먼저 생성한다.
-RUN mkdir -p ./packages/shared/node_modules
-RUN cp -r /app/node_modules/.pnpm/tsup*/node_modules/* ./packages/shared/node_modules/ 2>/dev/null || true
-
 # 전체 소스 복사
 COPY . .
 
-# 공유 패키지(shared) 빌드 (NestJS가 의존)
-RUN pnpm --filter @bitscope/shared build
+# 공유 패키지(shared) 빌드
+# tsup은 루트 node_modules에 hoisted 되어 있으므로 PATH에 추가하여 실행
+RUN PATH="/app/node_modules/.bin:$PATH" pnpm --filter @bitscope/shared build
 
 # NestJS 빌드 (TypeScript -> JavaScript 컴파일)
 RUN pnpm --filter @bitscope/api build

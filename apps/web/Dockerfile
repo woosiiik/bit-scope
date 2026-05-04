@@ -44,20 +44,15 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-# shared는 devDependencies만 있어 pnpm이 로컬 node_modules를 생성하지 않을 수 있다.
-# 디렉토리가 없으면 빈 디렉토리를 생성하여 후속 빌드가 실패하지 않도록 한다.
-RUN mkdir -p ./packages/shared/node_modules
-RUN cp -r /app/node_modules/.pnpm/tsup*/node_modules/* ./packages/shared/node_modules/ 2>/dev/null || true
-
 # 전체 소스 복사
 COPY . .
 
-# public 디렉토리가 비어 있으면(.gitkeep만 존재) standalone 복사 시 실패하므로
-# 빈 디렉토리라도 확실히 존재하도록 보장한다.
+# public 디렉토리 보장
 RUN mkdir -p ./apps/web/public
 
-# 공유 패키지(shared) 빌드 (Next.js가 의존)
-RUN pnpm --filter @bitscope/shared build
+# 공유 패키지(shared) 빌드
+# tsup은 루트 node_modules에 hoisted 되어 있으므로 PATH에 추가하여 실행
+RUN PATH="/app/node_modules/.bin:$PATH" pnpm --filter @bitscope/shared build
 
 # Next.js standalone 빌드
 # NEXT_PUBLIC_ 환경변수는 빌드 시점에 주입해야 한다
