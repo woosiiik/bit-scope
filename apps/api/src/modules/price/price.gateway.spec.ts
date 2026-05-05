@@ -203,6 +203,8 @@ describe('PriceGateway', () => {
       const notification: AlertNotification = {
         alertId: 'alert-1',
         symbol: 'BTC',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100000000,
         triggeredValue: 101000000,
@@ -228,6 +230,8 @@ describe('PriceGateway', () => {
         gateway.broadcastAlert('0x1234', {
           alertId: 'alert-1',
           symbol: 'BTC',
+          exchange: 'upbit',
+          currency: 'KRW',
           condition: 'above',
           targetValue: 100000000,
           triggeredValue: 101000000,

@@ -237,6 +237,11 @@ export function normalizeHyperliquidTicker(rawResponse: unknown): NormalizedTick
   const tickers: Ticker[] = [];
 
   for (const [symbol, priceStr] of Object.entries(response)) {
+    // @숫자 형태의 스팟 토큰 내부 인덱스는 제외 (예: @1, @12)
+    if (symbol.startsWith('@')) {
+      continue;
+    }
+
     const price = parseFloat(priceStr) || 0;
 
     if (price <= 0) {

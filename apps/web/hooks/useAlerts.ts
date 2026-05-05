@@ -23,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
 
-import type { AlertCondition, AlertNotification, ExchangeType } from '@bitscope/shared';
+import type { AlertCondition, AlertNotification, ExchangeType, AlertCurrency } from '@bitscope/shared';
 import { getApiBaseUrl, getWsBaseUrl } from '@/lib/api-url';
 
 // ===== 상수 =====
@@ -64,7 +64,8 @@ export interface AlertResponse {
   id: string;
   walletAddress: string;
   symbol: string;
-  exchange: string | null;
+  exchange: string;
+  currency: string;
   condition: string;
   targetValue: number;
   isActive: boolean;
@@ -86,7 +87,8 @@ export interface AlertHistoryResponse {
 export interface CreateAlertParams {
   walletAddress: string;
   symbol: string;
-  exchange?: ExchangeType;
+  exchange: ExchangeType;
+  currency: AlertCurrency;
   condition: AlertCondition;
   targetValue: number;
   isActive?: boolean;
@@ -96,7 +98,7 @@ export interface CreateAlertParams {
 export interface UpdateAlertParams {
   alertId: string;
   symbol?: string;
-  exchange?: ExchangeType | null;
+  exchange?: ExchangeType;
   condition?: AlertCondition;
   targetValue?: number;
   isActive?: boolean;

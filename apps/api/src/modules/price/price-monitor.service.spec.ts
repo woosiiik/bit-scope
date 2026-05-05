@@ -80,12 +80,23 @@ describe('PriceMonitorService', () => {
       onModuleDestroy: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<BinancePollingClient>;
 
+    const hyperliquidClient = {
+      start: jest.fn().mockResolvedValue(undefined),
+      stop: jest.fn().mockResolvedValue(undefined),
+      subscribe: jest.fn(),
+      isActive: jest.fn().mockReturnValue(false),
+      onModuleDestroy: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+    } as unknown as jest.Mocked<import('./exchange-ws/hyperliquid-polling.client').HyperliquidPollingClient>;
+
     service = new PriceMonitorService(
       eventEmitter,
       upbitClient,
       bithumbClient,
       coinoneClient,
       binanceClient,
+      hyperliquidClient,
     );
   });
 

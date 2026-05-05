@@ -30,14 +30,16 @@ describe('AlertEntity', () => {
     expect(entity.isActive).toBe(true);
   });
 
-  it('모든 거래소 대상 알림 설정(exchange=null)을 저장할 수 있어야 한다', () => {
+  it('거래소와 통화를 저장할 수 있어야 한다', () => {
     const entity = new AlertEntity();
     entity.symbol = 'ETH';
-    entity.exchange = null;
+    entity.exchange = 'binance';
+    entity.currency = 'USD';
     entity.condition = 'below';
-    entity.targetValue = 2000000;
+    entity.targetValue = 2000;
 
-    expect(entity.exchange).toBeNull();
+    expect(entity.exchange).toBe('binance');
+    expect(entity.currency).toBe('USD');
   });
 
   it('김프 알림 조건을 저장할 수 있어야 한다', () => {

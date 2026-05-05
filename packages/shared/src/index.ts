@@ -146,4 +146,14 @@ export {
   maskSecretKey,
 } from './utils';
 
-export type { CurrencyCode, ApiKeyFormatValidation } from './utils';
+export type { CurrencyCode, ApiKeyFormatValidation, AlertCurrency } from './utils';
+
+// 알림 통화 유틸리티
+export {
+  EXCHANGE_CURRENCY_MAP,
+  getCurrencyForExchange,
+  isDomesticExchange,
+  formatAlertPrice,
+  getInputStepForCurrency,
+  getCurrencyDisplay,
+} from './utils';

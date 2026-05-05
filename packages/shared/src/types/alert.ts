@@ -6,6 +6,7 @@
  */
 
 import type { ExchangeType } from './exchange';
+import type { AlertCurrency } from '../utils/currency';
 
 /** 알림 조건 유형 */
 export type AlertCondition =
@@ -18,8 +19,10 @@ export type AlertCondition =
 export interface AlertConfig {
   /** 코인 심볼 */
   symbol: string;
-  /** 대상 거래소 (null이면 모든 거래소) */
-  exchange?: ExchangeType;
+  /** 대상 거래소 (필수) */
+  exchange: ExchangeType;
+  /** 통화 단위 (거래소에 의해 자동 결정) */
+  currency: AlertCurrency;
   /** 알림 조건 */
   condition: AlertCondition;
   /** 목표 가격 또는 프리미엄 비율 (%) */
@@ -74,6 +77,10 @@ export interface AlertNotification {
   alertId: string;
   /** 코인 심볼 */
   symbol: string;
+  /** 거래소 */
+  exchange: ExchangeType;
+  /** 통화 단위 */
+  currency: AlertCurrency;
   /** 알림 조건 */
   condition: AlertCondition;
   /** 목표값 */

@@ -22,13 +22,15 @@ import type {
   PriceUpdate,
   AlertNotification,
   AlertCondition,
+  AlertCurrency,
 } from '@bitscope/shared';
+import { getCurrencyForExchange, formatAlertPrice } from '@bitscope/shared';
 
 import { AlertEntity } from './entities/alert.entity';
 import { AlertHistoryEntity } from './entities/alert-history.entity';
 import { CreateAlertDto } from './dto/create-alert.dto';
 import { UpdateAlertDto } from './dto/update-alert.dto';
-import { PRICE_EVENTS } from '../price/price-monitor.service';
+import { PRICE_EVENTS, PriceMonitorService } from '../price/price-monitor.service';
 import { PriceGateway } from '../price/price.gateway';
 import { PremiumService } from '../premium/premium.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -74,6 +76,7 @@ export class AlertService {
     private readonly priceGateway: PriceGateway,
     private readonly premiumService: PremiumService,
     private readonly telegramService: TelegramService,
+    private readonly priceMonitorService: PriceMonitorService,
   ) {}
 
   /**
@@ -87,16 +90,23 @@ export class AlertService {
       `알림 생성 - wallet: ${dto.walletAddress}, symbol: ${dto.symbol}, condition: ${dto.condition}`,
     );
 
+    // 서버에서 exchange 기반으로 currency를 결정 (클라이언트 값 무시)
+    const currency = getCurrencyForExchange(dto.exchange as ExchangeType);
+
     const alert = this.alertRepository.create({
       walletAddress: dto.walletAddress.toLowerCase(),
       symbol: dto.symbol.toUpperCase(),
-      exchange: dto.exchange || null,
+      exchange: dto.exchange,
+      currency,
       condition: dto.condition,
       targetValue: dto.targetValue,
       isActive: dto.isActive ?? true,
     });
 
     const saved = await this.alertRepository.save(alert);
+
+    // 해당 심볼이 시세 모니터링에 구독되어 있지 않을 수 있으므로 자동 구독
+    this.priceMonitorService.subscribeToSymbols([saved.symbol]);
 
     this.logger.log(`알림 생성 완료 - id: ${saved.id}`);
     return saved;
@@ -125,6 +135,8 @@ export class AlertService {
     }
     if (dto.exchange !== undefined) {
       alert.exchange = dto.exchange;
+      // exchange가 변경되면 currency도 재결정
+      alert.currency = getCurrencyForExchange(dto.exchange as ExchangeType);
     }
     if (dto.condition !== undefined) {
       alert.condition = dto.condition;
@@ -289,8 +301,8 @@ export class AlertService {
     });
 
     for (const alert of alerts) {
-      // 거래소 필터: 특정 거래소 지정 시 해당 거래소의 시세만 검사
-      if (alert.exchange && alert.exchange !== update.exchange) {
+      // 거래소 필터: 해당 거래소의 시세만 검사
+      if (alert.exchange !== update.exchange) {
         continue;
       }
 
@@ -443,6 +455,8 @@ export class AlertService {
     const notification: AlertNotification = {
       alertId: alert.id,
       symbol: alert.symbol,
+      exchange: alert.exchange as ExchangeType,
+      currency: alert.currency as AlertCurrency,
       condition: alert.condition as AlertCondition,
       targetValue: alert.targetValue,
       triggeredValue,
@@ -494,15 +508,17 @@ export class AlertService {
     const condition = alert.condition as AlertCondition;
     const targetValue = alert.targetValue;
 
+    const currency = alert.currency as AlertCurrency;
+
     switch (condition) {
       case 'above':
-        return `${symbol} 가격이 ${targetValue.toLocaleString()}원 이상에 도달했습니다. (현재가: ${triggeredValue.toLocaleString()}원)`;
+        return `${symbol} 가격이 ${formatAlertPrice(targetValue, currency)} 이상에 도달했습니다. (현재가: ${formatAlertPrice(triggeredValue, currency)})`;
       case 'below':
-        return `${symbol} 가격이 ${targetValue.toLocaleString()}원 이하로 하락했습니다. (현재가: ${triggeredValue.toLocaleString()}원)`;
+        return `${symbol} 가격이 ${formatAlertPrice(targetValue, currency)} 이하로 하락했습니다. (현재가: ${formatAlertPrice(triggeredValue, currency)})`;
       case 'premium_above':
-        return `${symbol} 김치 프리미엄이 ${targetValue}% 이상에 도달했습니다. (현재: ${triggeredValue.toFixed(2)}%)`;
+        return `${symbol} 김치 프리미엄이 ${formatAlertPrice(targetValue, undefined, true)} 이상에 도달했습니다. (현재: ${formatAlertPrice(triggeredValue, undefined, true)})`;
       case 'premium_below':
-        return `${symbol} 김치 프리미엄이 ${targetValue}% 이하로 하락했습니다. (현재: ${triggeredValue.toFixed(2)}%)`;
+        return `${symbol} 김치 프리미엄이 ${formatAlertPrice(targetValue, undefined, true)} 이하로 하락했습니다. (현재: ${formatAlertPrice(triggeredValue, undefined, true)})`;
       default:
         return `${symbol} 알림 조건이 충족되었습니다.`;
     }
@@ -552,49 +568,57 @@ export class AlertService {
     const condition = alert.condition as AlertCondition;
     const targetValue = alert.targetValue;
 
+    const currency = alert.currency as AlertCurrency;
+
     const exchangeNameMap: Record<string, string> = {
       upbit: 'Upbit',
       bithumb: 'Bithumb',
       coinone: 'Coinone',
+      binance: 'Binance',
+      bybit: 'Bybit',
+      okx: 'OKX',
+      gate: 'Gate.io',
+      bitget: 'Bitget',
+      hyperliquid: 'Hyperliquid',
     };
 
-    const exchangeName = alert.exchange
-      ? exchangeNameMap[alert.exchange] ?? alert.exchange
-      : '';
+    const exchangeName = exchangeNameMap[alert.exchange] ?? alert.exchange;
 
     switch (condition) {
       case 'above':
         return (
           `🚨 <b>BitScope Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `조건: ${targetValue.toLocaleString()} KRW 이상\n` +
-          `현재가: ${triggeredValue.toLocaleString()} KRW\n` +
-          (exchangeName ? `거래소: ${exchangeName}\n` : '') +
+          `조건: ${formatAlertPrice(targetValue, currency)} 이상\n` +
+          `현재가: ${formatAlertPrice(triggeredValue, currency)}\n` +
+          `거래소: ${exchangeName}\n` +
           `\n---\nBitScope`
         );
       case 'below':
         return (
           `🚨 <b>BitScope Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `조건: ${targetValue.toLocaleString()} KRW 이하\n` +
-          `현재가: ${triggeredValue.toLocaleString()} KRW\n` +
-          (exchangeName ? `거래소: ${exchangeName}\n` : '') +
+          `조건: ${formatAlertPrice(targetValue, currency)} 이하\n` +
+          `현재가: ${formatAlertPrice(triggeredValue, currency)}\n` +
+          `거래소: ${exchangeName}\n` +
           `\n---\nBitScope`
         );
       case 'premium_above':
         return (
           `📊 <b>BitScope 김프 Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `조건: 김프 ${targetValue}% 이상\n` +
-          `현재: ${triggeredValue.toFixed(2)}%\n` +
+          `조건: 김프 ${formatAlertPrice(targetValue, undefined, true)} 이상\n` +
+          `현재: ${formatAlertPrice(triggeredValue, undefined, true)}\n` +
+          `거래소: ${exchangeName}\n` +
           `\n---\nBitScope`
         );
       case 'premium_below':
         return (
           `📊 <b>BitScope 김프 Alert</b>\n\n` +
           `<b>${symbol}</b>\n` +
-          `조건: 김프 ${targetValue}% 이하\n` +
-          `현재: ${triggeredValue.toFixed(2)}%\n` +
+          `조건: 김프 ${formatAlertPrice(targetValue, undefined, true)} 이하\n` +
+          `현재: ${formatAlertPrice(triggeredValue, undefined, true)}\n` +
+          `거래소: ${exchangeName}\n` +
           `\n---\nBitScope`
         );
       default:

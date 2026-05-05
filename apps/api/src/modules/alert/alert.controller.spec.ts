@@ -19,7 +19,8 @@ function createAlertEntity(overrides: Partial<AlertEntity> = {}): AlertEntity {
   entity.id = overrides.id || 'alert-uuid-1';
   entity.walletAddress = overrides.walletAddress || '0x1234567890abcdef1234567890abcdef12345678';
   entity.symbol = overrides.symbol || 'BTC';
-  entity.exchange = overrides.exchange !== undefined ? overrides.exchange : null;
+  entity.exchange = overrides.exchange ?? 'upbit';
+  entity.currency = overrides.currency ?? 'KRW';
   entity.condition = overrides.condition || 'above';
   entity.targetValue = overrides.targetValue ?? 100_000_000;
   entity.isActive = overrides.isActive ?? true;
@@ -64,6 +65,8 @@ describe('AlertController', () => {
       const dto = {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'BTC',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100_000_000,
       };

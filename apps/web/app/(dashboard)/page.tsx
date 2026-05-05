@@ -637,7 +637,7 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
                     <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">
                       {walletSummary.wallets.length === 1 && walletSummary.wallets[0]?.name === 'Unified'
                         ? 'Unified'
-                        : walletSummary.wallets.some((w) => w.name === 'Futures')
+                        : walletSummary.wallets.some((w) => w.name === 'Futures' || w.name === 'Perps')
                           ? t.dashboard.spotAndFutures
                           : 'Spot'}
                     </Badge>
@@ -650,7 +650,6 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
                     <FormattedCurrency
                       value={domesticTotal}
                       currency="KRW"
-                      compact
                       className="text-sm font-semibold text-foreground"
                     />
                   ) : isForeign && walletSummary ? (
@@ -666,7 +665,6 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
                             style: 'currency',
                             currency: 'KRW',
                             maximumFractionDigits: 0,
-                            notation: 'compact',
                           }).format(state.data.krwBalance)}
                         </p>
                       )}
@@ -675,7 +673,6 @@ function ExchangeAssetSummary({ exchangeStates, walletSummaries }: ExchangeAsset
                     <FormattedCurrency
                       value={state.data.krwBalance}
                       currency="KRW"
-                      compact
                       className="text-sm font-semibold text-foreground"
                     />
                   )}

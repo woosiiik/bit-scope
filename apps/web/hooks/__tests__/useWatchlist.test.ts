@@ -341,6 +341,8 @@ describe('useWatchlist', () => {
 
       const alertConfig = {
         symbol: 'BTC',
+        exchange: 'upbit' as const,
+        currency: 'KRW' as const,
         condition: 'above' as const,
         targetValue: 50000000,
         isActive: true,
@@ -365,7 +367,7 @@ describe('useWatchlist', () => {
 
       act(() => {
         result.current.updateAlertConfigs('ETH', [
-          { symbol: 'ETH', condition: 'above', targetValue: 3000000, isActive: true },
+          { symbol: 'ETH', exchange: 'upbit' as const, currency: 'KRW' as const, condition: 'above', targetValue: 3000000, isActive: true },
         ]);
       });
 

@@ -16,6 +16,7 @@ import { AlertService } from './alert.service';
 import { AlertEntity } from './entities/alert.entity';
 import { AlertHistoryEntity } from './entities/alert-history.entity';
 import { PriceGateway } from '../price/price.gateway';
+import { PriceMonitorService } from '../price/price-monitor.service';
 import { PremiumService } from '../premium/premium.service';
 import { TelegramService } from '../telegram/telegram.service';
 
@@ -27,7 +28,8 @@ function createAlertEntity(overrides: Partial<AlertEntity> = {}): AlertEntity {
   entity.id = overrides.id || 'alert-uuid-1';
   entity.walletAddress = (overrides.walletAddress || '0x1234567890abcdef1234567890abcdef12345678').toLowerCase();
   entity.symbol = overrides.symbol || 'BTC';
-  entity.exchange = overrides.exchange !== undefined ? overrides.exchange : null;
+  entity.exchange = overrides.exchange ?? 'upbit';
+  entity.currency = overrides.currency ?? 'KRW';
   entity.condition = overrides.condition || 'above';
   entity.targetValue = overrides.targetValue ?? 100_000_000;
   entity.isActive = overrides.isActive ?? true;
@@ -132,6 +134,10 @@ describe('AlertService', () => {
           provide: TelegramService,
           useValue: telegramService,
         },
+        {
+          provide: PriceMonitorService,
+          useValue: { subscribeToSymbols: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -150,6 +156,8 @@ describe('AlertService', () => {
       const dto = {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'BTC',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100_000_000,
       };
@@ -160,7 +168,8 @@ describe('AlertService', () => {
         expect.objectContaining({
           walletAddress: dto.walletAddress.toLowerCase(),
           symbol: 'BTC',
-          exchange: null,
+          exchange: 'upbit',
+          currency: 'KRW',
           condition: 'above',
           targetValue: 100_000_000,
           isActive: true,
@@ -174,6 +183,8 @@ describe('AlertService', () => {
       const dto = {
         walletAddress: '0xABCDEF1234567890ABCDEF1234567890ABCDEF12',
         symbol: 'ETH',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'below',
         targetValue: 5_000_000,
       };
@@ -191,6 +202,8 @@ describe('AlertService', () => {
       const dto = {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'btc',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100_000_000,
       };
@@ -209,6 +222,7 @@ describe('AlertService', () => {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'BTC',
         exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100_000_000,
       };
@@ -226,6 +240,8 @@ describe('AlertService', () => {
       const dto = {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'BTC',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'premium_above',
         targetValue: 5,
       };
@@ -240,10 +256,32 @@ describe('AlertService', () => {
       );
     });
 
+    it('해외거래소 알림 생성 시 currency가 USD로 설정되어야 한다', async () => {
+      const dto = {
+        walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        symbol: 'BTC',
+        exchange: 'binance',
+        currency: 'USD',
+        condition: 'above',
+        targetValue: 50_000,
+      };
+
+      await service.createAlert(dto);
+
+      expect(alertRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          exchange: 'binance',
+          currency: 'USD',
+        }),
+      );
+    });
+
     it('isActive를 명시적으로 false로 설정할 수 있어야 한다', async () => {
       const dto = {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
         symbol: 'BTC',
+        exchange: 'upbit',
+        currency: 'KRW',
         condition: 'above',
         targetValue: 100_000_000,
         isActive: false,
@@ -624,18 +662,18 @@ describe('AlertService', () => {
       expect(priceGateway.broadcastAlert).not.toHaveBeenCalled();
     });
 
-    it('거래소 미지정(null) 알림은 모든 거래소의 시세를 검사해야 한다', async () => {
+    it('같은 거래소의 시세 업데이트에서 알림이 발동해야 한다', async () => {
       const alert = createAlertEntity({
-        id: 'alert-all',
+        id: 'alert-upbit-match',
         symbol: 'BTC',
-        exchange: null,
+        exchange: 'upbit',
         condition: 'above',
         targetValue: 100_000_000,
       });
       (alertRepo.find as jest.Mock).mockResolvedValue([alert]);
 
       const update = createPriceUpdate({
-        exchange: 'bithumb',
+        exchange: 'upbit',
         symbol: 'BTC',
         price: 101_000_000,
       });

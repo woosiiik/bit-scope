@@ -37,3 +37,15 @@ export {
 } from './validation';
 
 export type { ApiKeyFormatValidation } from './validation';
+
+// 알림 통화 유틸리티
+export {
+  EXCHANGE_CURRENCY_MAP,
+  getCurrencyForExchange,
+  isDomesticExchange,
+  formatAlertPrice,
+  getInputStepForCurrency,
+  getCurrencyDisplay,
+} from './currency';
+
+export type { AlertCurrency } from './currency';

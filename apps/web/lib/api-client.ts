@@ -763,7 +763,7 @@ export async function fetchBalance(
   // 5. Futures 잔고를 walletSummary에 병합
   // Spot walletSummary는 normalizer에서 이미 생성되어 있으므로
   // Futures 잔고가 있으면 walletSummary에 Futures 항목을 추가한다.
-  if (supportsFutures && futuresBalanceUsdt > 0) {
+  if (supportsFutures) {
     const existingWalletSummary = balanceData.walletSummary;
     const spotUsdt = existingWalletSummary?.totalEquityUsdt ?? 0;
 

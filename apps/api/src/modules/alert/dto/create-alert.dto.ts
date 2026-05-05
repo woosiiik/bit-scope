@@ -28,13 +28,19 @@ export class CreateAlertDto {
   @IsString()
   symbol!: string;
 
-  /** 대상 거래소 (null이면 모든 거래소) */
-  @IsOptional()
+  /** 대상 거래소 (필수) */
   @IsString()
   @IsIn(['upbit', 'bithumb', 'coinone', 'binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'], {
     message: 'exchange는 upbit, bithumb, coinone, binance, bybit, okx, gate, bitget, hyperliquid 중 하나여야 합니다.',
   })
-  exchange?: string;
+  exchange!: string;
+
+  /** 통화 단위 (서버에서 거래소 기반으로 자동 설정) */
+  @IsString()
+  @IsIn(['KRW', 'USD'], {
+    message: 'currency는 KRW 또는 USD여야 합니다.',
+  })
+  currency!: string;
 
   /** 알림 조건 (above, below, premium_above, premium_below) */
   @IsString()

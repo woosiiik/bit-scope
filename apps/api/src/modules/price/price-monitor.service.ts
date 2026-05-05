@@ -19,6 +19,7 @@ import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
 import { BinancePollingClient } from './exchange-ws/binance-polling.client';
 import type { BinancePriceEntry } from './exchange-ws/binance-polling.client';
+import { HyperliquidPollingClient } from './exchange-ws/hyperliquid-polling.client';
 import { BaseExchangeClient } from './exchange-ws/base-exchange.client';
 
 /** 거래소+심볼 조합의 가격 키 (예: "upbit:BTC") */
@@ -77,6 +78,7 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
     private readonly bithumbClient: BithumbWsClient,
     private readonly coinoneClient: CoinonePollingClient,
     private readonly binanceClient: BinancePollingClient,
+    private readonly hyperliquidClient: HyperliquidPollingClient,
   ) {
     this.exchangeClients = [
       this.upbitClient,
@@ -170,6 +172,24 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // 하이퍼리퀴드 시세 폴링 시작 (알림용)
+    try {
+      this.hyperliquidClient.on('priceUpdate', (update: PriceUpdate) => {
+        this.handlePriceUpdate(update);
+      });
+
+      this.hyperliquidClient.on('error', (error: Error) => {
+        this.logger.error(`hyperliquid 클라이언트 오류: ${error.message}`);
+      });
+
+      await this.hyperliquidClient.start(symbols);
+      this.logger.log('하이퍼리퀴드 시세 수신 시작 성공');
+    } catch (error) {
+      this.logger.error(
+        `하이퍼리퀴드 시세 수신 시작 실패: ${error}`,
+      );
+    }
+
     // USDT/KRW 환율 폴링 시작
     await this.fetchUsdtKrwRate();
     this.startUsdtKrwPolling();
@@ -199,6 +219,10 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
 
     // 바이낸스 폴링 중지
     await this.binanceClient.stop();
+
+    // 하이퍼리퀴드 폴링 중지
+    this.hyperliquidClient.removeAllListeners();
+    await this.hyperliquidClient.stop();
 
     // USDT/KRW 폴링 중지
     this.stopUsdtKrwPolling();
@@ -258,9 +282,16 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
    * @param symbols 추가 구독할 심볼 목록
    */
   subscribeToSymbols(symbols: string[]): void {
+    // 국내 거래소 (업비트, 빗썸, 코인원)
     for (const client of this.exchangeClients) {
       client.subscribe(symbols);
     }
+
+    // 바이낸스
+    this.binanceClient.subscribe(symbols);
+
+    // 하이퍼리퀴드
+    this.hyperliquidClient.subscribe(symbols);
 
     this.logger.log(`심볼 구독 추가: [${symbols.join(', ')}]`);
   }

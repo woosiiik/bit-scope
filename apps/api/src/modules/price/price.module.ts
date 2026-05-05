@@ -20,6 +20,7 @@ import { UpbitWsClient } from './exchange-ws/upbit-ws.client';
 import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
 import { BinancePollingClient } from './exchange-ws/binance-polling.client';
+import { HyperliquidPollingClient } from './exchange-ws/hyperliquid-polling.client';
 import { PriceMonitorService } from './price-monitor.service';
 import { PriceGateway } from './price.gateway';
 
@@ -36,6 +37,8 @@ import { PriceGateway } from './price.gateway';
     CoinonePollingClient,
     // 바이낸스 시세 수신 클라이언트 (김치 프리미엄 비교용)
     BinancePollingClient,
+    // 하이퍼리퀴드 시세 수신 클라이언트 (알림용)
+    HyperliquidPollingClient,
     // 시세 통합 관리 서비스
     PriceMonitorService,
     // Socket.IO 게이트웨이

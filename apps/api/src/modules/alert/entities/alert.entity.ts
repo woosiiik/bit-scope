@@ -33,9 +33,13 @@ export class AlertEntity {
   @Column({ type: 'varchar', length: 20 })
   symbol!: string;
 
-  /** 대상 거래소 (null이면 모든 거래소) */
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  exchange!: string | null;
+  /** 대상 거래소 (필수) */
+  @Column({ type: 'varchar', length: 20, nullable: false })
+  exchange!: string;
+
+  /** 통화 단위 ('KRW' | 'USD') */
+  @Column({ type: 'varchar', length: 10, nullable: false })
+  currency!: string;
 
   /** 알림 조건 (above, below, premium_above, premium_below) */
   @Column({ type: 'varchar', length: 20 })

@@ -21,7 +21,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Bell,
@@ -41,10 +41,13 @@ import {
   Send,
   ArrowRight,
 } from 'lucide-react';
-import type { AlertCondition, ExchangeType } from '@bitscope/shared';
+import type { AlertCondition, ExchangeType, AlertCurrency } from '@bitscope/shared';
 import {
-  SUPPORTED_EXCHANGES,
   MAJOR_COINS,
+  getCurrencyForExchange,
+  formatAlertPrice,
+  getInputStepForCurrency,
+  getCurrencyDisplay,
 } from '@bitscope/shared';
 import { cn, getExchangeName, getCoinName } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
@@ -69,6 +72,11 @@ import { TableRowSkeleton } from '@/components/ui/skeleton';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // ===== 상수 =====
+
+/** 알림 지원 거래소 (서버에서 시세 모니터링이 되는 거래소만) */
+const ALERT_SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
+  'upbit', 'bithumb', 'coinone', 'binance', 'hyperliquid',
+];
 
 /** 알림 조건 옵션 */
 const PRICE_CONDITIONS: { value: AlertCondition; labelKey: 'conditionAbove' | 'conditionBelow' }[] = [
@@ -400,37 +408,115 @@ function CreateAlertForm({
 }: CreateAlertFormProps) {
   const { t, locale } = useTranslation();
 
-  // 폼 상태
-  const [symbol, setSymbol] = useState('');
+  // 폼 상태: 거래소 → 코인 → 조건 → 가격
   const [exchange, setExchange] = useState<string>('');
+  const [symbol, setSymbol] = useState('');
+  const [symbolSearch, setSymbolSearch] = useState('');
+  const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
   const [condition, setCondition] = useState<AlertCondition>(
     type === 'price' ? 'above' : 'premium_above',
   );
   const [targetValue, setTargetValue] = useState('');
 
+  // 거래소별 동적 코인 목록
+  const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
+  const [symbolsLoading, setSymbolsLoading] = useState(false);
+
   const conditions = type === 'price' ? PRICE_CONDITIONS : PREMIUM_CONDITIONS;
+
+  // 거래소에 따른 통화 결정
+  const currency = exchange
+    ? getCurrencyForExchange(exchange as ExchangeType)
+    : null;
+
+  // 거래소 선택 시 해당 거래소의 코인 목록을 가져온다
+  useEffect(() => {
+    if (!exchange) {
+      setAvailableSymbols([]);
+      return;
+    }
+
+    let cancelled = false;
+    setSymbolsLoading(true);
+
+    fetch(`/api/exchange/${exchange}/ticker`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const tickers = data?.data?.tickers ?? data?.tickers ?? [];
+        const symbols: string[] = tickers
+          .map((t: { symbol?: string }) => t.symbol)
+          .filter(Boolean)
+          .sort();
+        // 중복 제거
+        setAvailableSymbols([...new Set(symbols)]);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailableSymbols([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSymbolsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [exchange]);
+
+  // 거래소 변경 시 하위 필드 초기화
+  const handleExchangeChange = (newExchange: string) => {
+    setExchange(newExchange);
+    setSymbol('');
+    setSymbolSearch('');
+    setTargetValue('');
+  };
+
+  // 검색어로 필터링된 코인 목록
+  const filteredSymbols = symbolSearch
+    ? availableSymbols.filter((sym) => {
+        const coinInfo = MAJOR_COINS.find((c) => c.symbol === sym);
+        const searchLower = symbolSearch.toLowerCase();
+        return (
+          sym.toLowerCase().includes(searchLower) ||
+          (coinInfo?.nameKo?.includes(symbolSearch)) ||
+          (coinInfo?.nameEn?.toLowerCase().includes(searchLower))
+        );
+      })
+    : availableSymbols;
+
+  // 코인 선택 핸들러
+  const handleSymbolSelect = (sym: string) => {
+    setSymbol(sym);
+    setSymbolSearch(sym);
+    setShowSymbolDropdown(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const parsedValue = parseFloat(targetValue);
-    if (!symbol || isNaN(parsedValue)) return;
+    if (!exchange || !symbol || isNaN(parsedValue)) return;
     // 가격 알림은 0 이상만, 김프 알림은 음수도 허용
     if (type === 'price' && parsedValue < 0) return;
 
     onSubmit({
       symbol: symbol.toUpperCase(),
-      exchange: exchange ? (exchange as ExchangeType) : undefined,
+      exchange: exchange as ExchangeType,
+      currency: currency!,
       condition,
       targetValue: parsedValue,
     });
   };
 
   const isFormValid =
+    exchange.trim() !== '' &&
     symbol.trim() !== '' &&
     targetValue.trim() !== '' &&
     !isNaN(parseFloat(targetValue)) &&
     (type === 'premium' || parseFloat(targetValue) >= 0);
+
+  // 통화별 가격 입력 속성
+  const isPremiumType = type === 'premium';
+  const inputStep = isPremiumType ? '0.01' : (currency ? getInputStepForCurrency(currency) : '1');
+  const currencyDisplay = currency ? getCurrencyDisplay(currency) : null;
 
   return (
     <Card>
@@ -442,54 +528,104 @@ function CreateAlertForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* 코인 선택 */}
+            {/* 1. 거래소 선택 (필수) */}
             <div className="space-y-1.5">
-              <Label htmlFor="alert-symbol">{t.alert.selectCoin}</Label>
+              <Label htmlFor="alert-exchange">{t.alert.selectExchange}</Label>
               <select
-                id="alert-symbol"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
+                id="alert-exchange"
+                value={exchange}
+                onChange={(e) => handleExchangeChange(e.target.value)}
                 className={cn(
                   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors',
                   'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 )}
                 required
-                aria-label={t.alert.selectCoin}
+                aria-label={t.alert.selectExchange}
               >
-                <option value="">{t.alert.selectCoin}</option>
-                {MAJOR_COINS.map((coin) => (
-                  <option key={coin.symbol} value={coin.symbol}>
-                    {coin.symbol} - {getCoinName(coin, locale)}
+                <option value="">{t.alert.selectExchange}</option>
+                {ALERT_SUPPORTED_EXCHANGES.map((ex) => (
+                  <option key={ex} value={ex}>
+                    {getExchangeName(ex, locale)}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* 거래소 선택 (가격 알림에서만) */}
-            {type === 'price' && (
-              <div className="space-y-1.5">
-                <Label htmlFor="alert-exchange">{t.alert.selectExchange}</Label>
-                <select
-                  id="alert-exchange"
-                  value={exchange}
-                  onChange={(e) => setExchange(e.target.value)}
-                  className={cn(
-                    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            {/* 2. 코인 선택 (검색 가능, 거래소 미선택 시 비활성화) */}
+            <div className="space-y-1.5 relative">
+              <Label htmlFor="alert-symbol">
+                {t.alert.selectCoin}
+                {availableSymbols.length > 0 && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    ({availableSymbols.length})
+                  </span>
+                )}
+              </Label>
+              <Input
+                id="alert-symbol"
+                type="text"
+                value={symbolSearch}
+                onChange={(e) => {
+                  setSymbolSearch(e.target.value);
+                  setSymbol('');
+                  setShowSymbolDropdown(true);
+                }}
+                onFocus={() => setShowSymbolDropdown(true)}
+                onBlur={() => {
+                  // 클릭 이벤트가 먼저 처리되도록 약간의 딜레이
+                  setTimeout(() => setShowSymbolDropdown(false), 200);
+                }}
+                disabled={!exchange || symbolsLoading}
+                placeholder={
+                  symbolsLoading
+                    ? '로딩 중...'
+                    : !exchange
+                      ? t.alert.selectCoin
+                      : `${t.alert.selectCoin} (검색)`
+                }
+                className={cn(
+                  (!exchange || symbolsLoading) && 'opacity-50 cursor-not-allowed',
+                )}
+                autoComplete="off"
+                aria-label={t.alert.selectCoin}
+              />
+              {/* 검색 드롭다운 */}
+              {showSymbolDropdown && exchange && !symbolsLoading && filteredSymbols.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md border border-input bg-popover shadow-md">
+                  {filteredSymbols.slice(0, 50).map((sym) => {
+                    const coinInfo = MAJOR_COINS.find((c) => c.symbol === sym);
+                    return (
+                      <button
+                        key={sym}
+                        type="button"
+                        className={cn(
+                          'w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors',
+                          symbol === sym && 'bg-accent font-medium',
+                        )}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSymbolSelect(sym);
+                        }}
+                      >
+                        <span className="font-medium">{sym}</span>
+                        {coinInfo && (
+                          <span className="ml-1.5 text-muted-foreground text-xs">
+                            {getCoinName(coinInfo, locale)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {filteredSymbols.length > 50 && (
+                    <div className="px-3 py-1.5 text-xs text-muted-foreground text-center">
+                      +{filteredSymbols.length - 50}개 더...
+                    </div>
                   )}
-                  aria-label={t.alert.selectExchange}
-                >
-                  <option value="">{t.alert.allExchanges}</option>
-                  {SUPPORTED_EXCHANGES.map((ex) => (
-                    <option key={ex} value={ex}>
-                      {getExchangeName(ex, locale)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
-            {/* 조건 선택 */}
+            {/* 3. 조건 선택 */}
             <div className="space-y-1.5">
               <Label htmlFor="alert-condition">{t.alert.selectCondition}</Label>
               <select
@@ -511,26 +647,52 @@ function CreateAlertForm({
               </select>
             </div>
 
-            {/* 목표값 입력 */}
+            {/* 4. 목표값 입력 (통화별 step/접두사/접미사) */}
             <div className="space-y-1.5">
               <Label htmlFor="alert-target">
-                {type === 'price' ? t.alert.targetPrice : t.alert.targetPremium}
+                {isPremiumType ? t.alert.targetPremium : t.alert.targetPrice}
+                {!isPremiumType && currency && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    ({currency})
+                  </span>
+                )}
               </Label>
-              <Input
-                id="alert-target"
-                type="number"
-                step={type === 'price' ? '1' : '0.01'}
-                min={type === 'price' ? '0' : undefined}
-                placeholder={
-                  type === 'price'
-                    ? t.alert.enterTargetPrice
-                    : t.alert.enterTargetPremium
-                }
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                required
-                aria-label={type === 'price' ? t.alert.targetPrice : t.alert.targetPremium}
-              />
+              <div className="relative">
+                {!isPremiumType && currencyDisplay?.prefix && (
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    {currencyDisplay.prefix}
+                  </span>
+                )}
+                <Input
+                  id="alert-target"
+                  type="number"
+                  step={inputStep}
+                  min={isPremiumType ? undefined : '0'}
+                  placeholder={
+                    isPremiumType
+                      ? t.alert.enterTargetPremium
+                      : t.alert.enterTargetPrice
+                  }
+                  value={targetValue}
+                  onChange={(e) => setTargetValue(e.target.value)}
+                  required
+                  className={cn(
+                    !isPremiumType && currencyDisplay?.prefix && 'pl-7',
+                    !isPremiumType && currencyDisplay?.suffix && 'pr-8',
+                  )}
+                  aria-label={isPremiumType ? t.alert.targetPremium : t.alert.targetPrice}
+                />
+                {isPremiumType && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    %
+                  </span>
+                )}
+                {!isPremiumType && currencyDisplay?.suffix && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    {currencyDisplay.suffix}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -669,9 +831,7 @@ function AlertTableRow({ alert, onToggleActive, onDelete }: AlertTableRowProps) 
   const isPremium = alert.condition === 'premium_above' || alert.condition === 'premium_below';
   const conditionLabel = getConditionLabel(alert.condition as AlertCondition, t);
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === alert.symbol);
-  const exchangeName = alert.exchange
-    ? getExchangeName(alert.exchange as ExchangeType, locale)
-    : t.alert.allExchanges;
+  const exchangeName = getExchangeName(alert.exchange as ExchangeType, locale);
 
   return (
     <tr className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors">
@@ -716,8 +876,8 @@ function AlertTableRow({ alert, onToggleActive, onDelete }: AlertTableRowProps) 
       <td className="px-4 py-3 text-right">
         <span className="text-sm font-medium text-foreground">
           {isPremium
-            ? `${Number(alert.targetValue).toFixed(2)}%`
-            : `${Number(alert.targetValue).toLocaleString('ko-KR')} KRW`}
+            ? formatAlertPrice(Number(alert.targetValue), undefined, true)
+            : formatAlertPrice(Number(alert.targetValue), alert.currency as AlertCurrency)}
         </span>
       </td>
 
@@ -778,9 +938,7 @@ function AlertMobileCard({ alert, onToggleActive, onDelete }: AlertMobileCardPro
   const isPremium = alert.condition === 'premium_above' || alert.condition === 'premium_below';
   const conditionLabel = getConditionLabel(alert.condition as AlertCondition, t);
   const coinInfo = MAJOR_COINS.find((c) => c.symbol === alert.symbol);
-  const exchangeName = alert.exchange
-    ? getExchangeName(alert.exchange as ExchangeType, locale)
-    : t.alert.allExchanges;
+  const exchangeName = getExchangeName(alert.exchange as ExchangeType, locale);
 
   return (
     <div className="px-4 py-3 space-y-2">
@@ -827,8 +985,8 @@ function AlertMobileCard({ alert, onToggleActive, onDelete }: AlertMobileCardPro
         </div>
         <span className="font-medium text-foreground">
           {isPremium
-            ? `${Number(alert.targetValue).toFixed(2)}%`
-            : `${Number(alert.targetValue).toLocaleString('ko-KR')} KRW`}
+            ? formatAlertPrice(Number(alert.targetValue), undefined, true)
+            : formatAlertPrice(Number(alert.targetValue), alert.currency as AlertCurrency)}
         </span>
       </div>
 
