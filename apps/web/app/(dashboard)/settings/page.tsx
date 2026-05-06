@@ -990,11 +990,11 @@ function RegisterForm({
         {/* Passphrase 입력 (OKX, Bitget만) */}
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
-            <Label htmlFor="api-extra-key">Passphrase</Label>
+            <Label htmlFor="api-extra-key">API Extra Key (Passphrase)</Label>
             <div className="relative">
               <Input
                 id="api-extra-key"
-                type={form.showPassphrase ? 'text' : 'password'}
+                type="text"
                 placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
                 value={form.passphrase}
                 onChange={(e) =>
@@ -1007,6 +1007,7 @@ function RegisterForm({
                 disabled={isProcessing}
                 autoComplete="off"
                 spellCheck={false}
+                style={{ WebkitTextSecurity: form.showPassphrase ? 'none' : 'disc' } as React.CSSProperties}
                 className="pr-10"
               />
               <button
