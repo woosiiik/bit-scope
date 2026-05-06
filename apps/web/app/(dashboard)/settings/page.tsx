@@ -94,6 +94,7 @@ interface RegisterFormState {
   isValidating: boolean;
   isRegistering: boolean;
   showSecretKey: boolean;
+  showPassphrase: boolean;
   validationResult: {
     isValid: boolean;
     isReadOnly: boolean;
@@ -156,6 +157,7 @@ export default function SettingsPage() {
     isValidating: false,
     isRegistering: false,
     showSecretKey: false,
+    showPassphrase: false,
     validationResult: null,
   });
 
@@ -303,6 +305,7 @@ export default function SettingsPage() {
       isValidating: false,
       isRegistering: false,
       showSecretKey: false,
+    showPassphrase: false,
       validationResult: null,
     });
   }, []);
@@ -988,22 +991,42 @@ function RegisterForm({
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
             <Label htmlFor="passphrase">Passphrase</Label>
-            <Input
-              id="passphrase"
-              type="text"
-              placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
-              value={form.passphrase}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  passphrase: e.target.value,
-                  validationResult: null,
-                }))
-              }
-              disabled={isProcessing}
-              autoComplete="off"
-              spellCheck={false}
-            />
+            <div className="relative">
+              <Input
+                id="passphrase"
+                type={form.showPassphrase ? 'text' : 'password'}
+                placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
+                value={form.passphrase}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    passphrase: e.target.value,
+                    validationResult: null,
+                  }))
+                }
+                disabled={isProcessing}
+                autoComplete="off"
+                spellCheck={false}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    showPassphrase: !prev.showPassphrase,
+                  }))
+                }
+                aria-label={form.showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
+              >
+                {form.showPassphrase ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">
               {t.apiKey.settingsPage.passphraseDescription}
             </p>
