@@ -990,10 +990,10 @@ function RegisterForm({
         {/* Passphrase 입력 (OKX, Bitget만) */}
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
-            <Label htmlFor="passphrase">Passphrase</Label>
+            <Label htmlFor="api-extra-key">Passphrase</Label>
             <div className="relative">
               <Input
-                id="passphrase"
+                id="api-extra-key"
                 type={form.showPassphrase ? 'text' : 'password'}
                 placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
                 value={form.passphrase}
@@ -1018,7 +1018,7 @@ function RegisterForm({
                     showPassphrase: !prev.showPassphrase,
                   }))
                 }
-                aria-label={form.showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
+                aria-label={form.showPassphrase ? 'Hide' : 'Show'}
               >
                 {form.showPassphrase ? (
                   <EyeOff className="h-4 w-4" aria-hidden="true" />
