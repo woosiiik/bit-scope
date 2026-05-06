@@ -990,7 +990,7 @@ function RegisterForm({
             <Label htmlFor="passphrase">Passphrase</Label>
             <Input
               id="passphrase"
-              type="password"
+              type="text"
               placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
               value={form.passphrase}
               onChange={(e) =>
