@@ -998,7 +998,7 @@ function RegisterForm({
         {/* Passphrase 입력 (OKX, Bitget만) */}
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
-            <Label htmlFor="api-ext">{t.apiKey.settingsPage.extraKeyLabel ?? 'Extra Key'}</Label>
+            <Label htmlFor="api-ext">Extra Key</Label>
             <Input
               id="api-ext"
               type="text"
