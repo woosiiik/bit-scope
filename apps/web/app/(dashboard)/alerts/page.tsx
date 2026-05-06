@@ -73,9 +73,14 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 // ===== 상수 =====
 
-/** 알림 지원 거래소 (서버에서 시세 모니터링이 되는 거래소만) */
+/** 가격 알림 지원 거래소 (서버에서 시세 모니터링이 되는 거래소만) */
 const ALERT_SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
   'upbit', 'bithumb', 'coinone', 'binance', 'hyperliquid',
+];
+
+/** 김프 알림 지원 거래소 (국내 거래소만, 바이낸스 대비 비교) */
+const PREMIUM_ALERT_EXCHANGES: readonly ExchangeType[] = [
+  'upbit', 'bithumb', 'coinone',
 ];
 
 /** 알림 조건 옵션 */
@@ -422,6 +427,9 @@ function CreateAlertForm({
   const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
   const [symbolsLoading, setSymbolsLoading] = useState(false);
 
+  // 김프 알림 여부 (거래소/코인 목록 결정에 사용)
+  const isPremiumType = type === 'premium';
+
   const conditions = type === 'price' ? PRICE_CONDITIONS : PREMIUM_CONDITIONS;
 
   // 거래소에 따른 통화 결정
@@ -430,8 +438,11 @@ function CreateAlertForm({
     : null;
 
   // 거래소 선택 시 해당 거래소의 코인 목록을 가져온다
+  // 김프 알림: 바이낸스 코인 기준 (국내 거래소 vs 바이낸스 비교이므로)
+  const tickerExchange = isPremiumType ? 'binance' : exchange;
+
   useEffect(() => {
-    if (!exchange) {
+    if (!tickerExchange) {
       setAvailableSymbols([]);
       return;
     }
@@ -439,7 +450,7 @@ function CreateAlertForm({
     let cancelled = false;
     setSymbolsLoading(true);
 
-    fetch(`/api/exchange/${exchange}/ticker`)
+    fetch(`/api/exchange/${tickerExchange}/ticker`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -459,7 +470,7 @@ function CreateAlertForm({
       });
 
     return () => { cancelled = true; };
-  }, [exchange]);
+  }, [tickerExchange]);
 
   // 거래소 변경 시 하위 필드 초기화
   const handleExchangeChange = (newExchange: string) => {
@@ -514,7 +525,6 @@ function CreateAlertForm({
     (type === 'premium' || parseFloat(targetValue) >= 0);
 
   // 통화별 가격 입력 속성
-  const isPremiumType = type === 'premium';
   const inputStep = isPremiumType ? '0.01' : (currency ? getInputStepForCurrency(currency) : '1');
   const currencyDisplay = currency ? getCurrencyDisplay(currency) : null;
 
@@ -543,7 +553,7 @@ function CreateAlertForm({
                 aria-label={t.alert.selectExchange}
               >
                 <option value="">{t.alert.selectExchange}</option>
-                {ALERT_SUPPORTED_EXCHANGES.map((ex) => (
+                {(isPremiumType ? PREMIUM_ALERT_EXCHANGES : ALERT_SUPPORTED_EXCHANGES).map((ex) => (
                   <option key={ex} value={ex}>
                     {getExchangeName(ex, locale)}
                   </option>
@@ -575,7 +585,7 @@ function CreateAlertForm({
                   // 클릭 이벤트가 먼저 처리되도록 약간의 딜레이
                   setTimeout(() => setShowSymbolDropdown(false), 200);
                 }}
-                disabled={!exchange || symbolsLoading}
+                disabled={(!exchange && !isPremiumType) || symbolsLoading}
                 placeholder={
                   symbolsLoading
                     ? '로딩 중...'
@@ -584,7 +594,7 @@ function CreateAlertForm({
                       : `${t.alert.selectCoin} (검색)`
                 }
                 className={cn(
-                  (!exchange || symbolsLoading) && 'opacity-50 cursor-not-allowed',
+                  ((!exchange && !isPremiumType) || symbolsLoading) && 'opacity-50 cursor-not-allowed',
                 )}
                 autoComplete="off"
                 aria-label={t.alert.selectCoin}
