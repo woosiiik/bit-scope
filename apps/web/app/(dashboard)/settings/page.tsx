@@ -351,15 +351,20 @@ export default function SettingsPage() {
     const exchange = form.exchange as ExchangeType;
     const needsPassphrase = PASSPHRASE_EXCHANGES.includes(exchange);
 
+    // Chrome HTTP 환경에서 onChange가 차단될 수 있으므로 DOM에서 직접 값을 읽는다
+    const passphraseValue = form.passphrase
+      || (document.getElementById('api-ext') as HTMLInputElement)?.value
+      || '';
+
     // Passphrase가 필요한 거래소인데 입력 안 했으면 중단
-    if (needsPassphrase && !form.passphrase) {
-      console.log('[Register] passphrase 누락으로 중단', { needsPassphrase, passphrase: form.passphrase });
+    if (needsPassphrase && !passphraseValue) {
+      console.log('[Register] passphrase 누락으로 중단', { needsPassphrase, passphraseValue });
       return;
     }
 
     // OKX/Bitget: secretKey에 passphrase를 "|||"로 합쳐서 저장
     const finalSecretKey = needsPassphrase
-      ? `${form.secretKey}|||${form.passphrase}`
+      ? `${form.secretKey}|||${passphraseValue}`
       : form.secretKey;
 
     const apiKeyPair: ApiKeyPair = {
@@ -882,8 +887,11 @@ function RegisterForm({
 }: RegisterFormProps) {
   /** 폼 유효성 확인 */
   const needsPassphrase = form.exchange !== '' && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType);
+  // Chrome HTTP 환경에서 passphrase onChange가 차단될 수 있으므로 DOM 값도 확인
+  const passphraseHasValue = form.passphrase.trim() !== ''
+    || (typeof document !== 'undefined' && !!(document.getElementById('api-ext') as HTMLInputElement)?.value);
   const isFormValid = form.exchange !== '' && form.accessKey.trim() !== '' && form.secretKey.trim() !== ''
-    && (!needsPassphrase || form.passphrase.trim() !== '');
+    && (!needsPassphrase || passphraseHasValue);
 
   /** 등록/검증 진행 중 여부 */
   const isProcessing = form.isValidating || form.isRegistering;
