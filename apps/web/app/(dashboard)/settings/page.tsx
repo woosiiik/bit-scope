@@ -998,44 +998,23 @@ function RegisterForm({
         {/* Passphrase 입력 (OKX, Bitget만) */}
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
-            <Label htmlFor="api-extra-key">API Extra Key (Passphrase)</Label>
-            <div className="relative">
-              <Input
-                id="api-extra-key"
-                type="text"
-                placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
-                value={form.passphrase}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    passphrase: e.target.value,
-                    validationResult: null,
-                  }))
-                }
-                disabled={isProcessing}
-                autoComplete="off"
-                spellCheck={false}
-                style={{ WebkitTextSecurity: form.showPassphrase ? 'none' : 'disc' } as React.CSSProperties}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    showPassphrase: !prev.showPassphrase,
-                  }))
-                }
-                aria-label={form.showPassphrase ? 'Hide' : 'Show'}
-              >
-                {form.showPassphrase ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
+            <Label htmlFor="api-ext">{t.apiKey.settingsPage.extraKeyLabel ?? 'Extra Key'}</Label>
+            <Input
+              id="api-ext"
+              type="text"
+              placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
+              value={form.passphrase}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  passphrase: e.target.value,
+                  validationResult: null,
+                }))
+              }
+              disabled={isProcessing}
+              autoComplete="off"
+              spellCheck={false}
+            />
             <p className="text-xs text-muted-foreground">
               {t.apiKey.settingsPage.passphraseDescription}
             </p>
