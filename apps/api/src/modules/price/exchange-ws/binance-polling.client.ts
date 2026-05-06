@@ -11,6 +11,8 @@
  */
 
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { EventEmitter } from 'events';
+import type { PriceUpdate } from '@bitscope/shared';
 import { BINANCE_CONFIG, BINANCE_PRICE_ENDPOINTS, BINANCE_POLLING_INTERVAL_MS } from '@bitscope/shared';
 
 /** 바이낸스 ticker/price 응답 항목 */
@@ -39,7 +41,7 @@ export interface BinancePriceEntry {
  * - 네트워크 오류 시 지수 백오프로 자동 재시도
  */
 @Injectable()
-export class BinancePollingClient implements OnModuleDestroy {
+export class BinancePollingClient extends EventEmitter implements OnModuleDestroy {
   private readonly logger = new Logger(BinancePollingClient.name);
 
   /** 폴링 타이머 */
@@ -67,6 +69,7 @@ export class BinancePollingClient implements OnModuleDestroy {
   private running = false;
 
   constructor() {
+    super();
     this.pollingIntervalMs = BINANCE_POLLING_INTERVAL_MS;
   }
 
@@ -228,6 +231,8 @@ export class BinancePollingClient implements OnModuleDestroy {
           continue;
         }
 
+        const prevPrice = this.priceMap.get(coinSymbol)?.usdtPrice ?? 0;
+
         const entry: BinancePriceEntry = {
           symbol: coinSymbol,
           usdtPrice,
@@ -235,6 +240,17 @@ export class BinancePollingClient implements OnModuleDestroy {
         };
 
         this.priceMap.set(coinSymbol, entry);
+
+        // 알림 시스템용 priceUpdate 이벤트 발행
+        const priceUpdate: PriceUpdate = {
+          exchange: 'binance',
+          symbol: coinSymbol,
+          price: usdtPrice,
+          changeRate: prevPrice > 0 ? ((usdtPrice - prevPrice) / prevPrice) * 100 : 0,
+          volume24h: 0,
+          timestamp: now,
+        };
+        this.emit('priceUpdate', priceUpdate);
       }
     } catch (error) {
       // AbortError는 정상적인 취소이므로 무시

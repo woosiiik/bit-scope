@@ -78,6 +78,8 @@ describe('PriceMonitorService', () => {
       getAllPrices: jest.fn().mockReturnValue(new Map()),
       isActive: jest.fn().mockReturnValue(false),
       onModuleDestroy: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
     } as unknown as jest.Mocked<BinancePollingClient>;
 
     const hyperliquidClient = {

@@ -162,8 +162,13 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
-    // 바이낸스 시세 폴링 시작 (김치 프리미엄 비교용)
+    // 바이낸스 시세 폴링 시작 (김치 프리미엄 비교 + 알림용)
     try {
+      this.binanceClient.removeAllListeners();
+      this.binanceClient.on('priceUpdate', (update: PriceUpdate) => {
+        this.handlePriceUpdate(update);
+      });
+
       await this.binanceClient.start(symbols);
       this.logger.log('바이낸스 시세 수신 시작 성공');
     } catch (error) {
@@ -218,6 +223,7 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
     );
 
     // 바이낸스 폴링 중지
+    this.binanceClient.removeAllListeners();
     await this.binanceClient.stop();
 
     // 하이퍼리퀴드 폴링 중지

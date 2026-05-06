@@ -49,9 +49,8 @@ export class CreateAlertDto {
   })
   condition!: string;
 
-  /** 목표 가격 또는 프리미엄 비율 (%) */
+  /** 목표 가격 또는 프리미엄 비율 (%) - 김프 알림은 음수 허용 */
   @IsNumber()
-  @Min(0, { message: 'targetValue는 0 이상이어야 합니다.' })
   targetValue!: number;
 
   /** 활성 상태 여부 (기본값: true) */

@@ -257,13 +257,14 @@ export class AlertService {
    */
   @OnEvent(PRICE_EVENTS.PRICE_UPDATE)
   async handlePriceUpdate(update: PriceUpdate): Promise<void> {
-    // 심볼별 스로틀링: 최근 검사로부터 충분한 시간이 지나지 않았으면 스킵
+    // 거래소+심볼별 스로틀링: 최근 검사로부터 충분한 시간이 지나지 않았으면 스킵
     const now = Date.now();
-    const lastCheck = this.lastCheckMap.get(update.symbol) ?? 0;
+    const throttleKey = `${update.exchange}:${update.symbol}`;
+    const lastCheck = this.lastCheckMap.get(throttleKey) ?? 0;
     if (now - lastCheck < ALERT_CHECK_THROTTLE_MS) {
       return;
     }
-    this.lastCheckMap.set(update.symbol, now);
+    this.lastCheckMap.set(throttleKey, now);
 
     try {
       await this.checkPriceAlerts(update);
@@ -309,7 +310,7 @@ export class AlertService {
       const isConditionMet = this.evaluatePriceCondition(
         alert.condition as AlertCondition,
         update.price,
-        alert.targetValue,
+        Number(alert.targetValue),
       );
 
       if (isConditionMet && !this.isInCooldown(alert.id)) {
@@ -357,7 +358,7 @@ export class AlertService {
       const isConditionMet = this.evaluatePremiumCondition(
         alert.condition as AlertCondition,
         premium.premiumRate,
-        alert.targetValue,
+        Number(alert.targetValue),
       );
 
       if (isConditionMet && !this.isInCooldown(alert.id)) {
