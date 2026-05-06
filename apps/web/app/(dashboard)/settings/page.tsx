@@ -341,13 +341,21 @@ export default function SettingsPage() {
    * @see 요구사항 1.7 (Read-Only 아닌 키 보안 경고)
    */
   const handleRegister = useCallback(async () => {
-    if (!form.exchange || !form.accessKey || !form.secretKey) return;
+    console.log('[Register] 등록 시작', { exchange: form.exchange, accessKey: !!form.accessKey, secretKey: !!form.secretKey, passphrase: !!form.passphrase });
+
+    if (!form.exchange || !form.accessKey || !form.secretKey) {
+      console.log('[Register] 기본 필드 누락으로 중단');
+      return;
+    }
 
     const exchange = form.exchange as ExchangeType;
     const needsPassphrase = PASSPHRASE_EXCHANGES.includes(exchange);
 
     // Passphrase가 필요한 거래소인데 입력 안 했으면 중단
-    if (needsPassphrase && !form.passphrase) return;
+    if (needsPassphrase && !form.passphrase) {
+      console.log('[Register] passphrase 누락으로 중단', { needsPassphrase, passphrase: form.passphrase });
+      return;
+    }
 
     // OKX/Bitget: secretKey에 passphrase를 "|||"로 합쳐서 저장
     const finalSecretKey = needsPassphrase
