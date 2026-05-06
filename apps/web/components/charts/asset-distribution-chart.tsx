@@ -184,6 +184,25 @@ interface DonutChartProps {
  * Recharts의 PieChart를 사용하여 도넛(가운데 비어있는 파이) 차트를 렌더링한다.
  */
 function DonutChart({ title, data, ariaLabel, className }: DonutChartProps) {
+  // 차트 데이터: 상위 5개 + 나머지를 "기타"로 합산 (paddingAngle로 인한 빈 공간 방지)
+  const maxItems = 5;
+  const chartData = useMemo(() => {
+    if (data.length <= maxItems) return data;
+    const top = data.slice(0, maxItems);
+    const others = data.slice(maxItems);
+    const othersValue = others.reduce((sum, item) => sum + item.value, 0);
+    const othersRatio = others.reduce((sum, item) => sum + item.ratio, 0);
+    if (othersValue > 0) {
+      top.push({
+        name: '기타',
+        value: othersValue,
+        ratio: othersRatio,
+        color: 'hsl(0, 0%, 75%)',
+      });
+    }
+    return top;
+  }, [data]);
+
   // 데이터가 없을 때의 빈 상태
   if (data.length === 0) {
     return (
@@ -222,17 +241,19 @@ function DonutChart({ title, data, ariaLabel, className }: DonutChartProps) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data}
+                  data={chartData}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
                   cy="50%"
                   innerRadius="55%"
                   outerRadius="85%"
-                  paddingAngle={2}
+                  paddingAngle={1}
+                  startAngle={90}
+                  endAngle={-270}
                   stroke="none"
                 >
-                  {data.map((entry) => (
+                  {chartData.map((entry) => (
                     <Cell
                       key={entry.name}
                       fill={entry.color}
