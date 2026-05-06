@@ -1007,21 +1007,16 @@ function RegisterForm({
         {form.exchange && PASSPHRASE_EXCHANGES.includes(form.exchange as ExchangeType) && (
           <div className="space-y-2">
             <Label htmlFor="api-ext">Extra Key</Label>
-            <Input
+            <input
               id="api-ext"
               type="text"
               placeholder={t.apiKey.settingsPage.passphrasePlaceholder}
-              value={form.passphrase}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  passphrase: e.target.value,
-                  validationResult: null,
-                }))
-              }
+              defaultValue=""
               disabled={isProcessing}
               autoComplete="off"
               spellCheck={false}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ WebkitTextSecurity: 'disc' } as React.CSSProperties}
             />
             <p className="text-xs text-muted-foreground">
               {t.apiKey.settingsPage.passphraseDescription}
