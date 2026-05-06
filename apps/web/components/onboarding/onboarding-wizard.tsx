@@ -555,6 +555,24 @@ function ApiKeyStep({ onboarding, walletAddress }: ApiKeyStepProps) {
           </p>
         </div>
 
+        {/* IP Whitelist 안내 (국내 거래소 선택 시) */}
+        {onboarding.selectedExchanges.some((ex) => ['upbit', 'bithumb', 'coinone'].includes(ex)) && (
+          <div className="flex items-start gap-3 rounded-lg border-2 border-blue-400 bg-blue-50 px-4 py-3 text-sm dark:border-blue-600 dark:bg-blue-950/30">
+            <Shield className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+            <div>
+              <p className="font-semibold text-blue-800 dark:text-blue-300">
+                API Key 발급 시 IP Whitelist 등록 필수
+              </p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                국내 거래소에서 API Key를 발급받을 때 아래 IP를 반드시 허용 목록에 추가하세요.
+              </p>
+              <p className="mt-2 select-all rounded bg-blue-100 px-3 py-1.5 font-mono text-base font-bold text-blue-900 dark:bg-blue-900/50 dark:text-blue-200">
+                158.179.168.88
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 거래소별 API 키 입력 폼 (그룹별 카드뷰) */}
         {[
           { label: t.dashboard.domesticLabel, exchanges: DOMESTIC_EXCHANGES as readonly ExchangeType[] },

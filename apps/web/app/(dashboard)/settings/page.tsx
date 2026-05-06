@@ -552,6 +552,29 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* IP Whitelist 안내 */}
+      <Card>
+        <CardContent className="flex items-start gap-3 p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+            <Shield
+              className="h-5 w-5 text-blue-600 dark:text-blue-400"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              국내 거래소 IP Whitelist 등록 필수
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              업비트, 빗썸, 코인원에서 API Key를 발급받을 때 아래 IP를 반드시 허용 목록에 추가하세요.
+            </p>
+            <p className="mt-1.5 select-all rounded bg-blue-50 px-2.5 py-1 font-mono text-sm font-bold text-blue-900 dark:bg-blue-900/40 dark:text-blue-200 inline-block">
+              158.179.168.88
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 등록된 API Key 목록 */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -940,6 +963,24 @@ function RegisterForm({
             </p>
           )}
         </div>
+
+        {/* IP Whitelist 안내 (국내 거래소) */}
+        {form.exchange && ['upbit', 'bithumb', 'coinone'].includes(form.exchange) && (
+          <div className="flex items-start gap-3 rounded-lg border-2 border-blue-400 bg-blue-50 px-4 py-3 text-sm dark:border-blue-600 dark:bg-blue-950/30">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+            <div>
+              <p className="font-semibold text-blue-800 dark:text-blue-300">
+                API Key 발급 시 IP Whitelist 등록 필수
+              </p>
+              <p className="mt-1 text-blue-700 dark:text-blue-400">
+                거래소에서 API Key를 발급받을 때 아래 IP를 반드시 허용 목록에 추가하세요.
+              </p>
+              <p className="mt-2 select-all rounded bg-blue-100 px-3 py-1.5 font-mono text-base font-bold text-blue-900 dark:bg-blue-900/50 dark:text-blue-200">
+                158.179.168.88
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Access Key 입력 */}
         <div className="space-y-2">
