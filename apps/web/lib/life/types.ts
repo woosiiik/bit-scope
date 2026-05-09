@@ -6,12 +6,17 @@
 export type WidgetType =
   | 'portfolio'
   | 'news'
+  | 'influencer'
   | 'premium'
   | 'market'
+  | 'futures'
+  | 'fearGreed'
+  | 'calendar'
+  | 'whale'
   | 'chart';
 
 /** 그리드 레이아웃 종류 */
-export type GridLayout = '2x2' | '1x2' | '2x1' | '1x3' | '3x1';
+export type GridLayout = '2x2' | '2x3' | '3x2' | '3x3' | '1x2' | '2x1' | '1x3' | '3x1';
 
 /** 위젯 배치 설정 */
 export interface WidgetConfig {
@@ -21,6 +26,10 @@ export interface WidgetConfig {
   chartSymbol?: string;
   /** 차트 위젯일 때의 타임프레임 */
   chartInterval?: string;
+  /** 차트 위젯 2번째 심볼 (위아래 2개 표시 시) */
+  chartSymbol2?: string;
+  /** 차트 위젯 2번째 타임프레임 */
+  chartInterval2?: string;
   /** 마켓/김프 위젯일 때의 거래소 */
   exchange?: string;
 }

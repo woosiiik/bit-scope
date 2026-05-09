@@ -18,6 +18,7 @@ export interface NewsArticle {
   contentEn: string | null;
   titleKo: string | null;
   summaryKo: string | null;
+  thumbnailUrl: string | null;
   originalUrl: string;
   publishedAt: string;
   summaryStatus: string;
@@ -30,7 +31,17 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   cointelegraph: 'CoinTelegraph',
   theblock: 'The Block',
   blockmedia: '블록미디어',
+  'yt-coinbureau': 'Coin Bureau',
+  'yt-benjamin-cowen': 'Benjamin Cowen',
+  'yt-krown': 'Krown',
+  'yt-hs-academy': '이효석아카데미',
+  'yt-ohtaemin': '오태민',
 };
+
+/** 유튜브 소스인지 확인 */
+export function isYouTubeSource(source: string): boolean {
+  return source.startsWith('yt-');
+}
 
 /** 소스 표시명을 반환한다 */
 export function getSourceDisplayName(source: string): string {
@@ -64,16 +75,17 @@ export function useTickerNews(enabled: boolean = true) {
 /**
  * 뉴스 목록을 커서 기반 무한 스크롤로 조회하는 훅
  */
-export function useNewsList(enabled: boolean = true) {
+export function useNewsList(sourceType?: 'news' | 'youtube', enabled: boolean = true) {
   return useInfiniteQuery<{
     items: NewsArticle[];
     nextCursor: string | null;
   }>({
-    queryKey: ['news', 'list'],
+    queryKey: ['news', 'list', sourceType],
     queryFn: async ({ pageParam }) => {
       const baseUrl = getApiBaseUrl();
       const params = new URLSearchParams({ limit: '20' });
       if (pageParam) params.set('cursor', pageParam as string);
+      if (sourceType) params.set('sourceType', sourceType);
 
       const res = await fetch(`${baseUrl}/news?${params}`, {
         signal: AbortSignal.timeout(10_000),

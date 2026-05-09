@@ -23,10 +23,11 @@ export class NewsController {
   async getNewsList(
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
+    @Query('sourceType') sourceType?: string,
   ) {
     const parsedLimit = Math.min(parseInt(limit ?? '20', 10) || 20, 50);
 
-    const result = await this.newsService.getNewsList(parsedLimit, cursor);
+    const result = await this.newsService.getNewsList(parsedLimit, cursor, sourceType as 'news' | 'youtube' | undefined);
 
     return {
       success: true,

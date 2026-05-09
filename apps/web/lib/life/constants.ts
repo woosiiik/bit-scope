@@ -8,14 +8,22 @@ import type { GridLayout, LifeLayoutConfig, WidgetMeta, ChartConfig } from './ty
 export const WIDGET_METAS: WidgetMeta[] = [
   { type: 'portfolio', labelKo: '포트폴리오', labelEn: 'Portfolio', icon: 'LayoutDashboard' },
   { type: 'news', labelKo: '뉴스/속보', labelEn: 'News', icon: 'Newspaper' },
+  { type: 'influencer', labelKo: '인플루언서', labelEn: 'Influencer', icon: 'CirclePlay' },
   { type: 'premium', labelKo: '김치 프리미엄', labelEn: 'Kimchi Premium', icon: 'BarChart3' },
   { type: 'market', labelKo: '마켓', labelEn: 'Market', icon: 'TrendingUp' },
+  { type: 'futures', labelKo: '선물 지표', labelEn: 'Futures', icon: 'Activity' },
+  { type: 'fearGreed', labelKo: '공포/탐욕', labelEn: 'Fear & Greed', icon: 'Gauge' },
+  { type: 'calendar', labelKo: '경제 캘린더', labelEn: 'Calendar', icon: 'Calendar' },
+  { type: 'whale', labelKo: '고래 알림', labelEn: 'Whale Alert', icon: 'Fish' },
   { type: 'chart', labelKo: '코인 차트', labelEn: 'Chart', icon: 'LineChart' },
 ];
 
 /** 그리드 레이아웃별 셀 수 */
 export const GRID_CELL_COUNTS: Record<GridLayout, number> = {
   '2x2': 4,
+  '2x3': 6,
+  '3x2': 6,
+  '3x3': 9,
   '1x2': 2,
   '2x1': 2,
   '1x3': 3,
@@ -25,6 +33,9 @@ export const GRID_CELL_COUNTS: Record<GridLayout, number> = {
 /** 그리드 레이아웃별 Tailwind CSS 클래스 */
 export const GRID_LAYOUT_CLASSES: Record<GridLayout, string> = {
   '2x2': 'grid-cols-1 md:grid-cols-2 grid-rows-2',
+  '2x3': 'grid-cols-1 md:grid-cols-3 grid-rows-2',
+  '3x2': 'grid-cols-1 md:grid-cols-2 grid-rows-3',
+  '3x3': 'grid-cols-1 md:grid-cols-3 grid-rows-3',
   '1x2': 'grid-cols-1 md:grid-cols-2 grid-rows-1',
   '2x1': 'grid-cols-1 grid-rows-2',
   '1x3': 'grid-cols-1 md:grid-cols-3 grid-rows-1',
@@ -33,12 +44,14 @@ export const GRID_LAYOUT_CLASSES: Record<GridLayout, string> = {
 
 /** 기본 레이아웃 (포트폴리오 / 뉴스 / 차트(BTC) / 김프) */
 export const DEFAULT_LIFE_LAYOUT: LifeLayoutConfig = {
-  layout: '2x2',
+  layout: '2x3',
   widgets: [
     { type: 'portfolio' },
     { type: 'news' },
     { type: 'chart', chartSymbol: 'BINANCE:BTCUSDT', chartInterval: '60' },
     { type: 'premium', exchange: 'upbit' },
+    { type: 'influencer' },
+    { type: 'market', exchange: 'binance' },
   ],
 };
 

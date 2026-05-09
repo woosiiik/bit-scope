@@ -42,6 +42,10 @@ export class NewsArticleEntity {
   @Column({ name: 'title_ko', type: 'varchar', length: 500, nullable: true })
   titleKo!: string | null;
 
+  /** 썸네일 URL (유튜브 등) */
+  @Column({ name: 'thumbnail_url', type: 'varchar', length: 500, nullable: true })
+  thumbnailUrl!: string | null;
+
   /** 원문 URL (중복 방지용 unique) */
   @Column({ name: 'original_url', type: 'varchar', length: 768, unique: true })
   originalUrl!: string;

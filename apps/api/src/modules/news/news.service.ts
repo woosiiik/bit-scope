@@ -28,6 +28,7 @@ export class NewsService {
     contentEn: string | null;
     originalUrl: string;
     publishedAt: Date;
+    thumbnailUrl?: string | null;
   }): Promise<NewsArticleEntity | null> {
     // 중복 체크
     const exists = await this.newsRepository.findOne({
@@ -101,13 +102,21 @@ export class NewsService {
   /**
    * 뉴스 목록을 커서 기반 페이지네이션으로 조회한다.
    */
-  async getNewsList(limit: number = 20, cursor?: string): Promise<{
+  async getNewsList(limit: number = 20, cursor?: string, sourceType?: 'news' | 'youtube'): Promise<{
     items: NewsArticleEntity[];
     nextCursor: string | null;
   }> {
     const queryBuilder = this.newsRepository
-      .createQueryBuilder('news')
-      .orderBy('news.publishedAt', 'DESC')
+      .createQueryBuilder('news');
+
+    // 소스 타입 필터
+    if (sourceType === 'youtube') {
+      queryBuilder.where('news.source LIKE :prefix', { prefix: 'yt-%' });
+    } else if (sourceType === 'news') {
+      queryBuilder.where('news.source NOT LIKE :prefix', { prefix: 'yt-%' });
+    }
+
+    queryBuilder.orderBy('news.publishedAt', 'DESC')
       .addOrderBy('news.id', 'DESC')
       .take(limit + 1);
 

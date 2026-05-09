@@ -59,6 +59,15 @@ export type {
   SignFunction,
   // 워치리스트 관련
   WatchlistItem,
+  // 선물 마켓 데이터
+  FuturesIndicatorType,
+  LongShortRatioEntry,
+  LiquidationEntry,
+  OpenInterestEntry,
+  FundingRateEntry,
+  TopTraderRatioEntry,
+  CachedFuturesData,
+  FuturesIndicatorsResponse,
 } from './types';
 
 // 공유 상수

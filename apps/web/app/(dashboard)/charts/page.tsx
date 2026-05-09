@@ -43,7 +43,7 @@ export default function ChartsPage() {
   }, [walletAddress, loadConfig]);
 
   const handleAddChart = () => {
-    if (!walletAddress || config.charts.length >= 5) return;
+    if (!walletAddress || config.charts.length >= 6) return;
     addChart(walletAddress, { symbol: 'BINANCE:BTCUSDT', interval: '60' });
   };
 

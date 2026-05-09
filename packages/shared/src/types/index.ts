@@ -74,3 +74,15 @@ export type {
 
 // 워치리스트 관련 타입
 export type { WatchlistItem } from './watchlist';
+
+// 선물 마켓 데이터 타입
+export type {
+  FuturesIndicatorType,
+  LongShortRatioEntry,
+  LiquidationEntry,
+  OpenInterestEntry,
+  FundingRateEntry,
+  TopTraderRatioEntry,
+  CachedFuturesData,
+  FuturesIndicatorsResponse,
+} from './futures';

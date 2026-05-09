@@ -20,6 +20,8 @@ import { AlertModule } from './modules/alert/alert.module';
 import { ReportModule } from './modules/report/report.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { NewsModule } from './modules/news/news.module';
+import { FuturesModule } from './modules/futures/futures.module';
+import { MarketIntelModule } from './modules/market-intel/market-intel.module';
 
 @Module({
   imports: [
@@ -50,6 +52,10 @@ import { NewsModule } from './modules/news/news.module';
     TelegramModule,
     // 크립토 뉴스 피드 모듈
     NewsModule,
+    // 선물 마켓 데이터 모듈
+    FuturesModule,
+    // 시장 인텔리전스 (공포/탐욕, 경제캘린더, 고래알림)
+    MarketIntelModule,
   ],
   controllers: [AppController],
   providers: [AppService],

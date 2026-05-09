@@ -25,10 +25,11 @@ import { cn } from '@/lib/utils';
 /** 레이아웃 옵션 */
 const LAYOUT_OPTIONS: { value: GridLayout; label: string }[] = [
   { value: '2x2', label: '2x2' },
+  { value: '2x3', label: '2x3' },
+  { value: '3x2', label: '3x2' },
+  { value: '3x3', label: '3x3' },
   { value: '1x2', label: '1x2' },
-  { value: '2x1', label: '2x1' },
   { value: '1x3', label: '1x3' },
-  { value: '3x1', label: '3x1' },
 ];
 
 export default function CryptoLifePage() {
@@ -120,7 +121,7 @@ export default function CryptoLifePage() {
           // 위젯 선택 중
           if (editingSlot === index) {
             return (
-              <Card key={index} className="overflow-hidden">
+              <Card key={index} className="overflow-auto">
                 <WidgetSelector
                   onSelect={(cfg) => handleWidgetSelect(index, cfg)}
                   onCancel={() => setEditingSlot(null)}
@@ -132,7 +133,7 @@ export default function CryptoLifePage() {
           // 위젯이 있는 셀
           if (widget) {
             return (
-              <Card key={index} className="overflow-hidden relative group">
+              <Card key={index} className="overflow-auto relative group">
                 {/* 편집 오버레이 */}
                 <div className="absolute top-1 right-12 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button

@@ -10,7 +10,7 @@
 
 import { ExternalLink, Newspaper, Loader2 } from 'lucide-react';
 
-import { useNewsList, getSourceDisplayName, type NewsArticle } from '@/hooks/useNews';
+import { useNewsList, getSourceDisplayName, isYouTubeSource, type NewsArticle } from '@/hooks/useNews';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +50,9 @@ function getSourceColor(source: string): string {
     case 'cointelegraph': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
     case 'theblock': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
     case 'blockmedia': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
-    default: return '';
+    default:
+      if (source.startsWith('yt-')) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      return '';
   }
 }
 
@@ -58,18 +60,32 @@ function getSourceColor(source: string): string {
  * 뉴스 카드 컴포넌트
  */
 function NewsCard({ article }: { article: NewsArticle }) {
+  const isYT = isYouTubeSource(article.source);
+
   return (
     <Card className="hover:border-primary/30 transition-colors">
       <CardContent className="p-4 space-y-3">
         {/* 상단: 소스 + 시간 */}
         <div className="flex items-center justify-between">
           <Badge variant="secondary" className={`text-[10px] ${getSourceColor(article.source)}`}>
-            {getSourceDisplayName(article.source)}
+            {isYT ? `▶ ${getSourceDisplayName(article.source)}` : getSourceDisplayName(article.source)}
           </Badge>
           <span className="text-xs text-muted-foreground" title={formatDate(article.publishedAt)}>
             {timeAgo(article.publishedAt)}
           </span>
         </div>
+
+        {/* 유튜브 썸네일 */}
+        {isYT && article.thumbnailUrl && (
+          <a href={article.originalUrl} target="_blank" rel="noopener noreferrer" className="block">
+            <img
+              src={article.thumbnailUrl}
+              alt={article.titleEn}
+              className="w-full rounded-md object-cover aspect-video"
+              loading="lazy"
+            />
+          </a>
+        )}
 
         {/* 한글 제목 */}
         <h3 className="text-sm font-semibold text-foreground leading-snug">
@@ -83,10 +99,12 @@ function NewsCard({ article }: { article: NewsArticle }) {
           </p>
         )}
 
-        {/* 영어 원문 제목 */}
-        <p className="text-xs text-muted-foreground italic">
-          {article.titleEn}
-        </p>
+        {/* 영어 원문 제목 (뉴스만, 유튜브는 제목이 동일) */}
+        {!isYT && article.titleKo && (
+          <p className="text-xs text-muted-foreground italic">
+            {article.titleEn}
+          </p>
+        )}
 
         {/* 원문 링크 */}
         <a
@@ -96,7 +114,7 @@ function NewsCard({ article }: { article: NewsArticle }) {
           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
           <ExternalLink className="h-3 w-3" aria-hidden="true" />
-          원문 보기
+          {isYT ? '영상 보기' : '원문 보기'}
         </a>
       </CardContent>
     </Card>
@@ -111,7 +129,7 @@ export default function NewsPage() {
     hasNextPage,
     fetchNextPage,
     error,
-  } = useNewsList();
+  } = useNewsList('news');
 
   const articles = data?.pages.flatMap((page) => page.items) ?? [];
 
