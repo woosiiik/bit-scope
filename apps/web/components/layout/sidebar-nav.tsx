@@ -19,6 +19,9 @@ import {
   BarChart3,
   LineChart,
   Bell,
+  Newspaper,
+  Monitor,
+  ChartCandlestick,
   FileText,
   Star,
   Settings,
@@ -39,10 +42,13 @@ export interface NavItem {
 /** 네비게이션 메뉴 정의 (i18n 키 기반) */
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'dashboard', href: '/', icon: LayoutDashboard },
+  { labelKey: 'cryptoDesk', href: '/life', icon: Monitor },
   { labelKey: 'market', href: '/market', icon: TrendingUp },
   { labelKey: 'premium', href: '/premium', icon: BarChart3 },
   { labelKey: 'analytics', href: '/analytics', icon: LineChart },
   { labelKey: 'alerts', href: '/alerts', icon: Bell },
+  { labelKey: 'charts', href: '/charts', icon: ChartCandlestick },
+  { labelKey: 'news', href: '/news', icon: Newspaper },
   { labelKey: 'reports', href: '/reports', icon: FileText },
   { labelKey: 'watchlist', href: '/watchlist', icon: Star },
   { labelKey: 'settings', href: '/settings', icon: Settings },

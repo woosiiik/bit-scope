@@ -19,6 +19,7 @@ import { PremiumModule } from './modules/premium/premium.module';
 import { AlertModule } from './modules/alert/alert.module';
 import { ReportModule } from './modules/report/report.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import { NewsModule } from './modules/news/news.module';
 
 @Module({
   imports: [
@@ -47,6 +48,8 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     ReportModule,
     // 텔레그램 봇 알림 모듈
     TelegramModule,
+    // 크립토 뉴스 피드 모듈
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

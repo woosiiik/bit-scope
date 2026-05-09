@@ -21,6 +21,7 @@
     "clean": "rm -rf dist .turbo node_modules"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.1",
     "@bitscope/shared": "workspace:*",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^4.0.4",
@@ -35,8 +36,10 @@
     "class-validator": "^0.14.1",
     "mysql2": "^3.11.0",
     "reflect-metadata": "^0.2.2",
+    "rss-parser": "^3.13.0",
     "rxjs": "^7.8.0",
     "socket.io": "^4.8.0",
+    "striptags": "^3.2.0",
     "typeorm": "^0.3.20",
     "ws": "^8.20.0"
   },

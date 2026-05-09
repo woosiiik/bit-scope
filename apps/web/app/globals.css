@@ -179,3 +179,13 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 }
+
+/* 뉴스 티커 마키 애니메이션 */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 60s linear infinite;
+}

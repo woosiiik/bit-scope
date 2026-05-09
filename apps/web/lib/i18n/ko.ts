@@ -42,12 +42,15 @@ const ko = {
 
   /** 네비게이션 */
   nav: {
-    dashboard: '대시보드',
+    dashboard: '포트폴리오',
     market: '마켓',
     premium: '김치 프리미엄',
     premiumShort: '김프',
     analytics: '성과 분석',
     alerts: '알림',
+    cryptoDesk: '크립토 데스크',
+    charts: '차트',
+    news: '뉴스',
     reports: '리포트',
     watchlist: '워치리스트',
     settings: '설정',

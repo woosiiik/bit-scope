@@ -64,6 +64,7 @@ import { ErrorDisplay, ExchangeErrorBadge } from '@/components/ui/error-display'
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AssetDistributionCharts } from '@/components/charts';
 import { OnboardingWizard, DemoModeBanner } from '@/components/onboarding';
+import { NewsTicker } from '@/components/news/news-ticker';
 import { getAssetDistribution } from '@/lib/portfolio/aggregator';
 import { usePortfolioStore } from '@/store/portfolio-store';
 
@@ -245,10 +246,27 @@ export default function DashboardPage() {
           profitLossRate={demo.profitLossRate}
         />
 
+        {/* 거래소별 자산 요약 (데모) */}
+        <ExchangeAssetSummary
+          exchangeStates={demo.exchangeStates ?? {}}
+          walletSummaries={{}}
+        />
+
         {/* 자산 분포 차트 (데모) */}
         {demoAssetDistribution && (
           <AssetDistributionCharts distribution={demoAssetDistribution} />
         )}
+
+        {/* 필터/정렬 컨트롤 (데모) */}
+        <TableControls
+          viewMode="merged"
+          sortCriteria="evaluationAmount"
+          sortDirection="desc"
+          filter={{}}
+          onViewModeChange={() => {}}
+          onToggleSort={() => {}}
+          onFilterChange={() => {}}
+        />
 
         {/* 데모 보유 코인 테이블 */}
         <HoldingsTable
@@ -294,6 +312,9 @@ export default function DashboardPage() {
         isLoading={portfolio.isLoading}
         onRefresh={portfolio.refetchAll}
       />
+
+      {/* 뉴스 티커 */}
+      <NewsTicker />
 
       {/* 거래소 필터 (맨 위) - 등록된 거래소만 표시 */}
       <ExchangeFilterBar

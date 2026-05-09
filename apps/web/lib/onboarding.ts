@@ -207,6 +207,114 @@ const DEMO_COINONE_HOLDINGS: Holding[] = [
   },
 ];
 
+/** 데모 모드 바이낸스 보유 자산 (USDT 기준) */
+const DEMO_BINANCE_HOLDINGS: Holding[] = [
+  {
+    exchange: 'binance',
+    symbol: 'BTC',
+    currency: 'USDT',
+    balance: 0.2,
+    lockedBalance: 0,
+    avgBuyPrice: 62000,
+    currentPrice: 67500,
+    evaluationAmount: 13500,
+    profitLoss: 1100,
+    profitLossRate: 8.87,
+  },
+  {
+    exchange: 'binance',
+    symbol: 'SOL',
+    currency: 'USDT',
+    balance: 30,
+    lockedBalance: 0,
+    avgBuyPrice: 130,
+    currentPrice: 155,
+    evaluationAmount: 4650,
+    profitLoss: 750,
+    profitLossRate: 19.23,
+  },
+];
+
+/** 데모 모드 바이빗 보유 자산 (USDT 기준) */
+const DEMO_BYBIT_HOLDINGS: Holding[] = [
+  {
+    exchange: 'bybit',
+    symbol: 'ETH',
+    currency: 'USDT',
+    balance: 2.0,
+    lockedBalance: 0,
+    avgBuyPrice: 2300,
+    currentPrice: 2520,
+    evaluationAmount: 5040,
+    profitLoss: 440,
+    profitLossRate: 9.57,
+  },
+];
+
+/** 데모 모드 OKX 보유 자산 (USDT 기준) */
+const DEMO_OKX_HOLDINGS: Holding[] = [
+  {
+    exchange: 'okx',
+    symbol: 'BTC',
+    currency: 'USDT',
+    balance: 0.1,
+    lockedBalance: 0,
+    avgBuyPrice: 64000,
+    currentPrice: 67500,
+    evaluationAmount: 6750,
+    profitLoss: 350,
+    profitLossRate: 5.47,
+  },
+];
+
+/** 데모 모드 Gate.io 보유 자산 (USDT 기준) */
+const DEMO_GATE_HOLDINGS: Holding[] = [
+  {
+    exchange: 'gate',
+    symbol: 'DOGE',
+    currency: 'USDT',
+    balance: 20000,
+    lockedBalance: 0,
+    avgBuyPrice: 0.11,
+    currentPrice: 0.12,
+    evaluationAmount: 2400,
+    profitLoss: 200,
+    profitLossRate: 9.09,
+  },
+];
+
+/** 데모 모드 Bitget 보유 자산 (USDT 기준) */
+const DEMO_BITGET_HOLDINGS: Holding[] = [
+  {
+    exchange: 'bitget',
+    symbol: 'AVAX',
+    currency: 'USDT',
+    balance: 100,
+    lockedBalance: 0,
+    avgBuyPrice: 28,
+    currentPrice: 32,
+    evaluationAmount: 3200,
+    profitLoss: 400,
+    profitLossRate: 14.29,
+  },
+];
+
+/** 데모 모드 Hyperliquid 보유 자산 (USDC 기준) */
+const DEMO_HYPERLIQUID_HOLDINGS: Holding[] = [
+  {
+    exchange: 'hyperliquid',
+    symbol: 'LINK',
+    currency: 'USDC',
+    balance: 200,
+    lockedBalance: 0,
+    avgBuyPrice: 12,
+    currentPrice: 14.5,
+    evaluationAmount: 2900,
+    profitLoss: 500,
+    profitLossRate: 20.83,
+  },
+];
+
 /**
  * 거래소별 데모 포트폴리오를 생성한다.
  *
@@ -244,11 +352,17 @@ function createDemoExchangePortfolio(
  *
  * @returns 데모 모드용 통합 포트폴리오
  */
-export function getDemoPortfolio(): AggregatedPortfolio {
+export function getDemoPortfolio(): AggregatedPortfolio & { exchangeStates: Record<string, { data: { holdings: Holding[]; krwBalance: number } }> } {
   const portfolios: ExchangePortfolio[] = [
     createDemoExchangePortfolio('upbit', DEMO_UPBIT_HOLDINGS),
     createDemoExchangePortfolio('bithumb', DEMO_BITHUMB_HOLDINGS),
     createDemoExchangePortfolio('coinone', DEMO_COINONE_HOLDINGS),
+    createDemoExchangePortfolio('binance', DEMO_BINANCE_HOLDINGS),
+    createDemoExchangePortfolio('bybit', DEMO_BYBIT_HOLDINGS),
+    createDemoExchangePortfolio('okx', DEMO_OKX_HOLDINGS),
+    createDemoExchangePortfolio('gate', DEMO_GATE_HOLDINGS),
+    createDemoExchangePortfolio('bitget', DEMO_BITGET_HOLDINGS),
+    createDemoExchangePortfolio('hyperliquid', DEMO_HYPERLIQUID_HOLDINGS),
   ];
 
   // 코인별 통합 (MergedHolding 생성)
@@ -313,6 +427,17 @@ export function getDemoPortfolio(): AggregatedPortfolio {
   const profitLossRate = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0;
   const totalKrwBalance = portfolios.reduce((sum, p) => sum + p.krwBalance, 0);
 
+  // ExchangeAssetSummary에서 사용할 exchangeStates 생성
+  const exchangeStates: Record<string, { data: { holdings: Holding[]; krwBalance: number } }> = {};
+  for (const p of portfolios) {
+    exchangeStates[p.exchange] = {
+      data: {
+        holdings: p.holdings,
+        krwBalance: p.krwBalance,
+      },
+    };
+  }
+
   return {
     portfolios,
     mergedHoldings,
@@ -322,5 +447,6 @@ export function getDemoPortfolio(): AggregatedPortfolio {
     profitLossRate,
     totalKrwBalance,
     lastUpdated: new Date(),
+    exchangeStates,
   };
 }

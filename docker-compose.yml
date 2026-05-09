@@ -119,6 +119,8 @@ services:
       # 텔레그램 봇 설정 (미설정 시 텔레그램 기능 비활성화)
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      # Claude API 설정 (뉴스 요약 번역용, 미설정 시 요약 기능 비활성화)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     expose:
       - "4000"
     depends_on:

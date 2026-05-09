@@ -46,12 +46,15 @@ const en: Messages = {
 
   /** Navigation */
   nav: {
-    dashboard: 'Dashboard',
+    dashboard: 'Portfolio',
     market: 'Market',
     premium: 'Kimchi Premium',
     premiumShort: 'Premium',
     analytics: 'Analytics',
     alerts: 'Alerts',
+    cryptoDesk: 'Crypto Desk',
+    charts: 'Charts',
+    news: 'News',
     reports: 'Reports',
     watchlist: 'Watchlist',
     settings: 'Settings',
