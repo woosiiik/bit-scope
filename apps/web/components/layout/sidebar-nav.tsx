@@ -22,6 +22,7 @@ import {
   Gauge,
   Calendar,
   Fish,
+  Send,
   FileText,
   Star,
   Settings,
@@ -73,6 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
       { labelKey: 'whale', href: '/whale', icon: Fish },
       { labelKey: 'news', href: '/news', icon: Newspaper },
       { labelKey: 'influencer', href: '/influencer', icon: CirclePlay },
+      { labelKey: 'telegramFeed', href: '/telegram-feed', icon: Send },
     ],
   },
 ];

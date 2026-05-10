@@ -36,11 +36,17 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   'yt-krown': 'Krown',
   'yt-hs-academy': '이효석아카데미',
   'yt-ohtaemin': '오태민',
+  'tg-wu-blockchain': 'Wu Blockchain',
+  'tg-cryptoquant': 'CryptoQuant',
 };
 
 /** 유튜브 소스인지 확인 */
 export function isYouTubeSource(source: string): boolean {
   return source.startsWith('yt-');
+}
+
+export function isTelegramSource(source: string): boolean {
+  return source.startsWith('tg-');
 }
 
 /** 소스 표시명을 반환한다 */
@@ -75,7 +81,7 @@ export function useTickerNews(enabled: boolean = true) {
 /**
  * 뉴스 목록을 커서 기반 무한 스크롤로 조회하는 훅
  */
-export function useNewsList(sourceType?: 'news' | 'youtube', enabled: boolean = true) {
+export function useNewsList(sourceType?: 'news' | 'youtube' | 'telegram', enabled: boolean = true) {
   return useInfiniteQuery<{
     items: NewsArticle[];
     nextCursor: string | null;

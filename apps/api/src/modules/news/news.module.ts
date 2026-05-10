@@ -12,6 +12,7 @@ import { NewsArticleEntity } from './entities/news-article.entity';
 import { NewsService } from './news.service';
 import { NewsController } from './news.controller';
 import { RssFetcherService } from './services/rss-fetcher.service';
+import { TelegramChannelFetcherService } from './services/telegram-channel-fetcher.service';
 import { NewsSummaryService } from './services/news-summary.service';
 import { NewsCronService } from './news-cron.service';
 
@@ -24,6 +25,7 @@ import { NewsCronService } from './news-cron.service';
   providers: [
     NewsService,
     RssFetcherService,
+    TelegramChannelFetcherService,
     NewsSummaryService,
     NewsCronService,
   ],

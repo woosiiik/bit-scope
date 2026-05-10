@@ -17,6 +17,7 @@ import {
   Gauge,
   Calendar,
   Fish,
+  Send,
   LineChart,
   Plus,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Gauge,
   Calendar,
   Fish,
+  Send,
   LineChart,
 };
 

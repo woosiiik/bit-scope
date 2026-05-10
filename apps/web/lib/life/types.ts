@@ -13,6 +13,7 @@ export type WidgetType =
   | 'fearGreed'
   | 'calendar'
   | 'whale'
+  | 'telegram'
   | 'chart';
 
 /** 그리드 레이아웃 종류 */

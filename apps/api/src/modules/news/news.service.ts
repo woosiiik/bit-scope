@@ -102,7 +102,7 @@ export class NewsService {
   /**
    * 뉴스 목록을 커서 기반 페이지네이션으로 조회한다.
    */
-  async getNewsList(limit: number = 20, cursor?: string, sourceType?: 'news' | 'youtube'): Promise<{
+  async getNewsList(limit: number = 20, cursor?: string, sourceType?: 'news' | 'youtube' | 'telegram'): Promise<{
     items: NewsArticleEntity[];
     nextCursor: string | null;
   }> {
@@ -112,8 +112,10 @@ export class NewsService {
     // 소스 타입 필터
     if (sourceType === 'youtube') {
       queryBuilder.where('news.source LIKE :prefix', { prefix: 'yt-%' });
+    } else if (sourceType === 'telegram') {
+      queryBuilder.where('news.source LIKE :prefix', { prefix: 'tg-%' });
     } else if (sourceType === 'news') {
-      queryBuilder.where('news.source NOT LIKE :prefix', { prefix: 'yt-%' });
+      queryBuilder.where('news.source NOT LIKE :ytPrefix AND news.source NOT LIKE :tgPrefix', { ytPrefix: 'yt-%', tgPrefix: 'tg-%' });
     }
 
     queryBuilder.orderBy('news.publishedAt', 'DESC')

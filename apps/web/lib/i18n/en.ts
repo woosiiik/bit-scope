@@ -63,6 +63,7 @@ const en: Messages = {
     whale: 'Whale Alert',
     news: 'News',
     influencer: 'Influencer',
+    telegramFeed: 'Telegram',
     reports: 'Reports',
     watchlist: 'Watchlist',
     settings: 'Settings',

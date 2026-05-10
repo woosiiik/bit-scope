@@ -9,6 +9,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 
 import { RssFetcherService } from './services/rss-fetcher.service';
+import { TelegramChannelFetcherService } from './services/telegram-channel-fetcher.service';
 import { NewsSummaryService } from './services/news-summary.service';
 import { NewsService } from './news.service';
 
@@ -27,6 +28,7 @@ export class NewsCronService {
 
   constructor(
     private readonly rssFetcher: RssFetcherService,
+    private readonly telegramFetcher: TelegramChannelFetcherService,
     private readonly summaryService: NewsSummaryService,
     private readonly newsService: NewsService,
   ) {}
@@ -51,6 +53,25 @@ export class NewsCronService {
     } catch (error) {
       this.logger.error(
         `RSS 수집 오류: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    // 텔레그램 채널 수집
+    try {
+      const tgItems = await this.telegramFetcher.fetchAll();
+      let tgSavedCount = 0;
+
+      for (const item of tgItems) {
+        const saved = await this.newsService.saveArticle(item);
+        if (saved) tgSavedCount++;
+      }
+
+      if (tgSavedCount > 0) {
+        this.logger.log(`텔레그램 수집 완료 - 수집: ${tgItems.length}건, 신규 저장: ${tgSavedCount}건`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `텔레그램 수집 오류: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

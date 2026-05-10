@@ -59,6 +59,7 @@ const ko = {
     whale: '고래 알림',
     news: '뉴스',
     influencer: '인플루언서',
+    telegramFeed: '텔레그램',
     reports: '리포트',
     watchlist: '워치리스트',
     settings: '설정',

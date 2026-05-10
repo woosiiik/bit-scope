@@ -15,6 +15,7 @@ export const WIDGET_METAS: WidgetMeta[] = [
   { type: 'fearGreed', labelKo: '공포/탐욕', labelEn: 'Fear & Greed', icon: 'Gauge' },
   { type: 'calendar', labelKo: '경제 캘린더', labelEn: 'Calendar', icon: 'Calendar' },
   { type: 'whale', labelKo: '고래 알림', labelEn: 'Whale Alert', icon: 'Fish' },
+  { type: 'telegram', labelKo: '텔레그램', labelEn: 'Telegram', icon: 'Send' },
   { type: 'chart', labelKo: '코인 차트', labelEn: 'Chart', icon: 'LineChart' },
 ];
 

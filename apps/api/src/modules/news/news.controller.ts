@@ -27,7 +27,7 @@ export class NewsController {
   ) {
     const parsedLimit = Math.min(parseInt(limit ?? '20', 10) || 20, 50);
 
-    const result = await this.newsService.getNewsList(parsedLimit, cursor, sourceType as 'news' | 'youtube' | undefined);
+    const result = await this.newsService.getNewsList(parsedLimit, cursor, sourceType as 'news' | 'youtube' | 'telegram' | undefined);
 
     return {
       success: true,
