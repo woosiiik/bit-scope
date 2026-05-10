@@ -5,9 +5,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Fish, ArrowRight } from 'lucide-react';
+import { Fish } from 'lucide-react';
 import { useWhaleAlerts, formatUsd } from '@/hooks/useMarketIntel';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 function timeAgo(ts: number): string {

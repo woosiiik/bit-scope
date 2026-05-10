@@ -11,10 +11,9 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
-import { Activity, Loader2, TrendingUp, TrendingDown, Zap, DollarSign, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, Loader2, TrendingUp, Zap, DollarSign, Users, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useFuturesIndicators, useFuturesSymbols } from '@/hooks/useFuturesData';
-import type { CachedFuturesData } from '@bitscope/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -193,7 +192,7 @@ function CoinSummaryCard({ symbol }: { symbol: string }) {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="fundingTime" tickFormatter={formatTime} tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={(v) => `${(v * 100).toFixed(3)}%`} tick={{ fontSize: 10 }} />
-                      <Tooltip labelFormatter={(v) => formatTime(v as number)} formatter={(v: number) => [`${(v * 100).toFixed(4)}%`, '펀딩']} />
+                      <Tooltip labelFormatter={(v) => formatTime(v as number)} formatter={(v) => [`${(Number(v) * 100).toFixed(4)}%`, '펀딩']} />
                       <Bar dataKey="fundingRate">
                         {fundingRate.map((entry, i) => (
                           <Cell key={i} fill={entry.fundingRate >= 0 ? 'hsl(142.1, 76.2%, 36.3%)' : 'hsl(0, 84.2%, 60.2%)'} />
@@ -215,7 +214,7 @@ function CoinSummaryCard({ symbol }: { symbol: string }) {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="timestamp" tickFormatter={formatTime} tick={{ fontSize: 10 }} />
                       <YAxis tickFormatter={(v) => formatCompact(v)} tick={{ fontSize: 10 }} />
-                      <Tooltip labelFormatter={(v) => formatTime(v as number)} formatter={(v: number) => [formatCompact(v), 'OI']} />
+                      <Tooltip labelFormatter={(v) => formatTime(v as number)} formatter={(v) => [formatCompact(Number(v)), 'OI']} />
                       <Line type="monotone" dataKey="sumOpenInterestValue" stroke="hsl(30, 80%, 55%)" dot={false} strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>

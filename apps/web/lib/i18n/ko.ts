@@ -42,6 +42,9 @@ const ko = {
 
   /** 네비게이션 */
   nav: {
+    sectionPersonal: '내 자산',
+    sectionMarket: '마켓',
+    sectionIntel: '뉴스 & 인텔',
     dashboard: '포트폴리오',
     market: '마켓',
     premium: '김치 프리미엄',

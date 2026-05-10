@@ -7,8 +7,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ExternalLink } from 'lucide-react';
-import { useTickerNews, getSourceDisplayName } from '@/hooks/useNews';
+import { getSourceDisplayName } from '@/hooks/useNews';
 import { useQuery } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/lib/api-url';
 import type { NewsArticle } from '@/hooks/useNews';

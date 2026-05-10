@@ -46,6 +46,9 @@ const en: Messages = {
 
   /** Navigation */
   nav: {
+    sectionPersonal: 'My Assets',
+    sectionMarket: 'Market',
+    sectionIntel: 'News & Intel',
     dashboard: 'Portfolio',
     market: 'Market',
     premium: 'Kimchi Premium',

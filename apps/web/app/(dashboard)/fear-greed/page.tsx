@@ -7,7 +7,7 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { Gauge, Loader2 } from 'lucide-react';
 
-import { useFearGreed, getFearGreedColor, getFearGreedLabel, getFearGreedBgColor } from '@/hooks/useMarketIntel';
+import { useFearGreed, getFearGreedColor, getFearGreedLabel } from '@/hooks/useMarketIntel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -80,7 +80,7 @@ export default function FearGreedPage() {
                     <ReferenceLine y={80} stroke="hsl(142, 76%, 36%)" strokeDasharray="2 2" />
                     <Tooltip
                       labelFormatter={(v) => formatDate(v as number)}
-                      formatter={(v: number) => [v, '공포/탐욕']}
+                      formatter={(v) => [String(v), '공포/탐욕']}
                     />
                     <Line type="monotone" dataKey="value" stroke="hsl(217.2, 91.2%, 59.8%)" dot={false} strokeWidth={2} />
                   </LineChart>

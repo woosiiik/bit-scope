@@ -85,7 +85,8 @@ export class EconomicCalendarService implements OnModuleInit {
   private events: EconomicEvent[] = [];
 
   async onModuleInit(): Promise<void> {
-    await this.collect();
+    // 서버 시작 직후 Rate Limit 방지를 위해 30초 딜레이
+    setTimeout(() => this.collect(), 30_000);
   }
 
   @Interval('economic-calendar-collect', COLLECT_INTERVAL_MS)

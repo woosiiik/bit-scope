@@ -39,7 +39,8 @@ export class WhaleAlertService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    await this.collect();
+    // 서버 시작 직후 다른 서비스와 동시 호출 방지를 위해 15초 딜레이
+    setTimeout(() => this.collect(), 15_000);
   }
 
   @Interval('whale-alert-collect', COLLECT_INTERVAL_MS)

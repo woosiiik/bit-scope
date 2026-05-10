@@ -6,7 +6,7 @@
 
 import { Fish, Loader2, ArrowRight } from 'lucide-react';
 
-import { useWhaleAlerts, formatUsd, type WhaleTransaction } from '@/hooks/useMarketIntel';
+import { useWhaleAlerts, formatUsd } from '@/hooks/useMarketIntel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
