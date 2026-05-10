@@ -132,18 +132,26 @@ export class EconomicCalendarService implements OnModuleInit {
     return data
       .filter((d) => WATCHED_COUNTRIES.includes(d.country))
       .filter((d) => d.impact === 'High' || d.impact === 'Medium')
-      .map((d, i) => ({
-        id: `ff-${d.date}-${i}`,
-        title: d.title,
-        titleKo: translateTitle(d.title),
-        date: d.date.slice(0, 10),
-        time: d.date.slice(11, 16),
-        importance: mapImportance(d.impact),
-        category: classifyCategory(d.title),
-        country: d.country,
-        forecast: d.forecast || undefined,
-        previous: d.previous || undefined,
-      }));
+      .map((d, i) => {
+        // KST로 변환 (Forex Factory는 EDT 기준)
+        const utcDate = new Date(d.date);
+        const kstDate = new Date(utcDate.getTime());
+        const kstDateStr = kstDate.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); // YYYY-MM-DD
+        const kstTimeStr = kstDate.toLocaleTimeString('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false });
+
+        return {
+          id: `ff-${d.date}-${i}`,
+          title: d.title,
+          titleKo: translateTitle(d.title),
+          date: kstDateStr,
+          time: kstTimeStr,
+          importance: mapImportance(d.impact),
+          category: classifyCategory(d.title),
+          country: d.country,
+          forecast: d.forecast || undefined,
+          previous: d.previous || undefined,
+        };
+      });
   }
 
   getAllEvents(): EconomicEvent[] {

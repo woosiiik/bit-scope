@@ -10,7 +10,7 @@ import { Interval } from '@nestjs/schedule';
 
 import type {
   LongShortRatioEntry,
-  LiquidationEntry,
+  TakerBuySellEntry,
   OpenInterestEntry,
   FundingRateEntry,
   TopTraderRatioEntry,
@@ -82,10 +82,10 @@ export class FuturesCollectorService implements OnModuleInit {
    * 단일 심볼의 모든 지표를 수집한다.
    */
   private async collectSymbol(symbol: string): Promise<void> {
-    const [longShortRatio, liquidations, openInterest, fundingRate, topTraderRatio] =
+    const [longShortRatio, takerBuySell, openInterest, fundingRate, topTraderRatio] =
       await Promise.allSettled([
         this.fetchLongShortRatio(symbol),
-        this.fetchLiquidations(symbol),
+        this.fetchTakerBuySell(symbol),
         this.fetchOpenInterest(symbol),
         this.fetchFundingRate(symbol),
         this.fetchTopTraderRatio(symbol),
@@ -96,7 +96,7 @@ export class FuturesCollectorService implements OnModuleInit {
     this.cache.set(symbol, {
       symbol,
       longShortRatio: longShortRatio.status === 'fulfilled' ? longShortRatio.value : existing?.longShortRatio ?? [],
-      liquidations: liquidations.status === 'fulfilled' ? liquidations.value : existing?.liquidations ?? [],
+      takerBuySell: takerBuySell.status === 'fulfilled' ? takerBuySell.value : existing?.takerBuySell ?? [],
       openInterest: openInterest.status === 'fulfilled' ? openInterest.value : existing?.openInterest ?? [],
       fundingRate: fundingRate.status === 'fulfilled' ? fundingRate.value : existing?.fundingRate ?? [],
       topTraderRatio: topTraderRatio.status === 'fulfilled' ? topTraderRatio.value : existing?.topTraderRatio ?? [],
@@ -132,7 +132,7 @@ export class FuturesCollectorService implements OnModuleInit {
   private async fetchLongShortRatio(symbol: string): Promise<LongShortRatioEntry[]> {
     const data = await this.fetchJson<Array<{
       symbol: string; longAccount: string; shortAccount: string; longShortRatio: string; timestamp: number;
-    }>>(`${FAPI_BASE}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=5m&limit=30`);
+    }>>(`${FAPI_BASE}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=1h&limit=24`);
 
     return data.map((d) => ({
       symbol: d.symbol,
@@ -143,25 +143,24 @@ export class FuturesCollectorService implements OnModuleInit {
     }));
   }
 
-  private async fetchLiquidations(symbol: string): Promise<LiquidationEntry[]> {
+  private async fetchTakerBuySell(symbol: string): Promise<TakerBuySellEntry[]> {
     const data = await this.fetchJson<Array<{
-      symbol: string; side: string; price: string; origQty: string; executedQty: string; time: number;
-    }>>(`${FAPI_BASE}/fapi/v1/allForceOrders?symbol=${symbol}&limit=20`);
+      buySellRatio: string; buyVol: string; sellVol: string; timestamp: number;
+    }>>(`${FAPI_BASE}/futures/data/takerlongshortRatio?symbol=${symbol}&period=1h&limit=24`);
 
     return data.map((d) => ({
-      symbol: d.symbol,
-      side: d.side as 'BUY' | 'SELL',
-      price: parseFloat(d.price),
-      quantity: parseFloat(d.origQty),
-      quoteQuantity: parseFloat(d.price) * parseFloat(d.origQty),
-      time: d.time,
+      symbol,
+      buySellRatio: parseFloat(d.buySellRatio),
+      buyVol: parseFloat(d.buyVol),
+      sellVol: parseFloat(d.sellVol),
+      timestamp: d.timestamp,
     }));
   }
 
   private async fetchOpenInterest(symbol: string): Promise<OpenInterestEntry[]> {
     const data = await this.fetchJson<Array<{
       symbol: string; sumOpenInterest: string; sumOpenInterestValue: string; timestamp: number;
-    }>>(`${FAPI_BASE}/futures/data/openInterestHist?symbol=${symbol}&period=5m&limit=30`);
+    }>>(`${FAPI_BASE}/futures/data/openInterestHist?symbol=${symbol}&period=1h&limit=24`);
 
     return data.map((d) => ({
       symbol: d.symbol,
@@ -186,7 +185,7 @@ export class FuturesCollectorService implements OnModuleInit {
   private async fetchTopTraderRatio(symbol: string): Promise<TopTraderRatioEntry[]> {
     const data = await this.fetchJson<Array<{
       symbol: string; longAccount: string; shortAccount: string; longShortRatio: string; timestamp: number;
-    }>>(`${FAPI_BASE}/futures/data/topLongShortPositionRatio?symbol=${symbol}&period=5m&limit=30`);
+    }>>(`${FAPI_BASE}/futures/data/topLongShortPositionRatio?symbol=${symbol}&period=1h&limit=24`);
 
     return data.map((d) => ({
       symbol: d.symbol,

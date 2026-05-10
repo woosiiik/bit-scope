@@ -21,14 +21,13 @@ export interface LongShortRatioEntry {
   timestamp: number;
 }
 
-/** 강제 청산 항목 */
-export interface LiquidationEntry {
+/** Taker 매수/매도 비율 항목 (강제 청산 대체) */
+export interface TakerBuySellEntry {
   symbol: string;
-  side: 'BUY' | 'SELL';
-  price: number;
-  quantity: number;
-  quoteQuantity: number;
-  time: number;
+  buySellRatio: number;
+  buyVol: number;
+  sellVol: number;
+  timestamp: number;
 }
 
 /** 미결제 약정 항목 */
@@ -59,7 +58,7 @@ export interface TopTraderRatioEntry {
 export interface CachedFuturesData {
   symbol: string;
   longShortRatio: LongShortRatioEntry[];
-  liquidations: LiquidationEntry[];
+  takerBuySell: TakerBuySellEntry[];
   openInterest: OpenInterestEntry[];
   fundingRate: FundingRateEntry[];
   topTraderRatio: TopTraderRatioEntry[];

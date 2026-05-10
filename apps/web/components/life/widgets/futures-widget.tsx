@@ -31,13 +31,13 @@ export function FuturesWidget({ symbol = 'BTCUSDT' }: FuturesWidgetProps) {
   const fundingRateData = indicators?.fundingRate ?? [];
   const openInterestData = indicators?.openInterest ?? [];
   const topTraderData = indicators?.topTraderRatio ?? [];
-  const liquidationsData = indicators?.liquidations ?? [];
+  const takerBuySellData = indicators?.takerBuySell ?? [];
 
   const latestLongShort = longShortRatio[longShortRatio.length - 1];
   const latestFunding = fundingRateData[fundingRateData.length - 1];
   const latestOI = openInterestData[openInterestData.length - 1];
   const latestTopTrader = topTraderData[topTraderData.length - 1];
-  const totalLiquidations = liquidationsData.reduce((sum, l) => sum + l.quoteQuantity, 0);
+  const latestTaker = takerBuySellData[takerBuySellData.length - 1];
 
   return (
     <div className="flex flex-col h-full p-3 overflow-auto">
@@ -108,16 +108,18 @@ export function FuturesWidget({ symbol = 'BTCUSDT' }: FuturesWidgetProps) {
             </div>
           )}
 
-          {/* 강제 청산 합계 */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Zap className="h-3 w-3 text-red-500" />
-              <span className="text-[10px] text-muted-foreground">최근 청산</span>
+          {/* 매수/매도 비율 */}
+          {latestTaker && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Zap className="h-3 w-3 text-red-500" />
+                <span className="text-[10px] text-muted-foreground">매수/매도</span>
+              </div>
+              <span className={cn('text-xs font-bold', latestTaker.buySellRatio >= 1 ? 'text-profit' : 'text-loss')}>
+                {latestTaker.buySellRatio.toFixed(2)}
+              </span>
             </div>
-            <span className="text-xs font-bold text-foreground">
-              {formatCompact(totalLiquidations)}
-            </span>
-          </div>
+          )}
 
           {/* 탑 트레이더 */}
           {latestTopTrader && (

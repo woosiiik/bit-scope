@@ -15,7 +15,6 @@ import { Activity, Loader2, TrendingUp, Zap, DollarSign, Users, ChevronDown, Che
 
 import { useFuturesIndicators, useFuturesSymbols } from '@/hooks/useFuturesData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 function stripUsdt(symbol: string): string {
@@ -42,14 +41,14 @@ function CoinSummaryCard({ symbol }: { symbol: string }) {
   const longShortRatio = indicators?.longShortRatio ?? [];
   const fundingRate = indicators?.fundingRate ?? [];
   const openInterest = indicators?.openInterest ?? [];
-  const liquidations = indicators?.liquidations ?? [];
+  const takerBuySell = indicators?.takerBuySell ?? [];
   const topTraderRatio = indicators?.topTraderRatio ?? [];
 
   const latestLS = longShortRatio[longShortRatio.length - 1];
   const latestFR = fundingRate[fundingRate.length - 1];
   const latestOI = openInterest[openInterest.length - 1];
+  const latestTaker = takerBuySell[takerBuySell.length - 1];
   const latestTop = topTraderRatio[topTraderRatio.length - 1];
-  const totalLiq = liquidations.reduce((sum, l) => sum + l.quoteQuantity, 0);
 
   if (isLoading) {
     return (
@@ -129,14 +128,16 @@ function CoinSummaryCard({ symbol }: { symbol: string }) {
               ) : <p className="text-[10px] text-muted-foreground">-</p>}
             </div>
 
-            {/* 강제 청산 */}
+            {/* 매수/매도 비율 */}
             <div>
               <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Zap className="h-3 w-3 text-red-500" />청산
+                <Zap className="h-3 w-3 text-red-500" />매수/매도
               </p>
-              <p className="text-sm font-bold text-foreground mt-0.5">
-                {formatCompact(totalLiq)}
-              </p>
+              {latestTaker ? (
+                <p className={cn('text-sm font-bold mt-0.5', latestTaker.buySellRatio >= 1 ? 'text-profit' : 'text-loss')}>
+                  {latestTaker.buySellRatio.toFixed(2)}
+                </p>
+              ) : <p className="text-[10px] text-muted-foreground">-</p>}
             </div>
 
             {/* 탑 트레이더 */}
@@ -222,22 +223,24 @@ function CoinSummaryCard({ symbol }: { symbol: string }) {
               </div>
             )}
 
-            {/* 강제 청산 리스트 */}
-            {liquidations.length > 0 && (
+            {/* Taker 매수/매도 비율 차트 */}
+            {takerBuySell.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">최근 강제 청산</p>
-                <div className="space-y-1 max-h-[120px] overflow-auto">
-                  {liquidations.slice(0, 8).map((liq, i) => (
-                    <div key={i} className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1">
-                        <Badge variant={liq.side === 'SELL' ? 'destructive' : 'default'} className="text-[8px] px-1 py-0">
-                          {liq.side === 'SELL' ? '롱청산' : '숏청산'}
-                        </Badge>
-                        <span className="text-muted-foreground">{formatTime(liq.time)}</span>
-                      </div>
-                      <span className="font-medium">{formatCompact(liq.quoteQuantity)}</span>
-                    </div>
-                  ))}
+                <p className="text-xs font-medium text-muted-foreground mb-2">Taker 매수/매도 비율</p>
+                <div className="h-[120px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={takerBuySell}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="timestamp" tickFormatter={formatTime} tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip labelFormatter={(v) => formatTime(v as number)} formatter={(v) => [Number(v).toFixed(3), '매수/매도']} />
+                      <Bar dataKey="buySellRatio">
+                        {takerBuySell.map((entry, i) => (
+                          <Cell key={i} fill={entry.buySellRatio >= 1 ? 'hsl(142.1, 76.2%, 36.3%)' : 'hsl(0, 84.2%, 60.2%)'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}

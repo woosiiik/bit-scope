@@ -62,7 +62,7 @@ export type {
   // 선물 마켓 데이터
   FuturesIndicatorType,
   LongShortRatioEntry,
-  LiquidationEntry,
+  TakerBuySellEntry,
   OpenInterestEntry,
   FundingRateEntry,
   TopTraderRatioEntry,

@@ -79,7 +79,7 @@ export type { WatchlistItem } from './watchlist';
 export type {
   FuturesIndicatorType,
   LongShortRatioEntry,
-  LiquidationEntry,
+  TakerBuySellEntry,
   OpenInterestEntry,
   FundingRateEntry,
   TopTraderRatioEntry,
