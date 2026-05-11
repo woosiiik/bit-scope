@@ -76,7 +76,7 @@ export function MarketWidget({ exchange = 'binance' }: MarketWidgetProps) {
                   </span>
                   <span className={cn('flex items-center gap-0.5 w-16 justify-end tabular-nums', isPositive ? 'text-profit' : 'text-loss')}>
                     {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {isPositive ? '+' : ''}{(item.changeRate * 100).toFixed(2)}%
+                    {isPositive ? '+' : ''}{item.changeRate.toFixed(2)}%
                   </span>
                 </div>
               </div>

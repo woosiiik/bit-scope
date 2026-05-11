@@ -74,21 +74,21 @@ export function formatAlertPrice(
     return `${Math.round(num).toLocaleString('ko-KR')}원`;
   }
 
-  // USD: 소수점 2자리, 콤마 구분
-  return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // USD: 소수점 최소 2자리, 최대 10자리 (SHIB 등 소액 코인 대응)
+  return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 10 })}`;
 }
 
 /**
  * 통화에 따른 가격 입력 step 값을 반환한다.
  *
  * - KRW: '1' (정수 입력)
- * - USD: '0.01' (소수점 입력)
+ * - USD: '0.0000000001' (소수점 10자리까지 입력 가능 — SHIB 등 소액 코인 대응)
  *
  * @param currency - 통화 단위
  * @returns step 문자열
  */
 export function getInputStepForCurrency(currency: AlertCurrency): string {
-  return currency === 'KRW' ? '1' : '0.01';
+  return currency === 'KRW' ? '1' : '0.0000000001';
 }
 
 /**

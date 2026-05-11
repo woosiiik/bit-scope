@@ -106,7 +106,6 @@ export const TV_SYMBOL_PRESETS = {
   traditional: [
     { symbol: 'FOREXCOM:NSXUSD', label: '나스닥 100' },
     { symbol: 'FOREXCOM:SPXUSD', label: 'S&P 500' },
-    { symbol: 'CAPITALCOM:KOSPI', label: '코스피' },
     { symbol: 'OANDA:XAUUSD', label: '금 (XAU/USD)' },
     { symbol: 'OANDA:WTICOUSD', label: 'WTI 원유' },
     { symbol: 'OANDA:XAGUSD', label: '은 (XAG/USD)' },

@@ -36,12 +36,12 @@ import { PremiumService } from '../premium/premium.service';
 import { TelegramService } from '../telegram/telegram.service';
 
 /**
- * 알림 중복 방지를 위한 쿨다운 시간 (밀리초)
+ * 알림 조건 충족 상태 추적용 타입
  *
- * 동일한 알림이 짧은 시간 내에 반복 발생하는 것을 방지한다.
- * 한 번 발생한 알림은 이 시간이 지난 후에야 다시 발생할 수 있다.
+ * 알림은 조건이 미충족→충족으로 전환되는 시점에만 발동된다.
+ * 조건이 계속 충족 상태이면 반복 발동하지 않으며,
+ * 미충족으로 돌아간 뒤 다시 충족될 때 재발동된다.
  */
-const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // 5분
 
 /**
  * 알림 조건 검사 스로틀링 간격 (밀리초)
@@ -57,10 +57,13 @@ export class AlertService {
   private readonly logger = new Logger(AlertService.name);
 
   /**
-   * 알림 중복 방지를 위한 마지막 발생 시각 맵
-   * key: alertId, value: 마지막 발생 시각 (밀리초)
+   * 알림 조건 충족 상태 맵
+   * key: alertId, value: 이전 검사에서 조건이 충족되었는지 여부
+   *
+   * true: 조건 충족 상태 (알림 발동됨, 미충족으로 돌아올 때까지 재발동 안 함)
+   * false 또는 미존재: 조건 미충족 상태 (다음 충족 시 발동)
    */
-  private readonly lastTriggeredMap = new Map<string, number>();
+  private readonly conditionMetMap = new Map<string, boolean>();
 
   /**
    * 심볼별 마지막 알림 검사 시각 맵 (스로틀링용)
@@ -149,7 +152,7 @@ export class AlertService {
 
       // 알림이 비활성화되면 쿨다운 맵에서 제거
       if (!dto.isActive) {
-        this.lastTriggeredMap.delete(alertId);
+        this.conditionMetMap.delete(alertId);
       }
     }
 
@@ -177,7 +180,7 @@ export class AlertService {
     }
 
     await this.alertRepository.remove(alert);
-    this.lastTriggeredMap.delete(alertId);
+    this.conditionMetMap.delete(alertId);
 
     this.logger.log(`알림 삭제 완료 - id: ${alertId}`);
   }
@@ -313,8 +316,15 @@ export class AlertService {
         Number(alert.targetValue),
       );
 
-      if (isConditionMet && !this.isInCooldown(alert.id)) {
+      const wasPreviouslyMet = this.conditionMetMap.get(alert.id) ?? false;
+
+      if (isConditionMet && !wasPreviouslyMet) {
+        // 미충족 → 충족 전환: 알림 발동
+        this.conditionMetMap.set(alert.id, true);
         await this.triggerAlert(alert, update.price);
+      } else if (!isConditionMet && wasPreviouslyMet) {
+        // 충족 → 미충족 전환: 상태 리셋 (다음 충족 시 재발동 가능)
+        this.conditionMetMap.set(alert.id, false);
       }
     }
   }
@@ -361,8 +371,13 @@ export class AlertService {
         Number(alert.targetValue),
       );
 
-      if (isConditionMet && !this.isInCooldown(alert.id)) {
+      const wasPreviouslyMet = this.conditionMetMap.get(alert.id) ?? false;
+
+      if (isConditionMet && !wasPreviouslyMet) {
+        this.conditionMetMap.set(alert.id, true);
         await this.triggerAlert(alert, premium.premiumRate);
+      } else if (!isConditionMet && wasPreviouslyMet) {
+        this.conditionMetMap.set(alert.id, false);
       }
     }
   }
@@ -414,23 +429,6 @@ export class AlertService {
   }
 
   /**
-   * 알림 쿨다운 여부를 확인한다.
-   *
-   * 동일한 알림이 짧은 시간 내에 반복 발생하는 것을 방지한다.
-   *
-   * @param alertId 알림 ID
-   * @returns 쿨다운 중이면 true
-   */
-  private isInCooldown(alertId: string): boolean {
-    const lastTriggered = this.lastTriggeredMap.get(alertId);
-    if (!lastTriggered) {
-      return false;
-    }
-
-    return Date.now() - lastTriggered < ALERT_COOLDOWN_MS;
-  }
-
-  /**
    * 알림을 발동시킨다.
    *
    * WebSocket을 통해 사용자에게 알림을 전송하고,
@@ -449,10 +447,7 @@ export class AlertService {
       `알림 발동 - id: ${alert.id}, wallet: ${alert.walletAddress}, message: ${message}`,
     );
 
-    // 1. 쿨다운 맵 갱신 (먼저 설정하여 중복 발동 방지)
-    this.lastTriggeredMap.set(alert.id, Date.now());
-
-    // 2. WebSocket을 통해 사용자에게 알림 전송
+    // 1. WebSocket을 통해 사용자에게 알림 전송
     const notification: AlertNotification = {
       alertId: alert.id,
       symbol: alert.symbol,
@@ -467,7 +462,7 @@ export class AlertService {
 
     this.priceGateway.broadcastAlert(alert.walletAddress, notification);
 
-    // 3. 알림 이력 DB 저장
+    // 2. 알림 이력 DB 저장
     try {
       const history = this.alertHistoryRepository.create({
         alertId: alert.id,
@@ -482,7 +477,7 @@ export class AlertService {
       );
     }
 
-    // 4. 텔레그램 메시지 발송 (실패해도 다른 알림에 영향 없음)
+    // 3. 텔레그램 메시지 발송 (실패해도 다른 알림에 영향 없음)
     try {
       await this.sendTelegramNotification(alert, triggeredValue);
     } catch (error) {

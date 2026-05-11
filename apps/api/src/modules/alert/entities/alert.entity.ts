@@ -46,7 +46,7 @@ export class AlertEntity {
   condition!: string;
 
   /** 목표 가격 또는 프리미엄 비율 (%) */
-  @Column({ name: 'target_value', type: 'decimal', precision: 20, scale: 4 })
+  @Column({ name: 'target_value', type: 'decimal', precision: 20, scale: 10 })
   targetValue!: number;
 
   /** 활성 상태 여부 */

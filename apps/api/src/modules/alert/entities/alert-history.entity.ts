@@ -34,7 +34,7 @@ export class AlertHistoryEntity {
   triggeredAt!: Date;
 
   /** 알림 발생 시점의 값 (가격 또는 프리미엄 비율) */
-  @Column({ name: 'triggered_value', type: 'decimal', precision: 20, scale: 4 })
+  @Column({ name: 'triggered_value', type: 'decimal', precision: 20, scale: 10 })
   triggeredValue!: number;
 
   /** 알림 메시지 */
