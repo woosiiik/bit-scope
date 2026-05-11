@@ -192,10 +192,12 @@ export class EconomicCalendarService implements OnModuleInit {
   }
 
   /**
-   * Forex Factory 이벤트와 커스텀 이벤트를 합쳐서 날짜순 정렬한다.
+   * 커스텀 이벤트(날짜순)를 먼저 배치하고, 그 뒤에 Forex Factory 이벤트(날짜순)를 붙인다.
    */
   private mergeAndSort(ffEvents: EconomicEvent[], customEvents: EconomicEvent[]): EconomicEvent[] {
-    return [...ffEvents, ...customEvents].sort((a, b) => a.date.localeCompare(b.date));
+    const sortedCustom = [...customEvents].sort((a, b) => a.date.localeCompare(b.date));
+    const sortedFF = [...ffEvents].sort((a, b) => a.date.localeCompare(b.date));
+    return [...sortedCustom, ...sortedFF];
   }
 
   async getAllEvents(): Promise<EconomicEvent[]> {

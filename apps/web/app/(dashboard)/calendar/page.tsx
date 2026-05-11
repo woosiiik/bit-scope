@@ -141,7 +141,7 @@ export default function CalendarPage() {
               {/* 요일 */}
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {WEEKDAYS.map((day, i) => (
-                  <div key={day} className={cn('text-center text-[10px] font-medium py-1', i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-muted-foreground')}>
+                  <div key={day} className={cn('text-center text-xs font-medium py-1', i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-muted-foreground')}>
                     {day}
                   </div>
                 ))}
@@ -150,7 +150,7 @@ export default function CalendarPage() {
               {/* 날짜 그리드 */}
               <div className="grid grid-cols-7 gap-1">
                 {calendarDays.map((day, i) => {
-                  if (day === null) return <div key={`empty-${i}`} className="h-20" />;
+                  if (day === null) return <div key={`empty-${i}`} className="h-28" />;
 
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEvents = eventsByDate.get(dateStr) ?? [];
@@ -166,7 +166,7 @@ export default function CalendarPage() {
                       onClick={() => handleDateClick(dateStr)}
                       disabled={!hasEvents}
                       className={cn(
-                        'h-20 rounded-md border p-1 text-left transition-colors flex flex-col items-start',
+                        'h-28 rounded-md border p-1.5 text-left transition-colors flex flex-col items-start',
                         isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' :
                         isToday ? 'border-primary bg-primary/5' :
                         hasEvents ? 'border-border hover:border-primary/50 cursor-pointer' :
@@ -174,7 +174,7 @@ export default function CalendarPage() {
                       )}
                     >
                       <span className={cn(
-                        'text-[10px] font-medium',
+                        'text-xs font-medium',
                         isToday ? 'text-primary font-bold' : dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-foreground',
                       )}>{day}</span>
 
@@ -183,15 +183,15 @@ export default function CalendarPage() {
                         {dayEvents.slice(0, 3).map((event) => (
                           <div
                             key={event.id}
-                            className={cn('flex items-center gap-0.5 text-[7px] leading-tight')}
+                            className={cn('flex items-center gap-1 text-[11px] leading-snug')}
                             title={event.titleKo}
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', CAT_COLORS[event.category] ?? 'bg-gray-500')} />
-                            <span className="truncate text-foreground/70">{event.titleKo}</span>
+                            <span className="truncate text-foreground/80 font-medium">{event.titleKo}</span>
                           </div>
                         ))}
                         {dayEvents.length > 3 && (
-                          <span className="text-[7px] text-muted-foreground">+{dayEvents.length - 3}개</span>
+                          <span className="text-[11px] text-muted-foreground">+{dayEvents.length - 3}개</span>
                         )}
                       </div>
                     </button>
