@@ -19,6 +19,7 @@ import { ReportEntity } from '../modules/report/entities/report.entity';
 import { ReportScheduleEntity } from '../modules/report/entities/report-schedule.entity';
 import { KimchiPremiumHistoryEntity } from '../modules/premium/entities/kimchi-premium-history.entity';
 import { PriceHistoryEntity } from '../modules/price/entities/price-history.entity';
+import { CustomCalendarEventEntity } from '../modules/market-intel/entities/custom-calendar-event.entity';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
@@ -36,6 +37,7 @@ const AppDataSource = new DataSource({
     ReportScheduleEntity,
     KimchiPremiumHistoryEntity,
     PriceHistoryEntity,
+    CustomCalendarEventEntity,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

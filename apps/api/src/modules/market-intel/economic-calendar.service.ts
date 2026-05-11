@@ -6,7 +6,11 @@
  */
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Interval } from '@nestjs/schedule';
+
+import { CustomCalendarEventEntity } from './entities/custom-calendar-event.entity';
 
 export interface EconomicEvent {
   id: string;
@@ -84,6 +88,11 @@ export class EconomicCalendarService implements OnModuleInit {
   private readonly logger = new Logger(EconomicCalendarService.name);
   private events: EconomicEvent[] = [];
 
+  constructor(
+    @InjectRepository(CustomCalendarEventEntity)
+    private readonly customEventRepository: Repository<CustomCalendarEventEntity>,
+  ) {}
+
   async onModuleInit(): Promise<void> {
     // 서버 시작 직후 Rate Limit 방지를 위해 30초 딜레이
     setTimeout(() => this.collect(), 30_000);
@@ -154,16 +163,55 @@ export class EconomicCalendarService implements OnModuleInit {
       });
   }
 
-  getAllEvents(): EconomicEvent[] {
-    return this.events;
+  /**
+   * DB에서 활성 커스텀 이벤트를 조회하여 EconomicEvent 형식으로 변환한다.
+   */
+  private async getCustomEvents(): Promise<EconomicEvent[]> {
+    try {
+      const customs = await this.customEventRepository.find({
+        where: { isActive: true },
+        order: { date: 'ASC' },
+      });
+
+      return customs.map((c) => ({
+        id: `custom-${c.id}`,
+        title: c.title,
+        titleKo: c.titleKo,
+        date: c.date,
+        time: c.time || undefined,
+        importance: c.importance as EconomicEvent['importance'],
+        category: c.category,
+        country: c.country,
+        forecast: c.forecast || undefined,
+        previous: c.previous || undefined,
+      }));
+    } catch (error) {
+      this.logger.warn(`커스텀 이벤트 조회 실패: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
   }
 
-  getUpcomingEvents(limit: number = 10): EconomicEvent[] {
+  /**
+   * Forex Factory 이벤트와 커스텀 이벤트를 합쳐서 날짜순 정렬한다.
+   */
+  private mergeAndSort(ffEvents: EconomicEvent[], customEvents: EconomicEvent[]): EconomicEvent[] {
+    return [...ffEvents, ...customEvents].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async getAllEvents(): Promise<EconomicEvent[]> {
+    const customEvents = await this.getCustomEvents();
+    return this.mergeAndSort(this.events, customEvents);
+  }
+
+  async getUpcomingEvents(limit: number = 10): Promise<EconomicEvent[]> {
     const now = new Date().toISOString().slice(0, 10);
-    return this.events.filter((e) => e.date >= now).slice(0, limit);
+    const customEvents = await this.getCustomEvents();
+    const merged = this.mergeAndSort(this.events, customEvents);
+    return merged.filter((e) => e.date >= now).slice(0, limit);
   }
 
-  getRecentAndUpcoming(limit: number = 30): EconomicEvent[] {
-    return this.events.slice(0, limit);
+  async getRecentAndUpcoming(limit: number = 30): Promise<EconomicEvent[]> {
+    const customEvents = await this.getCustomEvents();
+    return this.mergeAndSort(this.events, customEvents).slice(0, limit);
   }
 }

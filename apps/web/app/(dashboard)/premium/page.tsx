@@ -47,7 +47,7 @@ import {
 } from 'recharts';
 import type { ExchangeType, KimchiPremiumData } from '@bitscope/shared';
 import {
-  SUPPORTED_EXCHANGES,
+  DOMESTIC_EXCHANGES,
   MAJOR_COINS,
   DEFAULT_PREMIUM_COINS,
   formatKRW,
@@ -221,7 +221,7 @@ function ExchangeSelector({ selected, onSelect }: ExchangeSelectorProps) {
       role="tablist"
       aria-label={t.exchange.selectDomesticExchange}
     >
-      {SUPPORTED_EXCHANGES.map((exchange) => {
+      {DOMESTIC_EXCHANGES.map((exchange) => {
         const isActive = selected === exchange;
         return (
           <Button

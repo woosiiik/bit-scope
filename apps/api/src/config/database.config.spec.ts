@@ -81,8 +81,8 @@ describe('getDatabaseConfig', () => {
 });
 
 describe('ENTITIES', () => {
-  it('9개의 엔티티가 등록되어야 한다', () => {
-    expect(ENTITIES).toHaveLength(9);
+  it('11개의 엔티티가 등록되어야 한다', () => {
+    expect(ENTITIES).toHaveLength(11);
   });
 
   it('모든 엔티티가 클래스(함수)여야 한다', () => {

@@ -17,6 +17,7 @@ import { KimchiPremiumHistoryEntity } from '../modules/premium/entities/kimchi-p
 import { PriceHistoryEntity } from '../modules/price/entities/price-history.entity';
 import { TelegramConnectionEntity } from '../modules/telegram/entities/telegram-connection.entity';
 import { NewsArticleEntity } from '../modules/news/entities/news-article.entity';
+import { CustomCalendarEventEntity } from '../modules/market-intel/entities/custom-calendar-event.entity';
 
 /** 모든 TypeORM 엔티티 목록 */
 export const ENTITIES = [
@@ -30,6 +31,7 @@ export const ENTITIES = [
   PriceHistoryEntity,
   TelegramConnectionEntity,
   NewsArticleEntity,
+  CustomCalendarEventEntity,
 ];
 
 /**

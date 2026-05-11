@@ -24,11 +24,11 @@ export class MarketIntelController {
   }
 
   @Get('calendar')
-  getCalendar(@Query('type') type?: string) {
+  async getCalendar(@Query('type') type?: string) {
     if (type === 'upcoming') {
-      return { success: true, data: this.calendar.getUpcomingEvents() };
+      return { success: true, data: await this.calendar.getUpcomingEvents() };
     }
-    return { success: true, data: this.calendar.getRecentAndUpcoming() };
+    return { success: true, data: await this.calendar.getRecentAndUpcoming() };
   }
 
   @Get('whale')
