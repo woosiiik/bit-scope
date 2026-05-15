@@ -74,6 +74,8 @@ RUN echo "NEXT_PUBLIC_BUILD_VERSION=$(date +%Y%m%d-%H%M%S)" >> ./apps/web/.env.l
 # 빌드 시에도 server-preload.js를 주입하여 indexedDB 등 브라우저 API stub을 등록
 # Next.js가 서버 컴포넌트를 컴파일할 때 MetaMask SDK가 indexedDB를 참조하는 것을 방지
 ENV NODE_OPTIONS="--require /app/apps/web/server-preload.js"
+# VPN/프록시 환경에서 Google Fonts 다운로드 시 self-signed cert 오류 방지 (빌드 단계에서만 사용)
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 RUN pnpm --filter @bitscope/web build
 
 # -----------------------------------------------------------------------------
