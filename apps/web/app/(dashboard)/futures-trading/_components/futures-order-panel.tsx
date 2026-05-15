@@ -33,7 +33,7 @@ const LEVERAGE_PRESETS = [1, 5, 10, 20, 50, 100, 125] as const;
 
 export function FuturesOrderPanel({
   symbol,
-  exchange,
+  exchange: _exchange,
   currentPrice,
 }: FuturesOrderPanelProps) {
   const { t } = useTranslation();

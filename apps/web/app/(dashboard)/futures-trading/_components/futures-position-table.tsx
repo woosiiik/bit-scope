@@ -30,7 +30,7 @@ export function FuturesPositionTable({
   onFilterChange,
 }: FuturesPositionTableProps) {
   const { t } = useTranslation();
-  const { positions, isLoading } = useFuturesPositions();
+  const { positions } = useFuturesPositions();
 
   // 거래소 필터 적용
   const filteredPositions = useMemo(() => {

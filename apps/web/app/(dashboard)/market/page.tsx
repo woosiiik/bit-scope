@@ -47,7 +47,7 @@ import {
   useExchangeTicker,
   useExchangeOrderbook,
 } from '@/hooks/useExchangeApi';
-import { fetchTicker, getUsdtKrwRate, type TickerResponse } from '@/lib/api-client';
+import { fetchTicker, getUsdtKrwRate } from '@/lib/api-client';
 import { TradingViewChart } from '@/components/life/widgets/tradingview-chart-widget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1252,7 +1252,7 @@ function isForeignOrDex(exchange: ExchangeType): boolean {
  * 가장 높은 가격과 가장 낮은 가격을 하이라이트한다.
  * 전체 너비 레이아웃으로 스크롤 없이 한눈에 비교 가능하다.
  */
-function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonPanelProps) {
+function ExchangeComparisonPanel({ symbol: _symbol, exchangePrices }: ExchangeComparisonPanelProps) {
   const { t, locale } = useTranslation();
 
   // USDT/KRW 환율 조회

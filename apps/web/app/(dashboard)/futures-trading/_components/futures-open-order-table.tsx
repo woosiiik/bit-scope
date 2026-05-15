@@ -30,7 +30,7 @@ export function FuturesOpenOrderTable({
   onFilterChange,
 }: FuturesOpenOrderTableProps) {
   const { t } = useTranslation();
-  const { openOrders, isLoading } = useFuturesOpenOrders();
+  const { openOrders } = useFuturesOpenOrders();
 
   // 거래소 필터 적용
   const filteredOrders = useMemo(() => {

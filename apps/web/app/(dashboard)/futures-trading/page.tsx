@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { TradingViewChart } from '@/components/life/widgets/tradingview-chart-widget';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
 // 하위 컴포넌트
 import { FuturesCoinSelector } from './_components/futures-coin-selector';
