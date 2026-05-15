@@ -6,7 +6,7 @@
  */
 
 /** 지원하는 거래소 식별자 */
-export type ExchangeType = 'upbit' | 'bithumb' | 'coinone' | 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget' | 'hyperliquid';
+export type ExchangeType = 'upbit' | 'bithumb' | 'coinone' | 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget' | 'hyperliquid' | 'lbank';
 
 /** 마켓 통화 단위 */
 export type Currency = 'KRW' | 'BTC' | 'USDT' | 'USDC';

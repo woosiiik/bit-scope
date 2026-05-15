@@ -21,6 +21,7 @@ import { BithumbWsClient } from './exchange-ws/bithumb-ws.client';
 import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
 import { BinancePollingClient } from './exchange-ws/binance-polling.client';
 import { HyperliquidPollingClient } from './exchange-ws/hyperliquid-polling.client';
+import { LbankPollingClient } from './exchange-ws/lbank-polling.client';
 import { PriceMonitorService } from './price-monitor.service';
 import { PriceGateway } from './price.gateway';
 
@@ -39,6 +40,8 @@ import { PriceGateway } from './price.gateway';
     BinancePollingClient,
     // 하이퍼리퀴드 시세 수신 클라이언트 (알림용)
     HyperliquidPollingClient,
+    // LBank 시세 수신 클라이언트 (김치 프리미엄 비교용) - TODO: LBank 디버깅 후 활성화
+    // LbankPollingClient,
     // 시세 통합 관리 서비스
     PriceMonitorService,
     // Socket.IO 게이트웨이

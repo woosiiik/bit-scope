@@ -28,9 +28,12 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import type { ExchangeType, Ticker, Orderbook } from '@bitscope/shared';
 import {
   SUPPORTED_EXCHANGES,
+  DOMESTIC_EXCHANGES,
+  FOREIGN_EXCHANGES,
   MAJOR_COIN_SYMBOLS,
   MAJOR_COINS,
   formatVolume,
@@ -44,6 +47,8 @@ import {
   useExchangeTicker,
   useExchangeOrderbook,
 } from '@/hooks/useExchangeApi';
+import { fetchTicker, getUsdtKrwRate, type TickerResponse } from '@/lib/api-client';
+import { TradingViewChart } from '@/components/life/widgets/tradingview-chart-widget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,8 +63,20 @@ import { Skeleton, TableRowSkeleton } from '@/components/ui/skeleton';
 
 // ===== 상수 =====
 
-/** 하이라이트 섹션에 표시할 코인 수 */
+/** 하이라이트 섹션에 기본 표시할 코인 수 */
 const HIGHLIGHT_COUNT = 5;
+
+/** 거래량 합산에 기본 표시할 코인 수 */
+const VOLUME_DEFAULT_COUNT = 10;
+
+/** 거래량 합산에서 "더 보기" 시 표시할 코인 수 */
+const VOLUME_EXPANDED_COUNT = 30;
+
+/** 거래량 합산 대상 거래소 (하이퍼리퀴드 제외 - USDC 기준, 거래량 형식 상이) */
+const VOLUME_EXCHANGES: ExchangeType[] = [
+  ...(DOMESTIC_EXCHANGES as unknown as ExchangeType[]),
+  ...(FOREIGN_EXCHANGES as unknown as ExchangeType[]),
+];
 
 /** 기본 선택 거래소 */
 const DEFAULT_EXCHANGE: ExchangeType = 'upbit';
@@ -86,6 +103,56 @@ export default function MarketPage() {
     enabled: true,
     refetchInterval: 10_000, // 10초 간격 자동 갱신
   });
+
+  // 전체 거래소 시세 병렬 조회 (거래량 합산용)
+  const allTickerQueries = useQueries({
+    queries: VOLUME_EXCHANGES.map((exchange) => ({
+      queryKey: ['exchange', exchange, 'ticker', 'volume-agg'] as const,
+      queryFn: () => fetchTicker(exchange),
+      refetchInterval: 30_000,
+      staleTime: 20_000,
+      retry: 1,
+    })),
+  });
+
+  // USDT/KRW 환율 조회 (해외 거래소 거래량 KRW 환산용)
+  const { data: usdtKrwRate = 0 } = useQuery({
+    queryKey: ['usdtKrwRate'],
+    queryFn: getUsdtKrwRate,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  // 국내+해외 전체 거래소 심볼별 거래량 합산 (KRW 기준, 스테이블코인 제외)
+  const aggregatedVolumes = useMemo(() => {
+    const volumeMap = new Map<string, number>();
+    const foreignSet = new Set(FOREIGN_EXCHANGES as unknown as string[]);
+    const stablecoins = new Set(['USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'FDUSD']);
+
+    for (let i = 0; i < VOLUME_EXCHANGES.length; i++) {
+      const exchange = VOLUME_EXCHANGES[i]!;
+      const query = allTickerQueries[i];
+      const tickers = query?.data?.tickers;
+      if (!tickers) continue;
+
+      const isForeign = foreignSet.has(exchange);
+      const rate = isForeign ? usdtKrwRate : 1;
+
+      for (const ticker of tickers) {
+        if (stablecoins.has(ticker.symbol)) continue;
+        const vol = ticker.volumeAmount24h || ticker.volume24h * ticker.currentPrice;
+        if (vol <= 0) continue;
+        const volKrw = vol * rate;
+        volumeMap.set(ticker.symbol, (volumeMap.get(ticker.symbol) || 0) + volKrw);
+      }
+    }
+
+    return Array.from(volumeMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([symbol, totalVolume]) => ({ symbol, totalVolume }));
+  }, [allTickerQueries, usdtKrwRate]);
+
+  const isAggregatedLoading = allTickerQueries.some((q) => q.isLoading) && aggregatedVolumes.length === 0;
 
   // 실시간 가격 데이터 (store에서 가져온다)
   const pricesByExchange = usePriceStore((s) => s.getPricesByExchange);
@@ -136,15 +203,11 @@ export default function MarketPage() {
     });
   }, [enrichedTickers, searchQuery, locale]);
 
-  // 하이라이트 데이터 계산
+  // 하이라이트 데이터 계산 (상승률/하락률은 선택된 거래소 기준)
   const highlights = useMemo(() => {
-    if (enrichedTickers.length === 0) return { topVolume: [], topGainers: [], topLosers: [] };
+    if (enrichedTickers.length === 0) return { topGainers: [], topLosers: [] };
 
     const sorted = [...enrichedTickers];
-
-    const topVolume = [...sorted]
-      .sort((a, b) => (b.volumeAmount24h || b.volume24h) - (a.volumeAmount24h || a.volume24h))
-      .slice(0, HIGHLIGHT_COUNT);
 
     const topGainers = [...sorted]
       .sort((a, b) => b.changeRate - a.changeRate)
@@ -154,7 +217,7 @@ export default function MarketPage() {
       .sort((a, b) => a.changeRate - b.changeRate)
       .slice(0, HIGHLIGHT_COUNT);
 
-    return { topVolume, topGainers, topLosers };
+    return { topGainers, topLosers };
   }, [enrichedTickers]);
 
   // 코인 선택 핸들러
@@ -190,19 +253,16 @@ export default function MarketPage() {
         onRefresh={() => refetchTicker()}
       />
 
-      {/* 하이라이트 섹션 */}
-      {enrichedTickers.length > 0 && (
-        <HighlightSection
-          topVolume={highlights.topVolume}
-          topGainers={highlights.topGainers}
-          topLosers={highlights.topLosers}
-          onSelectCoin={handleSelectCoin}
-        />
-      )}
+      {/* 거래량 합산 (전체 거래소) */}
+      <AggregatedVolumeCard
+        items={aggregatedVolumes}
+        isLoading={isAggregatedLoading}
+        onSelect={handleSelectCoin}
+      />
 
       {/* 거래소 탭 + 검색 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
           {SUPPORTED_EXCHANGES.map((exchange) => {
             const isActive = selectedExchange === exchange;
             return (
@@ -236,6 +296,28 @@ export default function MarketPage() {
           />
         </div>
       </div>
+
+      {/* 상승률/하락률 (선택된 거래소 기준) */}
+      {enrichedTickers.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <HighlightCard
+            title={t.market.topGainers}
+            icon={TrendingUp}
+            items={highlights.topGainers}
+            valueFormatter={(ticker) => `${ticker.changeRate >= 0 ? '+' : ''}${ticker.changeRate.toFixed(2)}%`}
+            valueColorize
+            onSelect={handleSelectCoin}
+          />
+          <HighlightCard
+            title={t.market.topLosers}
+            icon={TrendingDown}
+            items={highlights.topLosers}
+            valueFormatter={(ticker) => `${ticker.changeRate >= 0 ? '+' : ''}${ticker.changeRate.toFixed(2)}%`}
+            valueColorize
+            onSelect={handleSelectCoin}
+          />
+        </div>
+      )}
 
       {/* 시세 테이블 */}
       {isTickerLoading && enrichedTickers.length === 0 ? (
@@ -345,52 +427,89 @@ function MarketHeader({
 
 // ----- 하이라이트 섹션 -----
 
-interface HighlightSectionProps {
-  topVolume: Ticker[];
-  topGainers: Ticker[];
-  topLosers: Ticker[];
-  onSelectCoin: (symbol: string) => void;
+/** 합산 거래량 항목 */
+interface AggregatedVolumeItem {
+  symbol: string;
+  totalVolume: number;
+}
+
+// ----- 합산 거래량 카드 -----
+
+interface AggregatedVolumeCardProps {
+  items: AggregatedVolumeItem[];
+  isLoading: boolean;
+  onSelect: (symbol: string) => void;
 }
 
 /**
- * 거래량 상위, 상승률 상위, 하락률 상위 코인 하이라이트
+ * 전체 거래소 합산 거래량 상위 카드
  *
- * @see 요구사항 5.5 (거래량 상위, 상승률 상위, 하락률 상위 하이라이트)
+ * 기본 10개를 그리드로 표시하고, "더 보기"로 확장 가능하다.
+ * 국내 거래소는 KRW 기준, 해외 거래소는 USDT→KRW 환산하여 합산한다.
  */
-function HighlightSection({
-  topVolume,
-  topGainers,
-  topLosers,
-  onSelectCoin,
-}: HighlightSectionProps) {
+function AggregatedVolumeCard({ items, isLoading, onSelect }: AggregatedVolumeCardProps) {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  const displayCount = expanded ? VOLUME_EXPANDED_COUNT : VOLUME_DEFAULT_COUNT;
+  const displayItems = items.slice(0, displayCount);
+  const hasMore = items.length > displayCount;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <HighlightCard
-        title={t.market.topVolume}
-        icon={BarChart3}
-        items={topVolume}
-        valueFormatter={(ticker) => formatCompactKRW(ticker.volumeAmount24h || ticker.volume24h * ticker.currentPrice)}
-        onSelect={onSelectCoin}
-      />
-      <HighlightCard
-        title={t.market.topGainers}
-        icon={TrendingUp}
-        items={topGainers}
-        valueFormatter={(ticker) => `${ticker.changeRate >= 0 ? '+' : ''}${ticker.changeRate.toFixed(2)}%`}
-        valueColorize
-        onSelect={onSelectCoin}
-      />
-      <HighlightCard
-        title={t.market.topLosers}
-        icon={TrendingDown}
-        items={topLosers}
-        valueFormatter={(ticker) => `${ticker.changeRate >= 0 ? '+' : ''}${ticker.changeRate.toFixed(2)}%`}
-        valueColorize
-        onSelect={onSelectCoin}
-      />
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          {t.market.topVolume}
+          <Badge variant="secondary" className="text-[10px] font-normal">
+            {t.market.topVolumeDomesticBadge}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <LoadingSpinner size="sm" />
+          </div>
+        ) : displayItems.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            {t.market.noDataShort}
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+              {displayItems.map((item, index) => (
+                <button
+                  key={item.symbol}
+                  type="button"
+                  className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                  onClick={() => onSelect(item.symbol)}
+                  aria-label={item.symbol}
+                >
+                  <span className="text-xs font-bold text-muted-foreground w-4 text-right">{index + 1}</span>
+                  <div className="text-left min-w-0">
+                    <div className="text-sm font-semibold text-foreground truncate">{item.symbol}</div>
+                    <div className="text-[11px] text-muted-foreground">{formatCompactKRW(item.totalVolume)}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {(hasMore || expanded) && (
+              <div className="mt-3 text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpanded(!expanded)}
+                  className="text-xs text-muted-foreground"
+                >
+                  {expanded ? t.common.collapse : t.common.showMore}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -729,6 +848,40 @@ function MarketMobileCard({ ticker, onSelect }: MarketMobileCardProps) {
 
 // ----- 코인 상세 뷰 -----
 
+/**
+ * BitScope 거래소 식별자를 TradingView 심볼 형식으로 변환한다.
+ *
+ * TradingView 형식: "EXCHANGE:BASECURRENCYQUOTECURRENCY"
+ * 국내 거래소는 KRW 마켓, 해외 거래소는 USDT 마켓으로 매핑한다.
+ */
+function getTradingViewSymbol(exchange: ExchangeType, coinSymbol: string): string {
+  const sym = coinSymbol.toUpperCase();
+  switch (exchange) {
+    case 'upbit':
+      return `UPBIT:${sym}KRW`;
+    case 'bithumb':
+      return `BITHUMB:${sym}KRW`;
+    case 'coinone':
+      // 코인원은 TradingView에서 지원이 제한적 → 업비트 KRW 차트로 대체
+      return `UPBIT:${sym}KRW`;
+    case 'binance':
+      return `BINANCE:${sym}USDT`;
+    case 'bybit':
+      return `BYBIT:${sym}USDT`;
+    case 'okx':
+      return `OKX:${sym}USDT`;
+    case 'gate':
+      return `GATEIO:${sym}USDT`;
+    case 'bitget':
+      return `BITGET:${sym}USDT`;
+    case 'hyperliquid':
+      // 하이퍼리퀴드는 TradingView 미지원 → 바이낸스 USDT 차트로 대체
+      return `BINANCE:${sym}USDT`;
+    default:
+      return `BINANCE:${sym}USDT`;
+  }
+}
+
 interface CoinDetailViewProps {
   symbol: string;
   exchange: ExchangeType;
@@ -766,39 +919,42 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
     refetchInterval: 5_000,
   });
 
-  // 다른 거래소들의 시세도 조회하여 비교 표시
+  // 전체 거래소의 시세를 병렬 조회하여 비교 표시
   const otherExchanges = SUPPORTED_EXCHANGES.filter((e) => e !== detailExchange);
-  const { data: otherTicker1 } = useExchangeTicker({
-    exchange: otherExchanges[0]!,
-    symbols: [symbol],
-    enabled: !!otherExchanges[0],
-    refetchInterval: 10_000,
-  });
-  const { data: otherTicker2 } = useExchangeTicker({
-    exchange: otherExchanges[1]!,
-    symbols: [symbol],
-    enabled: !!otherExchanges[1],
-    refetchInterval: 10_000,
+  const otherTickerQueries = useQueries({
+    queries: otherExchanges.map((ex) => ({
+      queryKey: ['exchange', ex, 'ticker', symbol, 'detail'] as const,
+      queryFn: () => fetchTicker(ex, [symbol]),
+      enabled: true,
+      refetchInterval: 10_000,
+      staleTime: 5_000,
+      retry: 1,
+    })),
   });
 
-  // 선택 거래소의 ticker
-  const ticker = tickerData?.tickers?.[0] ?? null;
+  // 선택 거래소의 ticker (심볼로 정확히 찾기)
+  const ticker = tickerData?.tickers?.find((t) => t.symbol === symbol) ?? tickerData?.tickers?.[0] ?? null;
 
-  // 거래소 간 가격 비교 데이터
+  // 거래소 간 가격 비교 데이터 (전체 거래소)
   const exchangePrices = useMemo(() => {
     const prices: { exchange: ExchangeType; ticker: Ticker | null }[] = [];
 
+    // 현재 선택된 거래소를 맨 위에
     prices.push({ exchange: detailExchange, ticker });
 
-    if (otherExchanges[0] && otherTicker1?.tickers?.[0]) {
-      prices.push({ exchange: otherExchanges[0], ticker: otherTicker1.tickers[0] });
-    }
-    if (otherExchanges[1] && otherTicker2?.tickers?.[0]) {
-      prices.push({ exchange: otherExchanges[1], ticker: otherTicker2.tickers[0] });
+    // 나머지 거래소들 (심볼로 정확히 매칭)
+    for (let i = 0; i < otherExchanges.length; i++) {
+      const ex = otherExchanges[i]!;
+      const query = otherTickerQueries[i];
+      const tickers = query?.data?.tickers;
+      const otherTicker = tickers?.find((t) => t.symbol === symbol) ?? null;
+      if (otherTicker) {
+        prices.push({ exchange: ex, ticker: otherTicker });
+      }
     }
 
     return prices;
-  }, [detailExchange, ticker, otherExchanges, otherTicker1, otherTicker2]);
+  }, [detailExchange, ticker, otherExchanges, otherTickerQueries, symbol]);
 
   return (
     <div className="space-y-6">
@@ -842,46 +998,45 @@ function CoinDetailView({ symbol, exchange, onBack }: CoinDetailViewProps) {
         })}
       </div>
 
-      {/* 시세 요약 */}
+      {/* 시세 요약 (한 줄) */}
       {isTickerLoading && !ticker ? (
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={`skeleton-detail-${i}`} className="space-y-2">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-6 w-24" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={`skeleton-detail-${i}`} className="h-5 w-20" />
+          ))}
+        </div>
       ) : ticker ? (
         <TickerDetailCard ticker={ticker} />
       ) : (
-        <Card>
-          <CardContent className="flex items-center justify-center py-8">
-            <p className="text-sm text-muted-foreground">
-              {t.market.cannotFetchPrice(getExchangeName(detailExchange, locale), symbol)}
-            </p>
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          {t.market.cannotFetchPrice(getExchangeName(detailExchange, locale), symbol)}
+        </p>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* 호가 정보 */}
+      {/* 1행: 차트 + 호가 */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_240px]">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0 h-[420px]">
+            <TradingViewChart
+              symbol={getTradingViewSymbol(detailExchange, symbol)}
+              interval="60"
+              containerId={`market-detail-${detailExchange}-${symbol}`}
+            />
+          </CardContent>
+        </Card>
+
         <OrderbookPanel
           orderbook={orderbookData?.orderbook ?? null}
           isLoading={isOrderbookLoading}
           symbol={symbol}
         />
-
-        {/* 거래소 간 가격 비교 */}
-        <ExchangeComparisonPanel
-          symbol={symbol}
-          exchangePrices={exchangePrices}
-        />
       </div>
+
+      {/* 2행: 거래소 간 가격 비교 (전체 너비) */}
+      <ExchangeComparisonPanel
+        symbol={symbol}
+        exchangePrices={exchangePrices}
+      />
     </div>
   );
 }
@@ -893,66 +1048,55 @@ interface TickerDetailCardProps {
 }
 
 /**
- * 코인 시세 상세 카드
+ * 코인 시세 상세 (한 줄 인라인)
  *
- * 현재가, 시가, 고가, 저가, 전일 종가, 변동률, 거래량을 그리드로 표시한다.
+ * 현재가, 변동률, 시가, 고가, 저가, 전일종가, 거래량, 거래금액을 한 줄로 표시한다.
  */
 function TickerDetailCard({ ticker }: TickerDetailCardProps) {
   const { t } = useTranslation();
-  const items = [
-    { label: t.market.price, value: ticker.currentPrice, isPrice: true },
-    { label: t.market.openPrice, value: ticker.openPrice, isPrice: true },
-    { label: t.market.highPrice, value: ticker.highPrice, isPrice: true, highlight: 'high' as const },
-    { label: t.market.lowPrice, value: ticker.lowPrice, isPrice: true, highlight: 'low' as const },
-    { label: t.market.prevClosePrice, value: ticker.prevClosePrice, isPrice: true },
-    { label: t.market.changeRate24h, value: ticker.changeRate, isPercent: true },
-  ];
 
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {items.map((item) => (
-            <div key={item.label}>
-              <p className="text-xs text-muted-foreground">{item.label}</p>
-              {item.isPercent ? (
-                <FormattedPercent
-                  value={item.value}
-                  colorize
-                  className="text-lg font-semibold"
-                />
-              ) : item.isPrice ? (
-                <FormattedPrice
-                  value={item.value}
-                  symbol={ticker.symbol}
-                  className={cn(
-                    'text-lg font-semibold',
-                    item.highlight === 'high' && 'text-profit',
-                    item.highlight === 'low' && 'text-loss',
-                  )}
-                />
-              ) : null}
-            </div>
-          ))}
-        </div>
-
-        {/* 거래량 정보 */}
-        <div className="mt-4 flex items-center gap-6 border-t border-border pt-4">
-          <div>
-            <p className="text-xs text-muted-foreground">{t.market.volume24hLabel}</p>
-            <p className="text-sm font-medium text-foreground">
-              {formatVolume(ticker.volume24h)} {ticker.symbol}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{t.market.volumeAmount24h}</p>
-            <p className="text-sm font-medium text-foreground">
-              {formatCompactKRW(ticker.volumeAmount24h)}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-border bg-card px-4 py-2.5">
+      {/* 현재가 (강조) */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">{t.market.price}</span>
+        <FormattedPrice value={ticker.currentPrice} symbol={ticker.symbol} className="text-sm font-bold" />
+      </div>
+      {/* 변동률 */}
+      <FormattedPercent value={ticker.changeRate} colorize className="text-sm font-semibold" />
+      {/* 시가 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.openPrice}</span>
+        <FormattedPrice value={ticker.openPrice} symbol={ticker.symbol} className="text-xs" />
+      </div>
+      {/* 고가 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.highPrice}</span>
+        <FormattedPrice value={ticker.highPrice} symbol={ticker.symbol} className="text-xs text-profit" />
+      </div>
+      {/* 저가 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.lowPrice}</span>
+        <FormattedPrice value={ticker.lowPrice} symbol={ticker.symbol} className="text-xs text-loss" />
+      </div>
+      {/* 전일종가 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.prevClosePrice}</span>
+        <FormattedPrice value={ticker.prevClosePrice} symbol={ticker.symbol} className="text-xs" />
+      </div>
+      {/* 구분선 */}
+      <div className="hidden sm:block h-4 w-px bg-border" />
+      {/* 거래량 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.volume24hLabel}</span>
+        <span className="text-xs font-medium">{formatVolume(ticker.volume24h)} {ticker.symbol}</span>
+      </div>
+      {/* 거래금액 */}
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground">{t.market.volumeAmount24h}</span>
+        <span className="text-xs font-medium">{formatCompactKRW(ticker.volumeAmount24h)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -1094,106 +1238,130 @@ interface ExchangeComparisonPanelProps {
   exchangePrices: { exchange: ExchangeType; ticker: Ticker | null }[];
 }
 
+/** 해외 거래소인지 확인 (USDT/USDC 기준 → KRW 환산 필요) */
+function isForeignOrDex(exchange: ExchangeType): boolean {
+  return (FOREIGN_EXCHANGES as readonly string[]).includes(exchange)
+    || exchange === 'hyperliquid';
+}
+
 /**
  * 거래소 간 가격 비교 패널
  *
- * 동일 코인의 거래소별 가격을 비교하여 표시한다.
+ * 동일 코인의 거래소별 가격을 가로 그리드로 비교하여 표시한다.
+ * 해외 거래소(USDT)는 환율을 적용하여 KRW로 환산 후 비교한다.
  * 가장 높은 가격과 가장 낮은 가격을 하이라이트한다.
+ * 전체 너비 레이아웃으로 스크롤 없이 한눈에 비교 가능하다.
  */
 function ExchangeComparisonPanel({ symbol, exchangePrices }: ExchangeComparisonPanelProps) {
   const { t, locale } = useTranslation();
-  const validPrices = exchangePrices.filter((ep) => ep.ticker !== null);
 
-  const maxPrice = validPrices.length > 0
-    ? Math.max(...validPrices.map((ep) => ep.ticker!.currentPrice))
+  // USDT/KRW 환율 조회
+  const { data: rate = 0 } = useQuery({
+    queryKey: ['usdtKrwRate'],
+    queryFn: getUsdtKrwRate,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  // KRW 환산 가격 계산
+  const pricesInKrw = useMemo(() => {
+    return exchangePrices
+      .filter((ep) => ep.ticker !== null)
+      .map((ep) => {
+        const foreign = isForeignOrDex(ep.exchange);
+        const krwPrice = foreign && rate > 0
+          ? ep.ticker!.currentPrice * rate
+          : ep.ticker!.currentPrice;
+        return { ...ep, ticker: ep.ticker!, krwPrice, isForeign: foreign };
+      });
+  }, [exchangePrices, rate]);
+
+  const maxKrw = pricesInKrw.length > 0
+    ? Math.max(...pricesInKrw.map((p) => p.krwPrice))
     : 0;
-  const minPrice = validPrices.length > 0
-    ? Math.min(...validPrices.map((ep) => ep.ticker!.currentPrice))
+  const minKrw = pricesInKrw.length > 0
+    ? Math.min(...pricesInKrw.map((p) => p.krwPrice))
     : 0;
 
-  const priceDiff = maxPrice - minPrice;
-  const priceDiffRate = minPrice > 0 ? (priceDiff / minPrice) * 100 : 0;
+  const priceDiff = maxKrw - minKrw;
+  const priceDiffRate = minKrw > 0 ? (priceDiff / minKrw) * 100 : 0;
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">
-          {t.market.exchangeComparison}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">
+            {t.market.exchangeComparison}
+          </CardTitle>
+          {/* 가격 차이 요약 */}
+          {pricesInKrw.length > 1 && priceDiff > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">{t.market.maxPriceDiff}</span>
+              <FormattedCurrency value={priceDiff} className="font-medium" />
+              <span className="text-muted-foreground">
+                ({priceDiffRate.toFixed(2)}%)
+              </span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        {validPrices.length === 0 ? (
+        {pricesInKrw.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             {t.market.exchangeComparisonNoData}
           </p>
         ) : (
-          <div className="space-y-3">
-            {/* 거래소별 가격 */}
-            {exchangePrices.map(({ exchange: ex, ticker: tk }) => {
-              const isMax = tk && tk.currentPrice === maxPrice && validPrices.length > 1;
-              const isMin = tk && tk.currentPrice === minPrice && validPrices.length > 1;
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {pricesInKrw.map(({ exchange: ex, ticker: tk, krwPrice, isForeign }) => {
+              const isMax = krwPrice === maxKrw && pricesInKrw.length > 1;
+              const isMin = krwPrice === minKrw && pricesInKrw.length > 1;
 
               return (
                 <div
                   key={ex}
                   className={cn(
-                    'flex items-center justify-between rounded-lg border px-4 py-3',
+                    'rounded-lg border px-3 py-2.5',
                     isMax && 'border-profit/50 bg-profit/5',
                     isMin && 'border-loss/50 bg-loss/5',
                     !isMax && !isMin && 'border-border',
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
+                  {/* 거래소명 + 뱃지 */}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-xs font-medium text-foreground truncate">
                       {getExchangeName(ex, locale)}
-                    </Badge>
+                    </span>
                     {isMax && (
-                      <Badge className="bg-profit/20 text-profit text-[10px] px-1.5">
+                      <Badge className="bg-profit/20 text-profit text-[9px] px-1 py-0 h-3.5 shrink-0">
                         {t.market.highestPrice}
                       </Badge>
                     )}
                     {isMin && (
-                      <Badge className="bg-loss/20 text-loss text-[10px] px-1.5">
+                      <Badge className="bg-loss/20 text-loss text-[9px] px-1 py-0 h-3.5 shrink-0">
                         {t.market.lowestPrice}
                       </Badge>
                     )}
                   </div>
-                  {tk ? (
-                    <div className="text-right">
-                      <FormattedPrice
-                        value={tk.currentPrice}
-                        symbol={symbol}
-                        className="font-medium"
-                      />
-                      <FormattedPercent
-                        value={tk.changeRate}
-                        colorize
-                        className="text-xs"
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      {t.market.noDataShort}
-                    </span>
-                  )}
+                  {/* KRW 가격 */}
+                  <FormattedCurrency value={krwPrice} className="text-sm font-semibold" />
+                  {/* USDT 원가 + 변동률 */}
+                  <div className="flex items-center justify-between mt-0.5">
+                    {isForeign ? (
+                      <span className="text-[10px] text-muted-foreground">
+                        {tk.currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <FormattedPercent
+                      value={tk.changeRate}
+                      colorize
+                      className="text-[11px]"
+                    />
+                  </div>
                 </div>
               );
             })}
-
-            {/* 가격 차이 요약 */}
-            {validPrices.length > 1 && priceDiff > 0 && (
-              <div className="mt-2 rounded-lg bg-muted/50 px-4 py-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t.market.maxPriceDiff}</span>
-                  <div className="text-right">
-                    <FormattedCurrency value={priceDiff} className="font-medium" />
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({priceDiffRate.toFixed(2)}%)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </CardContent>

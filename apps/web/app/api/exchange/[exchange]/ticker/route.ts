@@ -367,8 +367,8 @@ export async function POST(
 /**
  * 하이퍼리퀴드 시세 조회 핸들러
  *
- * 하이퍼리퀴드는 POST /info { type: "allMids" }로 전체 시세를 조회한다.
- * 다른 거래소와 달리 GET이 아닌 POST를 사용한다.
+ * 하이퍼리퀴드는 POST /info { type: "metaAndAssetCtxs" }로 전체 Perps 시세를 조회한다.
+ * 이 API는 24시간 거래량(dayNtlVlm), 전일가(prevDayPx), 현재가(markPx)를 모두 제공한다.
  *
  * @returns 정규화된 시세 데이터 또는 오류 응답
  */
@@ -377,7 +377,7 @@ async function handleHyperliquidTicker(): Promise<NextResponse> {
     const response = await fetch(`${HYPERLIQUID_CONFIG.restBaseUrl}/info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'allMids' }),
+      body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
       signal: AbortSignal.timeout(HYPERLIQUID_CONFIG.timeoutMs),
     });
 

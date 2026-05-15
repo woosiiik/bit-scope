@@ -86,3 +86,17 @@ export type {
   CachedFuturesData,
   FuturesIndicatorsResponse,
 } from './futures';
+
+// 선물 거래 타입
+export type {
+  FuturesExchangeType,
+  FuturesCoin,
+  FuturesOrderbookEntry,
+  FuturesOrderbook,
+  PositionSide,
+  FuturesPosition,
+  FuturesOrderType,
+  FuturesOrderSide,
+  FuturesOpenOrder,
+  FuturesSymbolConfig,
+} from './futures';

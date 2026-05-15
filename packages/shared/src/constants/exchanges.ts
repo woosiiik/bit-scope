@@ -46,6 +46,12 @@ export interface ExchangeEndpoints {
   markets: string;
   /** Futures 잔고 조회 (선택, 해당 거래소만) */
   futures?: string;
+  /** 선물 오더북 조회 (공개 API) */
+  futuresOrderbook?: string;
+  /** 선물 포지션 조회 (인증 필요) */
+  futuresPositions?: string;
+  /** 선물 오픈 오더 조회 (인증 필요) */
+  futuresOpenOrders?: string;
 }
 
 /** 업비트 API 설정 */
@@ -156,6 +162,12 @@ export const BINANCE_ENDPOINTS: ExchangeEndpoints = {
   markets: '/api/v3/exchangeInfo',
   /** USD-M Futures 잔고 조회: GET /fapi/v2/balance (fapi.binance.com 도메인) */
   futures: '/fapi/v2/balance',
+  /** 선물 오더북: GET /fapi/v1/depth (fapi.binance.com 도메인) */
+  futuresOrderbook: '/fapi/v1/depth',
+  /** 선물 포지션: GET /fapi/v2/positionRisk (fapi.binance.com 도메인) */
+  futuresPositions: '/fapi/v2/positionRisk',
+  /** 선물 오픈 오더: GET /fapi/v1/openOrders (fapi.binance.com 도메인) */
+  futuresOpenOrders: '/fapi/v1/openOrders',
 } as const;
 
 /** 바이낸스 가격 조회 전용 엔드포인트 (김치 프리미엄용) */
@@ -201,6 +213,12 @@ export const BYBIT_ENDPOINTS: ExchangeEndpoints = {
   orders: '/v5/order/history',
   /** 전체 거래 가능 심볼 정보: GET /v5/market/instruments-info?category=spot */
   markets: '/v5/market/instruments-info',
+  /** 선물 오더북: GET /v5/market/orderbook?category=linear */
+  futuresOrderbook: '/v5/market/orderbook',
+  /** 선물 포지션: GET /v5/position/list?category=linear */
+  futuresPositions: '/v5/position/list',
+  /** 선물 오픈 오더: GET /v5/order/realtime?category=linear */
+  futuresOpenOrders: '/v5/order/realtime',
 } as const;
 
 /**
@@ -241,6 +259,12 @@ export const OKX_ENDPOINTS: ExchangeEndpoints = {
   orders: '/api/v5/trade/orders-history-archive',
   /** 전체 거래 가능 심볼 정보: GET /api/v5/public/instruments?instType=SPOT */
   markets: '/api/v5/public/instruments',
+  /** 선물 오더북: GET /api/v5/market/books?instId=BTC-USDT-SWAP */
+  futuresOrderbook: '/api/v5/market/books',
+  /** 선물 포지션: GET /api/v5/account/positions?instType=SWAP */
+  futuresPositions: '/api/v5/account/positions',
+  /** 선물 오픈 오더: GET /api/v5/trade/orders-pending?instType=SWAP */
+  futuresOpenOrders: '/api/v5/trade/orders-pending',
 } as const;
 
 /**
@@ -284,6 +308,12 @@ export const GATE_ENDPOINTS: ExchangeEndpoints = {
   markets: '/api/v4/spot/currency_pairs',
   /** Futures USDT 계좌 조회: GET /api/v4/futures/usdt/accounts (같은 도메인) */
   futures: '/api/v4/futures/usdt/accounts',
+  /** 선물 오더북: GET /api/v4/futures/usdt/order_book */
+  futuresOrderbook: '/api/v4/futures/usdt/order_book',
+  /** 선물 포지션: GET /api/v4/futures/usdt/positions */
+  futuresPositions: '/api/v4/futures/usdt/positions',
+  /** 선물 오픈 오더: GET /api/v4/futures/usdt/orders */
+  futuresOpenOrders: '/api/v4/futures/usdt/orders',
 } as const;
 
 /**
@@ -328,6 +358,12 @@ export const BITGET_ENDPOINTS: ExchangeEndpoints = {
   markets: '/api/v2/spot/market/tickers',
   /** Futures(USDT-FUTURES) 계좌 조회: GET /api/v2/mix/account/accounts?productType=USDT-FUTURES (같은 도메인) */
   futures: '/api/v2/mix/account/accounts',
+  /** 선물 오더북: GET /api/v2/mix/market/depth */
+  futuresOrderbook: '/api/v2/mix/market/depth',
+  /** 선물 포지션: GET /api/v2/mix/position/all-position */
+  futuresPositions: '/api/v2/mix/position/all-position',
+  /** 선물 오픈 오더: GET /api/v2/mix/order/orders-pending */
+  futuresOpenOrders: '/api/v2/mix/order/orders-pending',
 } as const;
 
 /**
@@ -378,6 +414,52 @@ export const HYPERLIQUID_ENDPOINTS: ExchangeEndpoints = {
 } as const;
 
 /**
+ * LBank API 설정 (해외 거래소 - 포트폴리오 + 김치 프리미엄 비교용)
+ *
+ * LBank은 포트폴리오 거래소로 사용되며(자산 조회, 대시보드 표시),
+ * 공개 시세 API를 통한 김치 프리미엄 비교에도 사용된다.
+ * LBank 잔고는 USDT 기준이므로 KRW 환산하여 표시한다.
+ *
+ * LBank 인증 방식:
+ * - HmacSHA256 서명 (Secret Key 32자 이하)
+ * - 파라미터 알파벳순 정렬 → MD5 해시 → 대문자 변환 → HmacSHA256 서명
+ * - 모든 Private API는 POST + application/x-www-form-urlencoded
+ * - 헤더에 timestamp, signature_method, echostr(30~40자 랜덤) 포함
+ */
+export const LBANK_CONFIG: ExchangeConfig = {
+  id: 'lbank',
+  nameKo: '엘뱅크',
+  nameEn: 'LBank',
+  restBaseUrl: 'https://api.lbank.info',
+  futuresBaseUrl: 'https://lbkperp.lbank.com',
+  wsUrl: undefined,
+  rateLimit: {
+    requestsPerSecond: 20,
+    requestsPerMinute: 1_200,
+  },
+  timeoutMs: 10_000,
+} as const;
+
+/** LBank API 엔드포인트 */
+export const LBANK_ENDPOINTS: ExchangeEndpoints = {
+  /** 잔고 조회: POST /v2/supplement/user_info.do (HmacSHA256 인증 필요) */
+  balance: '/v2/supplement/user_info.do',
+  /** 시세(24h 통계) 조회: GET /v2/ticker/24hr.do */
+  ticker: '/v2/ticker/24hr.do',
+  /** 호가 조회: GET /v2/depth.do */
+  orderbook: '/v2/depth.do',
+  /** 주문 내역 조회: POST /v2/supplement/orders_info_history.do (인증 필요) */
+  orders: '/v2/supplement/orders_info_history.do',
+  /** 전체 거래쌍 목록: GET /v2/currencyPairs.do */
+  markets: '/v2/currencyPairs.do',
+  /** Futures 시세 조회: GET /cfd/openApi/v1/pub/marketData */
+  futures: '/cfd/openApi/v1/pub/marketData',
+} as const;
+
+/** LBank REST 폴링 간격 (밀리초) */
+export const LBANK_POLLING_INTERVAL_MS = 5_000;
+
+/**
  * 거래소 설정 맵
  *
  * ExchangeType으로 해당 거래소의 설정을 조회할 수 있다.
@@ -392,6 +474,7 @@ export const EXCHANGE_CONFIGS: Record<ExchangeType, ExchangeConfig> = {
   gate: GATE_CONFIG,
   bitget: BITGET_CONFIG,
   hyperliquid: HYPERLIQUID_CONFIG,
+  lbank: LBANK_CONFIG,
 } as const;
 
 /**
@@ -409,6 +492,7 @@ export const EXCHANGE_ENDPOINTS: Record<ExchangeType, ExchangeEndpoints> = {
   gate: GATE_ENDPOINTS,
   bitget: BITGET_ENDPOINTS,
   hyperliquid: HYPERLIQUID_ENDPOINTS,
+  lbank: LBANK_ENDPOINTS,
 } as const;
 
 /** 지원하는 모든 거래소 목록 */
@@ -422,6 +506,7 @@ export const SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
   'gate',
   'bitget',
   'hyperliquid',
+  // 'lbank', // TODO: LBank 디버깅 후 활성화
 ] as const;
 
 /** 국내 거래소 목록 (김치 프리미엄 비교 기준) */
@@ -438,6 +523,7 @@ export const FOREIGN_EXCHANGES: readonly ExchangeType[] = [
   'okx',
   'gate',
   'bitget',
+  // 'lbank', // TODO: LBank 디버깅 후 활성화
 ] as const;
 
 /** 탈중앙화 거래소 목록 (DEX, 지갑 기반) */

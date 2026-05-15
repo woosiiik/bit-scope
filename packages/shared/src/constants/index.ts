@@ -38,6 +38,9 @@ export {
   BITGET_ENDPOINTS,
   HYPERLIQUID_CONFIG,
   HYPERLIQUID_ENDPOINTS,
+  LBANK_CONFIG,
+  LBANK_ENDPOINTS,
+  LBANK_POLLING_INTERVAL_MS,
 } from './exchanges';
 
 export type { ExchangeConfig, ExchangeEndpoints } from './exchanges';
@@ -58,3 +61,14 @@ export {
 } from './symbols';
 
 export type { CoinInfo } from './symbols';
+
+// 선물 거래 상수
+export {
+  FUTURES_EXCHANGES,
+  FUTURES_DEFAULT_EXCHANGE,
+  FUTURES_COINS,
+  FUTURES_DEFAULT_COIN,
+  FUTURES_SYMBOL_CONFIGS,
+  getFuturesApiSymbol,
+  getTradingViewFuturesSymbol,
+} from './futures';

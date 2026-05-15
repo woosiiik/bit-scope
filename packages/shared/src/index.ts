@@ -68,6 +68,17 @@ export type {
   TopTraderRatioEntry,
   CachedFuturesData,
   FuturesIndicatorsResponse,
+  // 선물 거래 타입
+  FuturesExchangeType,
+  FuturesCoin,
+  FuturesOrderbookEntry,
+  FuturesOrderbook,
+  PositionSide,
+  FuturesPosition,
+  FuturesOrderType,
+  FuturesOrderSide,
+  FuturesOpenOrder,
+  FuturesSymbolConfig,
 } from './types';
 
 // 공유 상수
@@ -111,6 +122,10 @@ export {
   // 하이퍼리퀴드 설정 (포트폴리오 - API Key 불필요, 지갑 주소로 조회)
   HYPERLIQUID_CONFIG,
   HYPERLIQUID_ENDPOINTS,
+  // LBank 설정 (포트폴리오 + 김치 프리미엄 비교용)
+  LBANK_CONFIG,
+  LBANK_ENDPOINTS,
+  LBANK_POLLING_INTERVAL_MS,
   // 코인 심볼
   MAJOR_COINS,
   MAJOR_COIN_SYMBOLS,
@@ -123,6 +138,14 @@ export {
   DEFAULT_DECIMAL_PLACES,
   QUANTITY_DECIMAL_PLACES,
   RATE_DECIMAL_PLACES,
+  // 선물 거래 상수
+  FUTURES_EXCHANGES,
+  FUTURES_DEFAULT_EXCHANGE,
+  FUTURES_COINS,
+  FUTURES_DEFAULT_COIN,
+  FUTURES_SYMBOL_CONFIGS,
+  getFuturesApiSymbol,
+  getTradingViewFuturesSymbol,
 } from './constants';
 
 export type { ExchangeConfig, ExchangeEndpoints, CoinInfo } from './constants';
@@ -149,6 +172,7 @@ export {
   validateGateApiKeyFormat,
   validateBitgetApiKeyFormat,
   validateHyperliquidApiKeyFormat,
+  validateLbankApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

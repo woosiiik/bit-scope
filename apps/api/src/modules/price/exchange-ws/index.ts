@@ -28,3 +28,9 @@ export type {
   BinanceTickerPriceItem,
   BinancePriceEntry,
 } from './binance-polling.client';
+
+export { LbankPollingClient } from './lbank-polling.client';
+export type {
+  LbankTickerItem,
+  LbankPriceEntry,
+} from './lbank-polling.client';

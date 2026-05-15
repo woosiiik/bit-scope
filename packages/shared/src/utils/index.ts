@@ -30,6 +30,7 @@ export {
   validateGateApiKeyFormat,
   validateBitgetApiKeyFormat,
   validateHyperliquidApiKeyFormat,
+  validateLbankApiKeyFormat,
   validateApiKeyFormat,
   isValidWalletAddress,
   sanitizeApiKey,

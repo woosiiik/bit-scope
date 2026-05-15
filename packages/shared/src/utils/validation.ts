@@ -405,6 +405,63 @@ export function validateBitgetApiKeyFormat(
 }
 
 /**
+ * LBank API Key 형식을 검증한다.
+ *
+ * LBank API Key는 API Key + Secret Key 2개 키 구조이다.
+ * Passphrase는 불필요하다.
+ *
+ * @param apiKey - 검증할 API Key 쌍
+ * @returns 형식 검증 결과
+ */
+export function validateLbankApiKeyFormat(
+  apiKey: ApiKeyPair,
+): ApiKeyFormatValidation {
+  const accessKeyValid = isNonEmptyString(apiKey.accessKey);
+  const secretKeyValid = isNonEmptyString(apiKey.secretKey);
+
+  if (!accessKeyValid && !secretKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: false,
+      isSecretKeyValid: false,
+      errorMessage: 'API Key와 Secret Key를 모두 입력해주세요.',
+    };
+  }
+  if (!accessKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: false,
+      isSecretKeyValid: secretKeyValid,
+      errorMessage: 'API Key를 입력해주세요.',
+    };
+  }
+  if (!secretKeyValid) {
+    return {
+      isValid: false,
+      isAccessKeyValid: accessKeyValid,
+      isSecretKeyValid: false,
+      errorMessage: 'Secret Key를 입력해주세요.',
+    };
+  }
+
+  // RSA 키 경고 (32자 초과)
+  if (apiKey.secretKey.length > 32) {
+    return {
+      isValid: false,
+      isAccessKeyValid: true,
+      isSecretKeyValid: false,
+      errorMessage: 'RSA 키는 현재 지원하지 않습니다. HmacSHA256 키(32자 이하)를 사용해주세요.',
+    };
+  }
+
+  return {
+    isValid: true,
+    isAccessKeyValid: true,
+    isSecretKeyValid: true,
+  };
+}
+
+/**
  * 하이퍼리퀴드 API Key 형식을 검증한다.
  *
  * 하이퍼리퀴드는 API Key가 불필요하며, 지갑 주소만으로 잔고를 조회한다.
@@ -466,6 +523,8 @@ export function validateApiKeyFormat(
       return validateBitgetApiKeyFormat(apiKey);
     case 'hyperliquid':
       return validateHyperliquidApiKeyFormat(apiKey);
+    case 'lbank':
+      return validateLbankApiKeyFormat(apiKey);
     default: {
       // 타입 안전성: 새로운 거래소 추가 시 컴파일 오류 발생
       const _exhaustiveCheck: never = exchange;

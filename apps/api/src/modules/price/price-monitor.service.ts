@@ -20,6 +20,8 @@ import { CoinonePollingClient } from './exchange-ws/coinone-polling.client';
 import { BinancePollingClient } from './exchange-ws/binance-polling.client';
 import type { BinancePriceEntry } from './exchange-ws/binance-polling.client';
 import { HyperliquidPollingClient } from './exchange-ws/hyperliquid-polling.client';
+import { Optional } from '@nestjs/common';
+import { LbankPollingClient } from './exchange-ws/lbank-polling.client';
 import { BaseExchangeClient } from './exchange-ws/base-exchange.client';
 
 /** 거래소+심볼 조합의 가격 키 (예: "upbit:BTC") */
@@ -79,6 +81,7 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
     private readonly coinoneClient: CoinonePollingClient,
     private readonly binanceClient: BinancePollingClient,
     private readonly hyperliquidClient: HyperliquidPollingClient,
+    @Optional() private readonly lbankClient?: LbankPollingClient,
   ) {
     this.exchangeClients = [
       this.upbitClient,
@@ -195,6 +198,23 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // LBank 시세 폴링 시작 (김치 프리미엄 비교용)
+    if (this.lbankClient) {
+      try {
+        this.lbankClient.removeAllListeners();
+        this.lbankClient.on('priceUpdate', (update: PriceUpdate) => {
+          this.handlePriceUpdate(update);
+        });
+
+        await this.lbankClient.start(symbols);
+        this.logger.log('LBank 시세 수신 시작 성공');
+      } catch (error) {
+        this.logger.error(
+          `LBank 시세 수신 시작 실패: ${error}`,
+        );
+      }
+    }
+
     // USDT/KRW 환율 폴링 시작
     await this.fetchUsdtKrwRate();
     this.startUsdtKrwPolling();
@@ -229,6 +249,12 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
     // 하이퍼리퀴드 폴링 중지
     this.hyperliquidClient.removeAllListeners();
     await this.hyperliquidClient.stop();
+
+    // LBank 폴링 중지
+    if (this.lbankClient) {
+      this.lbankClient.removeAllListeners();
+      await this.lbankClient.stop();
+    }
 
     // USDT/KRW 폴링 중지
     this.stopUsdtKrwPolling();
@@ -298,6 +324,9 @@ export class PriceMonitorService implements OnModuleInit, OnModuleDestroy {
 
     // 하이퍼리퀴드
     this.hyperliquidClient.subscribe(symbols);
+
+    // LBank
+    this.lbankClient?.subscribe(symbols);
 
     this.logger.log(`심볼 구독 추가: [${symbols.join(', ')}]`);
   }

@@ -214,19 +214,51 @@ export function normalizeHyperliquidBalance(rawResponse: unknown): NormalizedBal
   };
 }
 
+/** metaAndAssetCtxs 응답의 메타데이터 항목 */
+interface HyperliquidUniverseItem {
+  name: string;
+  szDecimals: number;
+  maxLeverage: number;
+}
+
+/** metaAndAssetCtxs 응답의 자산 컨텍스트 항목 */
+interface HyperliquidAssetCtx {
+  markPx: string;
+  midPx?: string;
+  prevDayPx: string;
+  dayNtlVlm: string;
+  dayBaseVlm?: string;
+  oraclePx?: string;
+  funding?: string;
+  openInterest?: string;
+}
+
 /**
  * 하이퍼리퀴드 시세(Ticker) 조회 응답을 정규화한다.
  *
- * POST /info { type: "allMids" } 응답을 NormalizedTicker로 변환한다.
- * 응답: { "BTC": "67000.0", "ETH": "3500.0", ... }
+ * POST /info { type: "metaAndAssetCtxs" } 응답을 NormalizedTicker로 변환한다.
+ * 응답: [{ universe: [{ name: "BTC", ... }] }, [{ markPx, prevDayPx, dayNtlVlm, ... }]]
  *
- * @param rawResponse 하이퍼리퀴드 allMids API 원본 응답
+ * universe[i].name과 assetCtxs[i]가 인덱스로 매칭된다.
+ *
+ * @param rawResponse 하이퍼리퀴드 metaAndAssetCtxs API 원본 응답
  * @returns 정규화된 시세 데이터
  */
 export function normalizeHyperliquidTicker(rawResponse: unknown): NormalizedTicker {
-  const response = rawResponse as Record<string, string>;
+  const response = rawResponse as [{ universe: HyperliquidUniverseItem[] }, HyperliquidAssetCtx[]];
 
-  if (!response || typeof response !== 'object') {
+  if (!Array.isArray(response) || response.length < 2) {
+    return {
+      exchange: 'hyperliquid',
+      tickers: [],
+      timestamp: Date.now(),
+    };
+  }
+
+  const [meta, assetCtxs] = response;
+  const universe = meta?.universe;
+
+  if (!Array.isArray(universe) || !Array.isArray(assetCtxs)) {
     return {
       exchange: 'hyperliquid',
       tickers: [],
@@ -235,39 +267,54 @@ export function normalizeHyperliquidTicker(rawResponse: unknown): NormalizedTick
   }
 
   const tickers: Ticker[] = [];
+  const now = Date.now();
 
-  for (const [symbol, priceStr] of Object.entries(response)) {
-    // @숫자 형태의 스팟 토큰 내부 인덱스는 제외 (예: @1, @12)
-    if (symbol.startsWith('@')) {
+  for (let i = 0; i < universe.length && i < assetCtxs.length; i++) {
+    const item = universe[i]!;
+    const ctx = assetCtxs[i]!;
+
+    const symbol = item.name;
+
+    // 내부 인덱스 형태 심볼 제외 (@숫자, #숫자)
+    if (symbol.startsWith('@') || symbol.startsWith('#')) {
       continue;
     }
 
-    const price = parseFloat(priceStr) || 0;
+    const currentPrice = parseFloat(ctx.markPx) || 0;
+    const prevDayPrice = parseFloat(ctx.prevDayPx) || 0;
+    const dayNtlVlm = parseFloat(ctx.dayNtlVlm) || 0;
+    const dayBaseVlm = parseFloat(ctx.dayBaseVlm ?? '0') || 0;
 
-    if (price <= 0) {
+    if (currentPrice <= 0) {
       continue;
     }
+
+    // 24시간 변동률 계산
+    const changeRate = prevDayPrice > 0
+      ? ((currentPrice - prevDayPrice) / prevDayPrice) * 100
+      : 0;
+    const changePrice = currentPrice - prevDayPrice;
 
     tickers.push({
       exchange: 'hyperliquid',
       symbol,
-      currentPrice: price,
-      openPrice: 0,
+      currentPrice,
+      openPrice: prevDayPrice,
       highPrice: 0,
       lowPrice: 0,
-      prevClosePrice: 0,
-      changeRate: 0,
-      changePrice: 0,
-      volume24h: 0,
-      volumeAmount24h: 0,
-      timestamp: Date.now(),
+      prevClosePrice: prevDayPrice,
+      changeRate,
+      changePrice,
+      volume24h: dayBaseVlm,
+      volumeAmount24h: dayNtlVlm,
+      timestamp: now,
     });
   }
 
   return {
     exchange: 'hyperliquid',
     tickers,
-    timestamp: Date.now(),
+    timestamp: now,
   };
 }
 

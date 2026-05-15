@@ -23,6 +23,7 @@ export const EXCHANGE_CURRENCY_MAP: Readonly<Record<ExchangeType, AlertCurrency>
   gate: 'USD',
   bitget: 'USD',
   hyperliquid: 'USD',
+  lbank: 'USD',
 } as const;
 
 /**

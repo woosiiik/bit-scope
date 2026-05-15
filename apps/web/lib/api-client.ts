@@ -25,6 +25,10 @@ import type {
   Orderbook,
   SignedRequest,
   Ticker,
+  FuturesExchangeType,
+  FuturesOrderbook,
+  FuturesPosition,
+  FuturesOpenOrder,
 } from '@bitscope/shared';
 import { EXCHANGE_CONFIGS, EXCHANGE_ENDPOINTS, FOREIGN_EXCHANGES, DEX_EXCHANGES } from '@bitscope/shared';
 import { createSigner } from './exchange/signer-factory';
@@ -212,7 +216,7 @@ const USDT_KRW_RATE_CACHE_TTL = 60 * 1000;
  *
  * @returns USDT/KRW 환율 (예: 1400)
  */
-async function getUsdtKrwRate(): Promise<number> {
+export async function getUsdtKrwRate(): Promise<number> {
   // 캐시 확인
   if (usdtKrwRateCache && Date.now() - usdtKrwRateCache.fetchedAt < USDT_KRW_RATE_CACHE_TTL) {
     return usdtKrwRateCache.rate;
@@ -873,6 +877,152 @@ export async function fetchOrderbook(
       '호가 데이터가 비어있습니다.',
       'EMPTY_RESPONSE',
       exchange,
+    );
+  }
+
+  return apiResponse.data;
+}
+
+// ===== 선물 거래 API 응답 타입 =====
+
+/** 선물 오더북 조회 응답 */
+export interface FuturesOrderbookResponse {
+  /** 오더북 데이터 */
+  orderbook: FuturesOrderbook;
+  /** 응답 수신 시각 (밀리초 타임스탬프) */
+  timestamp: number;
+}
+
+/** 선물 포지션 조회 응답 */
+export interface FuturesPositionsResponse {
+  /** 거래소 식별자 */
+  exchange: FuturesExchangeType;
+  /** 포지션 목록 */
+  positions: FuturesPosition[];
+  /** 응답 수신 시각 */
+  timestamp: number;
+}
+
+/** 선물 오픈 오더 조회 응답 */
+export interface FuturesOpenOrdersResponse {
+  /** 거래소 식별자 */
+  exchange: FuturesExchangeType;
+  /** 오픈 오더 목록 */
+  openOrders: FuturesOpenOrder[];
+  /** 응답 수신 시각 */
+  timestamp: number;
+}
+
+// ===== 선물 거래 API 호출 함수 =====
+
+/**
+ * 선물 오더북을 조회한다.
+ *
+ * 선물 오더북 데이터는 공개 API이므로 서명이 불필요하다.
+ * Route Handler의 GET 엔드포인트를 통해 조회한다.
+ *
+ * @param exchange 선물 거래소 식별자
+ * @param symbol 조회할 baseAsset 심볼 (예: 'BTC')
+ * @returns 정규화된 선물 오더북 데이터
+ * @throws {ExchangeApiError} API 호출 실패 시
+ */
+export async function fetchFuturesOrderbook(
+  exchange: FuturesExchangeType,
+  symbol: string,
+): Promise<FuturesOrderbookResponse> {
+  const url = `/api/exchange/${exchange}/futures-orderbook?symbol=${encodeURIComponent(symbol)}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  const apiResponse = await parseApiResponse<FuturesOrderbookResponse>(
+    response,
+    exchange as ExchangeType,
+  );
+
+  if (!apiResponse.data) {
+    throw new ExchangeApiError(
+      '선물 오더북 데이터가 비어있습니다.',
+      'EMPTY_RESPONSE',
+      exchange as ExchangeType,
+    );
+  }
+
+  return apiResponse.data;
+}
+
+/**
+ * 선물 포지션을 조회한다.
+ *
+ * 포지션 데이터는 인증이 필요한 API이므로 클라이언트에서 서명된 요청을 전달한다.
+ *
+ * @param exchange 선물 거래소 식별자
+ * @param signedRequest 서명된 요청
+ * @returns 정규화된 선물 포지션 데이터
+ * @throws {ExchangeApiError} API 호출 실패 시
+ */
+export async function fetchFuturesPositions(
+  exchange: FuturesExchangeType,
+  signedRequest: SignedRequest,
+): Promise<FuturesPositionsResponse> {
+  const url = `/api/exchange/${exchange}/futures-positions`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signedRequest),
+  });
+
+  const apiResponse = await parseApiResponse<FuturesPositionsResponse>(
+    response,
+    exchange as ExchangeType,
+  );
+
+  if (!apiResponse.data) {
+    throw new ExchangeApiError(
+      '선물 포지션 데이터가 비어있습니다.',
+      'EMPTY_RESPONSE',
+      exchange as ExchangeType,
+    );
+  }
+
+  return apiResponse.data;
+}
+
+/**
+ * 선물 오픈 오더를 조회한다.
+ *
+ * 오픈 오더 데이터는 인증이 필요한 API이므로 클라이언트에서 서명된 요청을 전달한다.
+ *
+ * @param exchange 선물 거래소 식별자
+ * @param signedRequest 서명된 요청
+ * @returns 정규화된 선물 오픈 오더 데이터
+ * @throws {ExchangeApiError} API 호출 실패 시
+ */
+export async function fetchFuturesOpenOrders(
+  exchange: FuturesExchangeType,
+  signedRequest: SignedRequest,
+): Promise<FuturesOpenOrdersResponse> {
+  const url = `/api/exchange/${exchange}/futures-open-orders`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signedRequest),
+  });
+
+  const apiResponse = await parseApiResponse<FuturesOpenOrdersResponse>(
+    response,
+    exchange as ExchangeType,
+  );
+
+  if (!apiResponse.data) {
+    throw new ExchangeApiError(
+      '선물 오픈 오더 데이터가 비어있습니다.',
+      'EMPTY_RESPONSE',
+      exchange as ExchangeType,
     );
   }
 

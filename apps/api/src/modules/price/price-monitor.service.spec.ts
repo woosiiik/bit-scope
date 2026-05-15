@@ -92,6 +92,18 @@ describe('PriceMonitorService', () => {
       removeAllListeners: jest.fn(),
     } as unknown as jest.Mocked<import('./exchange-ws/hyperliquid-polling.client').HyperliquidPollingClient>;
 
+    const lbankClient = {
+      start: jest.fn().mockResolvedValue(undefined),
+      stop: jest.fn().mockResolvedValue(undefined),
+      subscribe: jest.fn(),
+      getPrice: jest.fn().mockReturnValue(null),
+      getAllPrices: jest.fn().mockReturnValue(new Map()),
+      isActive: jest.fn().mockReturnValue(false),
+      onModuleDestroy: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+    } as unknown as jest.Mocked<import('./exchange-ws/lbank-polling.client').LbankPollingClient>;
+
     service = new PriceMonitorService(
       eventEmitter,
       upbitClient,
@@ -99,6 +111,7 @@ describe('PriceMonitorService', () => {
       coinoneClient,
       binanceClient,
       hyperliquidClient,
+      lbankClient,
     );
   });
 

@@ -86,6 +86,19 @@ import {
   normalizeHyperliquidOrderHistory,
 } from './hyperliquid';
 
+import {
+  normalizeLbankBalance,
+  normalizeLbankTicker,
+  normalizeLbankOrderbook,
+  normalizeLbankOrderHistory,
+  normalizeLbankFuturesBalance,
+} from './lbank';
+
+import { normalizeFuturesOrderbook } from './futures-orderbook';
+
+// 선물 정규화 함수 re-export
+export { normalizeFuturesOrderbook };
+
 // 타입 re-export
 export type {
   NormalizedBalance,
@@ -131,6 +144,8 @@ export function normalizeBalance(
       return normalizeBitgetBalance(rawResponse);
     case 'hyperliquid':
       return normalizeHyperliquidBalance(rawResponse);
+    case 'lbank':
+      return normalizeLbankBalance(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -172,6 +187,8 @@ export function normalizeTicker(
       return normalizeBitgetTicker(rawResponse);
     case 'hyperliquid':
       return normalizeHyperliquidTicker(rawResponse);
+    case 'lbank':
+      return normalizeLbankTicker(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -211,6 +228,8 @@ export function normalizeOrderbook(
       return normalizeBitgetOrderbook(rawResponse);
     case 'hyperliquid':
       return normalizeHyperliquidOrderbook(rawResponse);
+    case 'lbank':
+      return normalizeLbankOrderbook(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }
@@ -237,6 +256,8 @@ export function normalizeFuturesBalance(
       return normalizeGateFuturesBalance(rawResponse);
     case 'bitget':
       return normalizeBitgetFuturesBalance(rawResponse);
+    case 'lbank':
+      return normalizeLbankFuturesBalance(rawResponse);
     default:
       return 0;
   }
@@ -276,6 +297,8 @@ export function normalizeOrderHistory(
       return normalizeBitgetOrderHistory(rawResponse);
     case 'hyperliquid':
       return normalizeHyperliquidOrderHistory(rawResponse);
+    case 'lbank':
+      return normalizeLbankOrderHistory(rawResponse);
     default:
       throw new Error(`지원하지 않는 거래소입니다: ${exchange}`);
   }

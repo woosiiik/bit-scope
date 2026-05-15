@@ -55,6 +55,7 @@ const EXCHANGE_COLORS: Record<ExchangeType, string> = {
   gate: 'hsl(210, 70%, 50%)',           // Gate.io: 블루 (Gate.io 브랜드 색상)
   bitget: 'hsl(170, 65%, 45%)',         // Bitget: 틸 (Bitget 브랜드 색상)
   hyperliquid: 'hsl(145, 70%, 50%)',    // 하이퍼리퀴드: 민트 (Hyperliquid 브랜드 색상)
+  lbank: 'hsl(200, 75%, 55%)',           // LBank: 라이트 블루 (LBank 브랜드 색상)
 };
 
 // ===== 차트 데이터 타입 =====

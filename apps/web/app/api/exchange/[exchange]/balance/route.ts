@@ -22,7 +22,7 @@ import { relayRequest } from '../../_lib/proxy';
 import { normalizeBalance, normalizeFuturesBalance } from '../../_lib/normalizer';
 
 /** Futures 잔고 조회를 지원하는 거래소 목록 */
-const FUTURES_EXCHANGES: readonly ExchangeType[] = ['binance', 'gate', 'bitget'] as const;
+const FUTURES_EXCHANGES: readonly ExchangeType[] = ['binance', 'gate', 'bitget', 'lbank'] as const;
 
 /** Route Handler 파라미터 타입 */
 interface RouteParams {

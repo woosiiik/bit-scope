@@ -41,6 +41,7 @@ import * as OkxSigner from './okx-signer';
 import * as GateSigner from './gate-signer';
 import * as BitgetSigner from './bitget-signer';
 import * as HyperliquidSigner from './hyperliquid-signer';
+import * as LBankSigner from './lbank-signer';
 
 /**
  * 거래소 요청 서명기 인터페이스
@@ -158,6 +159,17 @@ const hyperliquidSigner: ExchangeSigner = {
 };
 
 /**
+ * LBank 서명기 어댑터
+ *
+ * lbank-signer 모듈의 함수들을 ExchangeSigner 인터페이스로 래핑한다.
+ */
+const lbankSigner: ExchangeSigner = {
+  signRequest: LBankSigner.signRequest,
+  validateApiKey: LBankSigner.validateApiKey,
+  getExchangeType: LBankSigner.getExchangeType,
+};
+
+/**
  * 거래소 서명기 레지스트리
  *
  * ExchangeType을 키로 사용하여 해당 거래소의 서명기 인스턴스를 보관한다.
@@ -173,6 +185,7 @@ const signerRegistry: Record<ExchangeType, ExchangeSigner> = {
   gate: gateSigner,
   bitget: bitgetSigner,
   hyperliquid: hyperliquidSigner,
+  lbank: lbankSigner,
 };
 
 /**

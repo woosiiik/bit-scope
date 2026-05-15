@@ -43,17 +43,36 @@ interface RouteParams {
 function buildOrderbookUrl(exchange: ExchangeType, symbol: string): string {
   const baseUrl = EXCHANGE_CONFIGS[exchange].restBaseUrl;
   const endpoint = EXCHANGE_ENDPOINTS[exchange].orderbook;
+  const sym = symbol.toUpperCase();
 
   switch (exchange) {
     case 'upbit':
       // 업비트: /v1/orderbook?markets=KRW-BTC
-      return `${baseUrl}${endpoint}?markets=KRW-${symbol.toUpperCase()}`;
+      return `${baseUrl}${endpoint}?markets=KRW-${sym}`;
     case 'bithumb':
       // 빗썸: /public/orderbook/{코인}_KRW
-      return `${baseUrl}${endpoint}/${symbol.toUpperCase()}_KRW`;
+      return `${baseUrl}${endpoint}/${sym}_KRW`;
     case 'coinone':
       // 코인원: /public/v2/orderbook/KRW/{코인}
-      return `${baseUrl}${endpoint}/${symbol.toUpperCase()}`;
+      return `${baseUrl}${endpoint}/${sym}`;
+    case 'binance':
+      // 바이낸스: /api/v3/depth?symbol=BTCUSDT&limit=20
+      return `${baseUrl}${endpoint}?symbol=${sym}USDT&limit=20`;
+    case 'bybit':
+      // 바이빗: /v5/market/orderbook?category=spot&symbol=BTCUSDT
+      return `${baseUrl}${endpoint}?category=spot&symbol=${sym}USDT`;
+    case 'okx':
+      // OKX: /api/v5/market/books?instId=BTC-USDT
+      return `${baseUrl}${endpoint}?instId=${sym}-USDT&sz=20`;
+    case 'gate':
+      // Gate.io: /api/v4/spot/order_book?currency_pair=BTC_USDT
+      return `${baseUrl}${endpoint}?currency_pair=${sym}_USDT&limit=20`;
+    case 'bitget':
+      // Bitget: /api/v2/spot/market/orderbook?symbol=BTCUSDT
+      return `${baseUrl}${endpoint}?symbol=${sym}USDT&limit=20`;
+    case 'hyperliquid':
+      // 하이퍼리퀴드: POST /info 방식이므로 별도 핸들링 필요 (GET에서는 미지원)
+      return `${baseUrl}${endpoint}`;
     default:
       return `${baseUrl}${endpoint}`;
   }
