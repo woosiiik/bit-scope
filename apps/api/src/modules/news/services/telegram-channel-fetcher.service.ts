@@ -25,8 +25,8 @@ export interface ParsedTelegramMessage {
 
 /** 모니터링할 텔레그램 채널 */
 const TELEGRAM_CHANNELS: TelegramChannel[] = [
-  { name: 'tg-wu-blockchain', handle: 'WuBlockchain' },
-  { name: 'tg-cryptoquant', handle: 'CryptoQuantOfficial' },
+  { name: 'tg-wu-blockchain', handle: 'WuBlockchainNews' },
+  { name: 'tg-cryptoquant', handle: 'cryptoquant_official' },
 ];
 
 @Injectable()
