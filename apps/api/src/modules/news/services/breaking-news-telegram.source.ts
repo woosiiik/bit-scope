@@ -117,51 +117,48 @@ export class BreakingNewsTelegramSource implements BreakingNewsSource {
 
   /**
    * t.me/s/ HTML에서 메시지를 파싱한다.
+   *
+   * data-post 속성을 기준으로 메시지 블록을 분리하고,
+   * 각 블록 내에서 텍스트/날짜/링크를 추출하여 인덱스 어긋남을 방지한다.
    */
   private parseMessages(html: string, channel: BreakingChannel): ParsedTelegramMessage[] {
     const messages: ParsedTelegramMessage[] = [];
 
-    const messagePattern = /class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
-    const datePattern = /datetime="([^"]+)"/g;
-    const linkPattern = /data-post="([^"]+)"/g;
+    // data-post 기준으로 메시지 블록 분리
+    const blocks = html.split(/data-post="/);
 
-    const texts: string[] = [];
-    let match;
-    while ((match = messagePattern.exec(html)) !== null) {
-      const rawText = striptags(match[1] ?? '').trim();
-      if (rawText.length > 5) {
-        texts.push(rawText);
-      }
-    }
+    for (const block of blocks.slice(1)) { // 첫 번째는 data-post 이전 부분이므로 skip
+      // 블록 내에서 post ID 추출
+      const postIdMatch = block.match(/^([^"]+)"/);
+      if (!postIdMatch) continue;
+      const postId = postIdMatch[1]!;
 
-    const dates: string[] = [];
-    while ((match = datePattern.exec(html)) !== null) {
-      dates.push(match[1]!);
-    }
+      // 블록 내에서 메시지 텍스트 추출
+      const textMatch = block.match(/class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+      if (!textMatch) continue; // 텍스트 없는 메시지(이미지 전용 등)는 skip
 
-    const links: string[] = [];
-    while ((match = linkPattern.exec(html)) !== null) {
-      links.push(match[1]!);
-    }
+      const rawText = striptags(textMatch[1] ?? '').trim();
+      if (rawText.length <= 5) continue;
 
-    const count = Math.min(texts.length, 15);
-    for (let i = 0; i < count; i++) {
-      const text = texts[i]!;
-      const inlineDate = extractInlineTime(text);
-      const title = text.slice(0, 200) + (text.length > 200 ? '...' : '');
-      const dateStr = dates[i] ?? new Date().toISOString();
-      const postId = links[i] ?? `${channel.handle}/${Date.now()}-${i}`;
+      // 블록 내에서 datetime 추출
+      const dateMatch = block.match(/datetime="([^"]+)"/);
+      const dateStr = dateMatch?.[1] ?? new Date().toISOString();
 
-      // 본문 끝의 인라인 시간을 우선 사용, 없으면 HTML datetime 속성 사용
+      // 인라인 시간 우선, 없으면 HTML datetime
+      const inlineDate = extractInlineTime(rawText);
       const publishedAt = inlineDate ?? new Date(dateStr);
+
+      const title = rawText.slice(0, 200) + (rawText.length > 200 ? '...' : '');
 
       messages.push({
         source: channel.sourcePrefix,
         titleEn: title,
-        contentEn: text.slice(0, 5000),
+        contentEn: rawText.slice(0, 5000),
         originalUrl: `https://t.me/${postId}`,
         publishedAt,
       });
+
+      if (messages.length >= 15) break;
     }
 
     return messages;

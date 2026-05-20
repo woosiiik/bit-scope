@@ -154,13 +154,14 @@ export class NewsService {
   }
 
   /**
-   * 특정 시각 이후의 속보 건수를 반환한다.
+   * 특정 시각 이후에 DB에 저장된 속보 건수를 반환한다.
+   * publishedAt(본문 인라인 시간)이 아닌 createdAt(실제 저장 시점) 기준.
    */
   async getBreakingNewsCountSince(since: Date): Promise<number> {
     return this.newsRepository.count({
       where: {
         source: Like('breaking-%'),
-        publishedAt: MoreThan(since),
+        createdAt: MoreThan(since),
       },
     });
   }
