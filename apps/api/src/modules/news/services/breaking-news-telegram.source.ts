@@ -18,8 +18,11 @@ interface BreakingChannel {
   sourcePrefix: string;
 }
 
-/** 메시지 본문 끝에 있는 시간 패턴 (예: "14:31 May 20", "9:05 May 20") */
-const INLINE_TIME_PATTERN = /(\d{1,2}:\d{2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s*$/;
+/**
+ * 메시지 본문 끝에 있는 괄호 시간 패턴
+ * 예: "(15:00 May 20)", "(9:05 May 20)"
+ */
+const INLINE_TIME_PATTERN = /\((\d{1,2}:\d{2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\)\s*$/;
 
 const MONTH_MAP: Record<string, number> = {
   Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
@@ -27,8 +30,8 @@ const MONTH_MAP: Record<string, number> = {
 };
 
 /**
- * 메시지 본문 끝에서 시간을 추출하고 텍스트에서 제거한다.
- * 예: "속보 내용... 14:31 May 20" → { text: "속보 내용...", date: Date }
+ * 메시지 본문 끝에서 괄호로 감싼 시간을 추출하고 텍스트에서 제거한다.
+ * 예: "속보 내용...(15:00 May 20)" → { text: "속보 내용...", date: Date }
  */
 function extractInlineTime(text: string): { text: string; date: Date | null } {
   const match = text.match(INLINE_TIME_PATTERN);
