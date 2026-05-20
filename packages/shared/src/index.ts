@@ -79,6 +79,13 @@ export type {
   FuturesOrderSide,
   FuturesOpenOrder,
   FuturesSymbolConfig,
+  // 시그널 관련
+  SignalDirection,
+  CoinLatestSignal,
+  SignalItem,
+  SignalListResponse,
+  VerifyPasswordRequest,
+  VerifyPasswordResponse,
 } from './types';
 
 // 공유 상수

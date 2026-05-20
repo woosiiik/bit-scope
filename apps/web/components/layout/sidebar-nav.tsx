@@ -28,9 +28,12 @@ import {
   FileText,
   Star,
   Settings,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
+import { HiddenMenuTrigger } from '@/components/signal/hidden-menu-trigger';
+import { useSignalAuth } from '@/hooks/useSignal';
 
 /** 네비게이션 메뉴 항목 */
 export interface NavItem {
@@ -95,6 +98,7 @@ export function SidebarNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const nav = t.nav as Record<string, string>;
+  const { isAuthenticated: isSignalAuth } = useSignalAuth();
 
   return (
     <aside
@@ -148,11 +152,33 @@ export function SidebarNav({ className }: { className?: string }) {
         ))}
       </nav>
 
+      {/* 히든 메뉴 (인증 시에만 표시) */}
+      {isSignalAuth && (
+        <div className="mx-3 mt-1 pt-1 border-t border-sidebar-border">
+          <ul className="space-y-0.5 px-3" role="list">
+            <li>
+              <Link
+                href="/signal"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                  isActiveRoute(pathname, '/signal')
+                    ? 'bg-sidebar-accent text-sidebar-primary'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                )}
+                aria-current={isActiveRoute(pathname, '/signal') ? 'page' : undefined}
+              >
+                <Lock className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                <span>{nav.signalMenu ?? '롱/숏 시그널'}</span>
+              </Link>
+            </li>
+          </ul>
+        </div>
+      )}
+
       {/* 빌드 버전 */}
       <div className="px-4 py-2 border-t border-sidebar-border">
-        <span className="text-[10px] text-sidebar-foreground/40">
-          v{process.env.NEXT_PUBLIC_BUILD_VERSION || 'dev'}
-        </span>
+        <HiddenMenuTrigger versionText={`v${process.env.NEXT_PUBLIC_BUILD_VERSION || 'dev'}`} />
       </div>
     </aside>
   );

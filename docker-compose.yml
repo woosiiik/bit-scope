@@ -121,6 +121,8 @@ services:
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
       # Claude API 설정 (뉴스 요약 번역용, 미설정 시 요약 기능 비활성화)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # 시스템 설정 암호화 키 (t_system_config 민감 값 AES-256 암호화용)
+      - SYSTEM_CONFIG_ENCRYPTION_KEY=${SYSTEM_CONFIG_ENCRYPTION_KEY:-}
     expose:
       - "4000"
     depends_on:

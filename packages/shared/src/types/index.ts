@@ -100,3 +100,13 @@ export type {
   FuturesOpenOrder,
   FuturesSymbolConfig,
 } from './futures';
+
+// 시그널 관련 타입
+export type {
+  SignalDirection,
+  CoinLatestSignal,
+  SignalItem,
+  SignalListResponse,
+  VerifyPasswordRequest,
+  VerifyPasswordResponse,
+} from './signal';

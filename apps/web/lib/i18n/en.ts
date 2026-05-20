@@ -71,6 +71,7 @@ const en: Messages = {
     reports: 'Reports',
     watchlist: 'Watchlist',
     settings: 'Settings',
+    signalMenu: 'Long/Short Signal',
     mainNavigation: 'Main navigation',
     sidebarMenu: 'Sidebar menu',
     mobileNavigation: 'Mobile navigation',
@@ -772,6 +773,17 @@ const en: Messages = {
     placeOrder: 'Place Order',
     placeLongOrder: 'Long',
     placeShortOrder: 'Short',
+  },
+
+  signal: {
+    pageTitle: 'Long/Short Signal',
+    emptyState: 'No signals received yet.',
+    latestSignals: 'Latest Signals by Coin',
+    signalHistory: 'Signal History',
+    long: 'LONG',
+    short: 'SHORT',
+    passwordError: 'Incorrect password.',
+    passwordPlaceholder: 'Password',
   },
 
   breakingNews: {

@@ -22,6 +22,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { NewsModule } from './modules/news/news.module';
 import { FuturesModule } from './modules/futures/futures.module';
 import { MarketIntelModule } from './modules/market-intel/market-intel.module';
+import { SignalModule } from './modules/signal/signal.module';
 
 @Module({
   imports: [
@@ -56,6 +57,8 @@ import { MarketIntelModule } from './modules/market-intel/market-intel.module';
     FuturesModule,
     // 시장 인텔리전스 (공포/탐욕, 경제캘린더, 고래알림)
     MarketIntelModule,
+    // 롱/숏 시그널 (히든 메뉴)
+    SignalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -11,6 +11,17 @@ const nextConfig: NextConfig = {
   // React strict mode 활성화
   reactStrictMode: true,
 
+  // 외부 이미지 도메인 허용 (코인 아이콘)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        pathname: '/spothq/cryptocurrency-icons/**',
+      },
+    ],
+  },
+
   // 공유 패키지 트랜스파일
   transpilePackages: ['@bitscope/shared'],
 

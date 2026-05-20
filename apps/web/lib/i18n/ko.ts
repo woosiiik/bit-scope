@@ -67,6 +67,7 @@ const ko = {
     reports: '리포트',
     watchlist: '워치리스트',
     settings: '설정',
+    signalMenu: '롱/숏 시그널',
     mainNavigation: '메인 네비게이션',
     sidebarMenu: '사이드바 메뉴',
     mobileNavigation: '모바일 네비게이션',
@@ -770,6 +771,17 @@ const ko = {
     placeOrder: '주문',
     placeLongOrder: '롱 주문',
     placeShortOrder: '숏 주문',
+  },
+
+  signal: {
+    pageTitle: '롱/숏 시그널',
+    emptyState: '수신된 시그널이 없습니다.',
+    latestSignals: '코인별 최신 시그널',
+    signalHistory: '시그널 히스토리',
+    long: 'LONG',
+    short: 'SHORT',
+    passwordError: '비밀번호가 올바르지 않습니다.',
+    passwordPlaceholder: '비밀번호',
   },
 
   breakingNews: {
