@@ -17,6 +17,7 @@ export const WIDGET_METAS: WidgetMeta[] = [
   { type: 'whale', labelKo: '고래 알림', labelEn: 'Whale Alert', icon: 'Fish' },
   { type: 'telegram', labelKo: '텔레그램', labelEn: 'Telegram', icon: 'Send' },
   { type: 'chart', labelKo: '코인 차트', labelEn: 'Chart', icon: 'LineChart' },
+  { type: 'breakingNews', labelKo: '뉴스속보', labelEn: 'Breaking News', icon: 'Zap' },
 ];
 
 /** 그리드 레이아웃별 셀 수 */

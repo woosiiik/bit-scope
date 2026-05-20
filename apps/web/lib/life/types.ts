@@ -14,7 +14,8 @@ export type WidgetType =
   | 'calendar'
   | 'whale'
   | 'telegram'
-  | 'chart';
+  | 'chart'
+  | 'breakingNews';
 
 /** 그리드 레이아웃 종류 */
 export type GridLayout = '2x2' | '2x3' | '3x2' | '3x3' | '1x2' | '2x1' | '1x3' | '3x1';

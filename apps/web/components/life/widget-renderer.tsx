@@ -18,6 +18,7 @@ import { FearGreedWidget } from './widgets/fear-greed-widget';
 import { CalendarWidget } from './widgets/calendar-widget';
 import { WhaleWidget } from './widgets/whale-widget';
 import { TelegramWidget } from './widgets/telegram-widget';
+import { BreakingNewsWidget } from './widgets/breaking-news-widget';
 import { TradingViewChart } from './widgets/tradingview-chart-widget';
 
 interface WidgetRendererProps {
@@ -37,6 +38,7 @@ export function WidgetRenderer({ config, index }: WidgetRendererProps) {
     calendar: '경제캘린더',
     whale: '고래알림',
     telegram: '텔레그램',
+    breakingNews: '뉴스속보',
     chart: '차트',
   }[config.type];
 
@@ -52,6 +54,7 @@ export function WidgetRenderer({ config, index }: WidgetRendererProps) {
       {config.type === 'calendar' && <CalendarWidget />}
       {config.type === 'whale' && <WhaleWidget />}
       {config.type === 'telegram' && <TelegramWidget />}
+      {config.type === 'breakingNews' && <BreakingNewsWidget />}
       {config.type === 'chart' && !config.chartSymbol2 && (
         <TradingViewChart
           symbol={config.chartSymbol ?? 'BINANCE:BTCUSDT'}

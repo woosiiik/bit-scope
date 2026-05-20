@@ -6,7 +6,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, Like, MoreThan } from 'typeorm';
 
 import { NewsArticleEntity, type SummaryStatus } from './entities/news-article.entity';
 
@@ -102,7 +102,7 @@ export class NewsService {
   /**
    * 뉴스 목록을 커서 기반 페이지네이션으로 조회한다.
    */
-  async getNewsList(limit: number = 20, cursor?: string, sourceType?: 'news' | 'youtube' | 'telegram'): Promise<{
+  async getNewsList(limit: number = 20, cursor?: string, sourceType?: 'news' | 'youtube' | 'telegram' | 'breaking'): Promise<{
     items: NewsArticleEntity[];
     nextCursor: string | null;
   }> {
@@ -114,8 +114,13 @@ export class NewsService {
       queryBuilder.where('news.source LIKE :prefix', { prefix: 'yt-%' });
     } else if (sourceType === 'telegram') {
       queryBuilder.where('news.source LIKE :prefix', { prefix: 'tg-%' });
+    } else if (sourceType === 'breaking') {
+      queryBuilder.where('news.source LIKE :prefix', { prefix: 'breaking-%' });
     } else if (sourceType === 'news') {
-      queryBuilder.where('news.source NOT LIKE :ytPrefix AND news.source NOT LIKE :tgPrefix', { ytPrefix: 'yt-%', tgPrefix: 'tg-%' });
+      queryBuilder.where(
+        'news.source NOT LIKE :ytPrefix AND news.source NOT LIKE :tgPrefix AND news.source NOT LIKE :breakingPrefix',
+        { ytPrefix: 'yt-%', tgPrefix: 'tg-%', breakingPrefix: 'breaking-%' },
+      );
     }
 
     queryBuilder.orderBy('news.publishedAt', 'DESC')
@@ -146,6 +151,18 @@ export class NewsService {
     }
 
     return { items, nextCursor };
+  }
+
+  /**
+   * 특정 시각 이후의 속보 건수를 반환한다.
+   */
+  async getBreakingNewsCountSince(since: Date): Promise<number> {
+    return this.newsRepository.count({
+      where: {
+        source: Like('breaking-%'),
+        publishedAt: MoreThan(since),
+      },
+    });
   }
 
   /**

@@ -27,13 +27,23 @@ export class NewsController {
   ) {
     const parsedLimit = Math.min(parseInt(limit ?? '20', 10) || 20, 50);
 
-    const result = await this.newsService.getNewsList(parsedLimit, cursor, sourceType as 'news' | 'youtube' | 'telegram' | undefined);
+    const result = await this.newsService.getNewsList(parsedLimit, cursor, sourceType as 'news' | 'youtube' | 'telegram' | 'breaking' | undefined);
 
     return {
       success: true,
       data: result.items,
       nextCursor: result.nextCursor,
     };
+  }
+
+  /**
+   * 새 속보 건수를 조회한다.
+   */
+  @Get('breaking/count')
+  async getBreakingNewsCount(@Query('since') since?: string) {
+    const sinceDate = since ? new Date(since) : new Date(Date.now() - 60_000);
+    const count = await this.newsService.getBreakingNewsCountSince(sinceDate);
+    return { success: true, data: { count } };
   }
 
   /**

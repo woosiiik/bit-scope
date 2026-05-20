@@ -61,6 +61,7 @@ const ko = {
     calendar: '경제 캘린더',
     whale: '고래 알림',
     news: '뉴스',
+    breakingNews: '뉴스속보',
     influencer: '인플루언서',
     telegramFeed: '텔레그램',
     reports: '리포트',
@@ -769,6 +770,15 @@ const ko = {
     placeOrder: '주문',
     placeLongOrder: '롱 주문',
     placeShortOrder: '숏 주문',
+  },
+
+  breakingNews: {
+    title: '뉴스속보',
+    newAlertBanner: (count: number) => `${count}건의 새 속보가 있습니다`,
+    emptyState: '아직 수집된 속보가 없습니다. 잠시 후 다시 확인해주세요.',
+    viewOriginal: '원문 보기',
+    viewAll: '전체보기',
+    loadingError: '속보를 불러오는 데 실패했습니다.',
   },
 } as const;
 

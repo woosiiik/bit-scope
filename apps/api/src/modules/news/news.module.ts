@@ -15,6 +15,8 @@ import { RssFetcherService } from './services/rss-fetcher.service';
 import { TelegramChannelFetcherService } from './services/telegram-channel-fetcher.service';
 import { NewsSummaryService } from './services/news-summary.service';
 import { NewsCronService } from './news-cron.service';
+import { BreakingNewsTelegramSource } from './services/breaking-news-telegram.source';
+import { BreakingNewsCronService } from './breaking-news-cron.service';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { NewsCronService } from './news-cron.service';
     TelegramChannelFetcherService,
     NewsSummaryService,
     NewsCronService,
+    BreakingNewsTelegramSource,
+    BreakingNewsCronService,
   ],
   exports: [NewsService],
 })

@@ -38,6 +38,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   'yt-ohtaemin': '오태민',
   'tg-wu-blockchain': 'Wu Blockchain',
   'tg-cryptoquant': 'CryptoQuant',
+  'breaking-coin24live': 'Coin24Live',
 };
 
 /** 유튜브 소스인지 확인 */
@@ -81,7 +82,11 @@ export function useTickerNews(enabled: boolean = true) {
 /**
  * 뉴스 목록을 커서 기반 무한 스크롤로 조회하는 훅
  */
-export function useNewsList(sourceType?: 'news' | 'youtube' | 'telegram', enabled: boolean = true) {
+export function isBreakingSource(source: string): boolean {
+  return source.startsWith('breaking-');
+}
+
+export function useNewsList(sourceType?: 'news' | 'youtube' | 'telegram' | 'breaking', enabled: boolean = true) {
   return useInfiniteQuery<{
     items: NewsArticle[];
     nextCursor: string | null;

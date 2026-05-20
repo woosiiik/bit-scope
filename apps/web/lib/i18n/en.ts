@@ -65,6 +65,7 @@ const en: Messages = {
     calendar: 'Calendar',
     whale: 'Whale Alert',
     news: 'News',
+    breakingNews: 'Breaking News',
     influencer: 'Influencer',
     telegramFeed: 'Telegram',
     reports: 'Reports',
@@ -771,6 +772,15 @@ const en: Messages = {
     placeOrder: 'Place Order',
     placeLongOrder: 'Long',
     placeShortOrder: 'Short',
+  },
+
+  breakingNews: {
+    title: 'Breaking News',
+    newAlertBanner: (count: number) => `${count} new breaking news`,
+    emptyState: 'No breaking news yet. Please check back later.',
+    viewOriginal: 'View Original',
+    viewAll: 'View All',
+    loadingError: 'Failed to load breaking news.',
   },
 } as const;
 
