@@ -30,20 +30,21 @@ const MONTH_MAP: Record<string, number> = {
 };
 
 /**
- * 메시지 본문 끝에서 괄호로 감싼 시간을 추출하고 텍스트에서 제거한다.
- * 예: "속보 내용...(15:00 May 20)" → { text: "속보 내용...", date: Date }
+ * 메시지 본문 끝의 괄호 시간에서 Date를 추출한다.
+ * 텍스트 자체는 변경하지 않는다 (표시용 원문 유지).
+ * 예: "속보 내용...(15:00 May 20)" → Date(2026, 4, 20, 15, 0)
  */
-function extractInlineTime(text: string): { text: string; date: Date | null } {
+function extractInlineTime(text: string): Date | null {
   const match = text.match(INLINE_TIME_PATTERN);
-  if (!match) return { text, date: null };
+  if (!match) return null;
 
-  const [fullMatch, time, monthStr, dayStr] = match;
+  const [, time, monthStr, dayStr] = match;
   const [hours, minutes] = time!.split(':').map(Number);
   const month = MONTH_MAP[monthStr!];
   const day = parseInt(dayStr!, 10);
 
   if (month === undefined || isNaN(hours!) || isNaN(minutes!) || isNaN(day)) {
-    return { text, date: null };
+    return null;
   }
 
   const now = new Date();
@@ -54,8 +55,7 @@ function extractInlineTime(text: string): { text: string; date: Date | null } {
     date.setFullYear(date.getFullYear() - 1);
   }
 
-  const cleanedText = text.slice(0, text.length - fullMatch!.length).trim();
-  return { text: cleanedText, date };
+  return date;
 }
 
 /** 수집 대상 채널 목록 (추후 환경변수 또는 DB 설정으로 관리 가능) */
@@ -146,9 +146,9 @@ export class BreakingNewsTelegramSource implements BreakingNewsSource {
 
     const count = Math.min(texts.length, 15);
     for (let i = 0; i < count; i++) {
-      const rawText = texts[i]!;
-      const { text: cleanText, date: inlineDate } = extractInlineTime(rawText);
-      const title = cleanText.slice(0, 200) + (cleanText.length > 200 ? '...' : '');
+      const text = texts[i]!;
+      const inlineDate = extractInlineTime(text);
+      const title = text.slice(0, 200) + (text.length > 200 ? '...' : '');
       const dateStr = dates[i] ?? new Date().toISOString();
       const postId = links[i] ?? `${channel.handle}/${Date.now()}-${i}`;
 
@@ -158,7 +158,7 @@ export class BreakingNewsTelegramSource implements BreakingNewsSource {
       messages.push({
         source: channel.sourcePrefix,
         titleEn: title,
-        contentEn: cleanText.slice(0, 5000),
+        contentEn: text.slice(0, 5000),
         originalUrl: `https://t.me/${postId}`,
         publishedAt,
       });
