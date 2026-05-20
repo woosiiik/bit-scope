@@ -131,6 +131,13 @@ function buildTickerUrl(exchange: ExchangeType, symbols?: string[], upbitMarkets
       }
       return `${baseUrl}${endpoint}`;
     }
+    case 'lbank': {
+      // LBank: /v2/ticker/24hr.do?symbol=btc_usdt 또는 ?symbol=all
+      if (symbols && symbols.length === 1) {
+        return `${baseUrl}${endpoint}?symbol=${symbols[0]!.toLowerCase()}_usdt`;
+      }
+      return `${baseUrl}${endpoint}?symbol=all`;
+    }
     case 'hyperliquid': {
       // 하이퍼리퀴드: POST /info로 처리하므로 URL은 기본값 사용
       // 실제 시세 조회는 GET handler에서 별도 처리

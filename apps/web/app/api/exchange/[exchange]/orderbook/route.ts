@@ -70,6 +70,9 @@ function buildOrderbookUrl(exchange: ExchangeType, symbol: string): string {
     case 'bitget':
       // Bitget: /api/v2/spot/market/orderbook?symbol=BTCUSDT
       return `${baseUrl}${endpoint}?symbol=${sym}USDT&limit=20`;
+    case 'lbank':
+      // LBank: /v2/depth.do?symbol=btc_usdt&size=20
+      return `${baseUrl}${endpoint}?symbol=${sym.toLowerCase()}_usdt&size=20`;
     case 'hyperliquid':
       // 하이퍼리퀴드: POST /info 방식이므로 별도 핸들링 필요 (GET에서는 미지원)
       return `${baseUrl}${endpoint}`;

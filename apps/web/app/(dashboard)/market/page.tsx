@@ -874,6 +874,9 @@ function getTradingViewSymbol(exchange: ExchangeType, coinSymbol: string): strin
       return `GATEIO:${sym}USDT`;
     case 'bitget':
       return `BITGET:${sym}USDT`;
+    case 'lbank':
+      // LBank는 TradingView 미지원 → 바이낸스 USDT 차트로 대체
+      return `BINANCE:${sym}USDT`;
     case 'hyperliquid':
       // 하이퍼리퀴드는 TradingView 미지원 → 바이낸스 USDT 차트로 대체
       return `BINANCE:${sym}USDT`;

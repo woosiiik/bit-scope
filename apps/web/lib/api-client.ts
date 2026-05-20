@@ -407,6 +407,19 @@ async function getValidKrwSymbols(
           }
         }
       }
+    } else if (exchange === 'lbank') {
+      // LBank: { result: "true", data: ["btc_usdt", "eth_usdt", ...] }
+      const pairList = markets?.data;
+      if (Array.isArray(pairList)) {
+        for (const pair of pairList) {
+          if (typeof pair === 'string' && pair.endsWith('_usdt')) {
+            const base = pair.split('_')[0];
+            if (base) {
+              krwSymbols.add(base.toUpperCase());
+            }
+          }
+        }
+      }
     } else if (exchange === 'hyperliquid') {
       // 하이퍼리퀴드: POST /info { type: "meta" }로 마켓 목록 조회
       // 응답: { universe: [{ name: "BTC", ... }, ...] }

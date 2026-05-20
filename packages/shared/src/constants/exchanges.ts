@@ -506,7 +506,7 @@ export const SUPPORTED_EXCHANGES: readonly ExchangeType[] = [
   'gate',
   'bitget',
   'hyperliquid',
-  // 'lbank', // TODO: LBank 디버깅 후 활성화
+  'lbank',
 ] as const;
 
 /** 국내 거래소 목록 (김치 프리미엄 비교 기준) */
@@ -523,7 +523,7 @@ export const FOREIGN_EXCHANGES: readonly ExchangeType[] = [
   'okx',
   'gate',
   'bitget',
-  // 'lbank', // TODO: LBank 디버깅 후 활성화
+  'lbank',
 ] as const;
 
 /** 탈중앙화 거래소 목록 (DEX, 지갑 기반) */
