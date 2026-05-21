@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { CoinLatestSignal, SignalListResponse, VerifyPasswordResponse } from '@bitscope/shared';
+import type { CoinLatestSignal, SignalItem, SignalListResponse, VerifyPasswordResponse } from '@bitscope/shared';
 
 const TOKEN_KEY = 'signal-token';
 const AUTH_EVENT = 'signal-auth-changed';
