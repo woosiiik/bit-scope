@@ -96,6 +96,7 @@ function buildMarkers(signals: SignalItem[], candles: CandleData[]): MarkerData[
 }
 
 const INTERVALS = [
+  { value: '5m', label: '5분' },
   { value: '15m', label: '15분' },
   { value: '1h', label: '1시간' },
   { value: '4h', label: '4시간' },

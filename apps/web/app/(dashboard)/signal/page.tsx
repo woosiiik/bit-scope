@@ -31,17 +31,35 @@ const COIN_PRIORITY: string[] = [
   'FIL', 'TRX', 'AAVE', 'MKR', 'INJ', 'TIA', 'SEI', 'FET', 'RENDER', 'PEPE',
 ];
 
+/** 정렬 방식 정의 */
+type SortMode = 'priority' | 'latest' | 'name';
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'priority', label: '주요 코인순' },
+  { value: 'latest', label: '최신 시그널순' },
+  { value: 'name', label: '이름순' },
+];
+
 function getCoinSortKey(coinSymbol: string): number {
   const base = coinSymbol.split('/')[0] ?? coinSymbol;
   const idx = COIN_PRIORITY.indexOf(base);
   return idx >= 0 ? idx : COIN_PRIORITY.length + 1;
 }
 
-function sortSignals<T extends { coinSymbol: string }>(signals: T[]): T[] {
+function sortSignals<T extends { coinSymbol: string; signalAt: string }>(signals: T[], mode: SortMode): T[] {
   return [...signals].sort((a, b) => {
-    const diff = getCoinSortKey(a.coinSymbol) - getCoinSortKey(b.coinSymbol);
-    if (diff !== 0) return diff;
-    return a.coinSymbol.localeCompare(b.coinSymbol);
+    switch (mode) {
+      case 'latest':
+        return new Date(b.signalAt).getTime() - new Date(a.signalAt).getTime();
+      case 'name':
+        return a.coinSymbol.localeCompare(b.coinSymbol);
+      case 'priority':
+      default: {
+        const diff = getCoinSortKey(a.coinSymbol) - getCoinSortKey(b.coinSymbol);
+        if (diff !== 0) return diff;
+        return a.coinSymbol.localeCompare(b.coinSymbol);
+      }
+    }
   });
 }
 
@@ -212,6 +230,7 @@ export default function SignalPage() {
   const { isAuthenticated, isReady } = useSignalAuth();
   const [page, setPage] = useState(1);
   const [expandedCoin, setExpandedCoin] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('priority');
 
   // 미인증 시 메인으로 리다이렉트 (초기 로딩 완료 후에만 판단)
   useEffect(() => {
@@ -238,7 +257,26 @@ export default function SignalPage() {
       {/* 코인별 최신 시그널 */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">{t.signal.latestSignals}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">{t.signal.latestSignals}</CardTitle>
+            <div className="flex items-center gap-1">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={cn(
+                    'px-2 py-0.5 text-[11px] rounded transition-colors',
+                    sortMode === opt.value
+                      ? 'bg-primary text-primary-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted',
+                  )}
+                  onClick={() => setSortMode(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLatestLoading && (
@@ -267,7 +305,7 @@ export default function SignalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortSignals(latestSignals).map((signal) => (
+                  {sortSignals(latestSignals, sortMode).map((signal) => (
                     <SignalRow
                       key={signal.coinSymbol}
                       signal={signal}
