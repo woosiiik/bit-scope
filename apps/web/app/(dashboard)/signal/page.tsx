@@ -64,7 +64,6 @@ function CoinIcon({ symbol }: { symbol: string }) {
   const src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${base}.png`;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt=""

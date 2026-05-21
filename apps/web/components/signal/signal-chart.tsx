@@ -109,7 +109,9 @@ interface SignalChartProps {
 
 export function SignalChart({ coinSymbol, signals }: SignalChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any>(null);
   const [interval, setInterval] = useState('1h');
 
@@ -125,7 +127,9 @@ export function SignalChart({ coinSymbol, signals }: SignalChartProps) {
   useEffect(() => {
     if (!containerRef.current || !candles || candles.length === 0) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let chart: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let series: any;
 
     async function initChart() {
