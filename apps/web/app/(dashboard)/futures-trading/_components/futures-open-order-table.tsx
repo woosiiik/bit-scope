@@ -23,11 +23,14 @@ interface FuturesOpenOrderTableProps {
   exchangeFilter: FuturesExchangeType | 'all';
   /** 필터 변경 핸들러 */
   onFilterChange: (filter: FuturesExchangeType | 'all') => void;
+  /** 심볼 클릭 시 거래소+코인 전환 */
+  onSymbolClick?: (exchange: FuturesExchangeType, symbol: string) => void;
 }
 
 export function FuturesOpenOrderTable({
   exchangeFilter,
   onFilterChange,
+  onSymbolClick,
 }: FuturesOpenOrderTableProps) {
   const { t } = useTranslation();
   const { openOrders, isLoading, hasRegisteredExchanges } = useFuturesOpenOrders();
@@ -100,7 +103,7 @@ export function FuturesOpenOrderTable({
           <tbody>
             {filteredOrders.length > 0 ? (
               filteredOrders.map((order, index) => (
-                <OrderRow key={`${order.exchange}-${order.orderId}-${index}`} order={order} />
+                <OrderRow key={`${order.exchange}-${order.orderId}-${index}`} order={order} onSymbolClick={onSymbolClick} />
               ))
             ) : (
               <tr>
@@ -128,9 +131,10 @@ export function FuturesOpenOrderTable({
 
 interface OrderRowProps {
   order: FuturesOpenOrder;
+  onSymbolClick?: (exchange: FuturesExchangeType, symbol: string) => void;
 }
 
-function OrderRow({ order }: OrderRowProps) {
+function OrderRow({ order, onSymbolClick }: OrderRowProps) {
   const config = EXCHANGE_CONFIGS[order.exchange];
   const isBuy = order.side === 'BUY';
 
@@ -143,8 +147,14 @@ function OrderRow({ order }: OrderRowProps) {
         </Badge>
       </td>
       {/* 심볼 */}
-      <td className="px-3 py-2 text-xs font-medium text-foreground">
-        {order.symbol}
+      <td className="px-3 py-2">
+        <button
+          type="button"
+          className="text-xs font-medium text-primary hover:underline cursor-pointer"
+          onClick={() => onSymbolClick?.(order.exchange, order.symbol)}
+        >
+          {order.symbol}
+        </button>
       </td>
       {/* 방향 */}
       <td className="px-3 py-2">

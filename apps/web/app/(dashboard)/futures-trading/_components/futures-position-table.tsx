@@ -23,11 +23,14 @@ interface FuturesPositionTableProps {
   exchangeFilter: FuturesExchangeType | 'all';
   /** 필터 변경 핸들러 */
   onFilterChange: (filter: FuturesExchangeType | 'all') => void;
+  /** 심볼 클릭 시 거래소+코인 전환 */
+  onSymbolClick?: (exchange: FuturesExchangeType, symbol: string) => void;
 }
 
 export function FuturesPositionTable({
   exchangeFilter,
   onFilterChange,
+  onSymbolClick,
 }: FuturesPositionTableProps) {
   const { t } = useTranslation();
   const { positions, isLoading, hasRegisteredExchanges } = useFuturesPositions();
@@ -106,7 +109,7 @@ export function FuturesPositionTable({
           <tbody>
             {filteredPositions.length > 0 ? (
               filteredPositions.map((position, index) => (
-                <PositionRow key={`${position.exchange}-${position.symbol}-${index}`} position={position} />
+                <PositionRow key={`${position.exchange}-${position.symbol}-${index}`} position={position} onSymbolClick={onSymbolClick} />
               ))
             ) : (
               <tr>
@@ -134,9 +137,10 @@ export function FuturesPositionTable({
 
 interface PositionRowProps {
   position: FuturesPosition;
+  onSymbolClick?: (exchange: FuturesExchangeType, symbol: string) => void;
 }
 
-function PositionRow({ position }: PositionRowProps) {
+function PositionRow({ position, onSymbolClick }: PositionRowProps) {
   const config = EXCHANGE_CONFIGS[position.exchange];
   const isLong = position.side === 'LONG';
   const isPnlPositive = position.unrealizedPnl >= 0;
@@ -152,8 +156,14 @@ function PositionRow({ position }: PositionRowProps) {
         </Badge>
       </td>
       {/* 심볼 */}
-      <td className="px-3 py-2 text-xs font-medium text-foreground">
-        {position.symbol}
+      <td className="px-3 py-2">
+        <button
+          type="button"
+          className="text-xs font-medium text-primary hover:underline cursor-pointer"
+          onClick={() => onSymbolClick?.(position.exchange, position.symbol)}
+        >
+          {position.symbol}
+        </button>
       </td>
       {/* 방향 */}
       <td className="px-3 py-2">

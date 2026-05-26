@@ -70,6 +70,18 @@ export default function FuturesTradingPage() {
     setSelectedExchange(exchange);
   }, []);
 
+  // 포지션/오더 심볼 클릭 핸들러: 차트를 해당 거래소+코인으로 전환
+  const handleSymbolClick = useCallback((exchange: FuturesExchangeType, symbol: string) => {
+    // 심볼에서 baseAsset 추출: BTCUSDT -> BTC, BTC -> BTC
+    const base = symbol.replace(/USDT$/, '').replace(/USD$/, '');
+    // FUTURES_COINS에서 매칭되는 코인 찾기
+    const coin = FUTURES_COINS.find((c) => c.baseAsset === base);
+    if (coin) {
+      setSelectedCoin(coin.symbol);
+    }
+    setSelectedExchange(exchange);
+  }, []);
+
   return (
     <div className="space-y-4 p-4 md:p-6">
       {/* 상단: 타이틀 + 코인 선택 + 거래소 탭 */}
@@ -147,11 +159,13 @@ export default function FuturesTradingPage() {
             <FuturesPositionTable
               exchangeFilter={positionFilter}
               onFilterChange={setPositionFilter}
+              onSymbolClick={handleSymbolClick}
             />
           ) : (
             <FuturesOpenOrderTable
               exchangeFilter={orderFilter}
               onFilterChange={setOrderFilter}
+              onSymbolClick={handleSymbolClick}
             />
           )}
         </CardContent>
