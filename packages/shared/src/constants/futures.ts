@@ -71,7 +71,7 @@ export const FUTURES_SYMBOL_CONFIGS: Record<FuturesExchangeType, FuturesSymbolCo
   },
   hyperliquid: {
     formatApiSymbol: (baseAsset: string) => baseAsset,
-    formatTradingViewSymbol: (baseAsset: string) => `HYPERLIQUID:${baseAsset}USD.P`,
+    formatTradingViewSymbol: (baseAsset: string) => `HYPERLIQUID:${baseAsset}USDC`,
   },
 };
 
