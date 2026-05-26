@@ -82,14 +82,16 @@ function CoinIcon({ symbol }: { symbol: string }) {
   const src = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${base}.png`;
 
   return (
-    <img
-      src={src}
-      alt=""
-      width={18}
-      height={18}
-      className="rounded-full shrink-0"
-      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-    />
+    <span className="w-[18px] h-[18px] shrink-0 inline-flex items-center justify-center">
+      <img
+        src={src}
+        alt=""
+        width={18}
+        height={18}
+        className="rounded-full"
+        onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }}
+      />
+    </span>
   );
 }
 
