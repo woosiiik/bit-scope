@@ -157,22 +157,45 @@ async function handleHyperliquidPositions(signedRequest: SignedRequest): Promise
   }
 
   try {
-    const response = await fetch(`${HYPERLIQUID_CONFIG.restBaseUrl}/info`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'clearinghouseState', user: walletAddress }),
-      signal: AbortSignal.timeout(HYPERLIQUID_CONFIG.timeoutMs),
-    });
+    // clearinghouseState(포지션)와 allMids(현재가)를 병렬로 조회
+    const baseUrl = HYPERLIQUID_CONFIG.restBaseUrl;
+    const timeout = HYPERLIQUID_CONFIG.timeoutMs;
 
-    if (!response.ok) {
+    const [posResponse, midsResponse] = await Promise.all([
+      fetch(`${baseUrl}/info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'clearinghouseState', user: walletAddress }),
+        signal: AbortSignal.timeout(timeout),
+      }),
+      fetch(`${baseUrl}/info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'allMids' }),
+        signal: AbortSignal.timeout(timeout),
+      }),
+    ]);
+
+    if (!posResponse.ok) {
       return NextResponse.json(
-        { success: false, error: { message: '하이퍼리퀴드 API 호출에 실패했습니다.', code: 'EXCHANGE_API_ERROR', statusCode: response.status } },
+        { success: false, error: { message: '하이퍼리퀴드 API 호출에 실패했습니다.', code: 'EXCHANGE_API_ERROR', statusCode: posResponse.status } },
         { status: 502 },
       );
     }
 
-    const rawData = await response.json();
+    const rawData = await posResponse.json();
     const positions = normalizeFuturesPositions('hyperliquid', rawData);
+
+    // allMids에서 현재가를 병합 (예: { "BTC": "67000.5", "ETH": "3500.2", ... })
+    if (midsResponse.ok) {
+      const mids = await midsResponse.json() as Record<string, string>;
+      for (const pos of positions) {
+        const mid = mids[pos.symbol];
+        if (mid) {
+          pos.markPrice = parseFloat(mid) || 0;
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
