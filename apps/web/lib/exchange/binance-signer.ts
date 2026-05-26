@@ -30,6 +30,9 @@ import { BINANCE_CONFIG, BINANCE_ENDPOINTS } from '@bitscope/shared';
 /** 바이낸스 Futures 엔드포인트 경로 목록 (fapi.binance.com 도메인 사용) */
 const FUTURES_ENDPOINTS = [
   BINANCE_ENDPOINTS.futures,
+  BINANCE_ENDPOINTS.futuresOrderbook,
+  BINANCE_ENDPOINTS.futuresPositions,
+  BINANCE_ENDPOINTS.futuresOpenOrders,
 ].filter(Boolean) as string[];
 
 /**

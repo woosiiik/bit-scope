@@ -411,6 +411,10 @@ export const HYPERLIQUID_ENDPOINTS: ExchangeEndpoints = {
   orders: '/info',
   /** 마켓 조회: POST /info (type: meta) */
   markets: '/info',
+  /** 선물 포지션 조회: POST /info (type: clearinghouseState) */
+  futuresPositions: '/info',
+  /** 선물 오픈 오더 조회: POST /info (type: openOrders) */
+  futuresOpenOrders: '/info',
 } as const;
 
 /**

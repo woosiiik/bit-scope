@@ -36,6 +36,9 @@ import { createSigner } from './exchange/signer-factory';
 /** Futures 잔고 지원 거래소 목록 (Spot과 별도로 Futures 잔고를 조회해야 하는 거래소) */
 const FUTURES_SUPPORTED_EXCHANGES: readonly ExchangeType[] = ['binance', 'gate', 'bitget'] as const;
 
+/** Futures 포지션/오더 지원 거래소 목록 */
+const FUTURES_POSITION_EXCHANGES: readonly ExchangeType[] = ['binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'] as const;
+
 // ===== Route Handler 응답 타입 =====
 
 /** Route Handler의 공통 응답 구조 */
@@ -537,6 +540,116 @@ export function signFuturesBalanceRequest(
   return signer.signRequest({
     method: 'GET',
     endpoint: futuresEndpoint,
+    queryParams,
+    apiKey,
+  });
+}
+
+/**
+ * 거래소별 서명 생성기를 통해 선물 포지션 조회 요청에 대한 서명을 생성한다.
+ *
+ * 바이낸스, Gate.io, Bitget에 대해서만 선물 포지션을 조회한다.
+ * - 바이낸스: GET /fapi/v2/positionRisk (fapi.binance.com 도메인)
+ * - Gate.io: GET /api/v4/futures/usdt/positions (같은 도메인)
+ * - Bitget: GET /api/v2/mix/position/all-position?productType=USDT-FUTURES (같은 도메인)
+ *
+ * @param exchange 거래소 식별자
+ * @param apiKey 복호화된 API Key 쌍
+ * @returns 서명된 요청, 또는 미지원 거래소인 경우 null
+ */
+export function signFuturesPositionsRequest(
+  exchange: ExchangeType,
+  apiKey: ApiKeyPair,
+): SignedRequest | null {
+  const endpoint = EXCHANGE_ENDPOINTS[exchange].futuresPositions;
+
+  if (!endpoint) {
+    return null;
+  }
+
+  if (!(FUTURES_POSITION_EXCHANGES as readonly string[]).includes(exchange)) {
+    return null;
+  }
+
+  // 하이퍼리퀴드: signer가 clearinghouseState POST 요청을 생성 (포지션 포함)
+  if (exchange === 'hyperliquid') {
+    const signer = createSigner(exchange);
+    return signer.signRequest({ method: 'POST', endpoint, apiKey });
+  }
+
+  const signer = createSigner(exchange);
+
+  // 거래소별 필수 쿼리 파라미터
+  let queryParams: Record<string, string> | undefined;
+  if (exchange === 'bitget') {
+    queryParams = { productType: 'USDT-FUTURES' };
+  } else if (exchange === 'okx') {
+    queryParams = { instType: 'SWAP' };
+  } else if (exchange === 'bybit') {
+    queryParams = { category: 'linear' };
+  }
+
+  return signer.signRequest({
+    method: 'GET',
+    endpoint,
+    queryParams,
+    apiKey,
+  });
+}
+
+/**
+ * 거래소별 서명 생성기를 통해 선물 오픈오더 조회 요청에 대한 서명을 생성한다.
+ *
+ * 바이낸스, Gate.io, Bitget에 대해서만 선물 오픈오더를 조회한다.
+ * - 바이낸스: GET /fapi/v1/openOrders (fapi.binance.com 도메인)
+ * - Gate.io: GET /api/v4/futures/usdt/orders?status=open (같은 도메인)
+ * - Bitget: GET /api/v2/mix/order/orders-pending?productType=USDT-FUTURES (같은 도메인)
+ *
+ * @param exchange 거래소 식별자
+ * @param apiKey 복호화된 API Key 쌍
+ * @returns 서명된 요청, 또는 미지원 거래소인 경우 null
+ */
+export function signFuturesOpenOrdersRequest(
+  exchange: ExchangeType,
+  apiKey: ApiKeyPair,
+): SignedRequest | null {
+  const endpoint = EXCHANGE_ENDPOINTS[exchange].futuresOpenOrders;
+
+  if (!endpoint) {
+    return null;
+  }
+
+  if (!(FUTURES_POSITION_EXCHANGES as readonly string[]).includes(exchange)) {
+    return null;
+  }
+
+  // 하이퍼리퀴드: openOrders type으로 POST 요청 직접 생성
+  if (exchange === 'hyperliquid') {
+    return {
+      url: `${EXCHANGE_CONFIGS[exchange].restBaseUrl}/info`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'openOrders', user: apiKey.accessKey }),
+    };
+  }
+
+  const signer = createSigner(exchange);
+
+  // 거래소별 필수 쿼리 파라미터
+  let queryParams: Record<string, string> | undefined;
+  if (exchange === 'gate') {
+    queryParams = { status: 'open' };
+  } else if (exchange === 'bitget') {
+    queryParams = { productType: 'USDT-FUTURES' };
+  } else if (exchange === 'okx') {
+    queryParams = { instType: 'SWAP' };
+  } else if (exchange === 'bybit') {
+    queryParams = { category: 'linear' };
+  }
+
+  return signer.signRequest({
+    method: 'GET',
+    endpoint,
     queryParams,
     apiKey,
   });

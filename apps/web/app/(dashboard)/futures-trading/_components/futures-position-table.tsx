@@ -30,7 +30,7 @@ export function FuturesPositionTable({
   onFilterChange,
 }: FuturesPositionTableProps) {
   const { t } = useTranslation();
-  const { positions } = useFuturesPositions();
+  const { positions, isLoading, hasRegisteredExchanges } = useFuturesPositions();
 
   // 거래소 필터 적용
   const filteredPositions = useMemo(() => {
@@ -68,7 +68,7 @@ export function FuturesPositionTable({
 
       {/* 포지션 테이블 */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px]" role="table" aria-label={t.futuresTrading.openPosition}>
+        <table className="w-full min-w-[900px]" role="table" aria-label={t.futuresTrading.openPosition}>
           <thead>
             <tr className="border-b border-border">
               <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground" scope="col">
@@ -93,6 +93,9 @@ export function FuturesPositionTable({
                 {t.futuresTrading.unrealizedPnl}
               </th>
               <th className="px-3 py-2 text-right text-[11px] font-medium text-muted-foreground" scope="col">
+                Realized PnL
+              </th>
+              <th className="px-3 py-2 text-right text-[11px] font-medium text-muted-foreground" scope="col">
                 {t.futuresTrading.leverage}
               </th>
               <th className="px-3 py-2 text-right text-[11px] font-medium text-muted-foreground" scope="col">
@@ -107,12 +110,16 @@ export function FuturesPositionTable({
               ))
             ) : (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    {positions.length === 0
-                      ? t.futuresTrading.noApiKey
-                      : t.futuresTrading.noPositions}
-                  </p>
+                <td colSpan={10} className="px-3 py-8 text-center">
+                  {isLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading...</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {!hasRegisteredExchanges
+                        ? t.futuresTrading.noApiKey
+                        : t.futuresTrading.noPositions}
+                    </p>
+                  )}
                 </td>
               </tr>
             )}
@@ -133,6 +140,8 @@ function PositionRow({ position }: PositionRowProps) {
   const config = EXCHANGE_CONFIGS[position.exchange];
   const isLong = position.side === 'LONG';
   const isPnlPositive = position.unrealizedPnl >= 0;
+  const hasRealizedPnl = position.realizedPnl !== undefined && position.realizedPnl !== 0;
+  const isRealizedPnlPositive = (position.realizedPnl ?? 0) >= 0;
 
   return (
     <tr className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors">
@@ -180,6 +189,22 @@ function PositionRow({ position }: PositionRowProps) {
           {isPnlPositive ? '+' : ''}
           {position.unrealizedPnl.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDT
         </span>
+      </td>
+      {/* 실현 PnL */}
+      <td className="px-3 py-2 text-right">
+        {hasRealizedPnl ? (
+          <span
+            className={cn(
+              'text-xs font-medium',
+              isRealizedPnlPositive ? 'text-profit' : 'text-loss',
+            )}
+          >
+            {isRealizedPnlPositive ? '+' : ''}
+            {(position.realizedPnl ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} USDT
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
       </td>
       {/* 레버리지 */}
       <td className="px-3 py-2 text-right text-xs text-foreground">

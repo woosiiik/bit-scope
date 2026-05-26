@@ -95,9 +95,10 @@ import {
 } from './lbank';
 
 import { normalizeFuturesOrderbook } from './futures-orderbook';
+import { normalizeFuturesPositions, normalizeFuturesOpenOrders } from './futures-positions';
 
 // 선물 정규화 함수 re-export
-export { normalizeFuturesOrderbook };
+export { normalizeFuturesOrderbook, normalizeFuturesPositions, normalizeFuturesOpenOrders };
 
 // 타입 re-export
 export type {

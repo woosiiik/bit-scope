@@ -30,7 +30,7 @@ export function FuturesOpenOrderTable({
   onFilterChange,
 }: FuturesOpenOrderTableProps) {
   const { t } = useTranslation();
-  const { openOrders } = useFuturesOpenOrders();
+  const { openOrders, isLoading, hasRegisteredExchanges } = useFuturesOpenOrders();
 
   // 거래소 필터 적용
   const filteredOrders = useMemo(() => {
@@ -105,11 +105,15 @@ export function FuturesOpenOrderTable({
             ) : (
               <tr>
                 <td colSpan={8} className="px-3 py-8 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    {openOrders.length === 0
-                      ? t.futuresTrading.noApiKey
-                      : t.futuresTrading.noOrders}
-                  </p>
+                  {isLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading...</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {!hasRegisteredExchanges
+                        ? t.futuresTrading.noApiKey
+                        : t.futuresTrading.noOrders}
+                    </p>
+                  )}
                 </td>
               </tr>
             )}

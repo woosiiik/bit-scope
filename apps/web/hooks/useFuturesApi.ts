@@ -6,8 +6,8 @@
  *
  * 제공 훅:
  * - useFuturesOrderbook: 선물 오더북 조회 (공개 API, 2초 간격)
- * - useFuturesPositions: 선물 포지션 조회 (placeholder - 빈 배열 반환)
- * - useFuturesOpenOrders: 선물 오픈 오더 조회 (placeholder - 빈 배열 반환)
+ * - useFuturesPositions: 선물 포지션 조회 (30초 간격, useQueries 병렬 조회)
+ * - useFuturesOpenOrders: 선물 오픈 오더 조회 (30초 간격, useQueries 병렬 조회)
  *
  * @see 요구사항 5.7 (오더북 주기적 갱신)
  * @see 요구사항 7.1 (오픈 포지션 조회)
@@ -16,15 +16,31 @@
 
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useCallback } from 'react';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
-import type { FuturesExchangeType, FuturesPosition, FuturesOpenOrder } from '@bitscope/shared';
+import { useAccount } from 'wagmi';
+import type { FuturesExchangeType, FuturesPosition, FuturesOpenOrder, ExchangeType } from '@bitscope/shared';
 import {
   fetchFuturesOrderbook,
+  fetchFuturesPositions,
+  fetchFuturesOpenOrders,
+  signFuturesPositionsRequest,
+  signFuturesOpenOrdersRequest,
   type FuturesOrderbookResponse,
+  type FuturesPositionsResponse,
+  type FuturesOpenOrdersResponse,
   ExchangeApiError,
 } from '../lib/api-client';
+import { decryptApiKeyForExchange } from './useExchangeApi';
+
+// ===== 상수 =====
+
+/** 선물 포지션/오더 지원 거래소 (API Key 기반 조회 대상) */
+const FUTURES_API_EXCHANGES: FuturesExchangeType[] = ['binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'];
+
+/** 포지션/오더 자동 갱신 주기: 30초 */
+const FUTURES_REFETCH_INTERVAL = 30_000;
 
 // ===== 쿼리 키 팩토리 =====
 
@@ -105,7 +121,7 @@ export function useFuturesOrderbook(
   });
 }
 
-// ===== useFuturesPositions (placeholder) =====
+// ===== useFuturesPositions =====
 
 /** useFuturesPositions 반환 타입 */
 export interface UseFuturesPositionsReturn {
@@ -113,6 +129,8 @@ export interface UseFuturesPositionsReturn {
   positions: FuturesPosition[];
   /** 로딩 중 여부 */
   isLoading: boolean;
+  /** API Key가 등록된 선물 거래소가 있는지 여부 */
+  hasRegisteredExchanges: boolean;
   /** 거래소별 에러 맵 */
   errors: Partial<Record<FuturesExchangeType, ExchangeApiError>>;
   /** 전체 거래소 새로고침 */
@@ -120,26 +138,101 @@ export interface UseFuturesPositionsReturn {
 }
 
 /**
- * 선물 포지션을 조회하는 React Query 훅 (placeholder)
+ * 선물 포지션을 조회하는 React Query 훅
  *
- * 실제 서명+조회 로직은 Route Handler 구현 후 추가 예정이다.
- * 현재는 빈 배열을 반환하는 placeholder이다.
+ * 등록된 모든 선물 거래소(Binance, Gate.io, Bitget)에 대해 병렬로
+ * 포지션을 조회하고 통합된 결과를 반환한다.
+ * 30초 간격으로 자동 갱신된다.
  *
- * @returns 빈 포지션 배열과 로딩 상태
+ * @returns 통합 포지션 목록, 로딩 상태, 에러 맵, 새로고침 함수
  */
 export function useFuturesPositions(): UseFuturesPositionsReturn {
-  return useMemo(
-    () => ({
-      positions: [],
-      isLoading: false,
-      errors: {},
-      refetchAll: () => {},
-    }),
-    [],
-  );
+  const { address } = useAccount();
+  const walletAddress = address ?? '';
+  const queryClient = useQueryClient();
+
+  // 각 선물 거래소에 대해 API Key가 있는지 확인하여 활성화할 거래소 결정
+  const exchangeApiKeys = useMemo(() => {
+    if (!walletAddress) return [];
+
+    return FUTURES_API_EXCHANGES
+      .map((exchange) => {
+        const apiKey = decryptApiKeyForExchange(walletAddress, exchange as ExchangeType);
+        return apiKey ? { exchange, apiKey } : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [walletAddress]);
+
+  const queries = useQueries({
+    queries: exchangeApiKeys.map(({ exchange, apiKey }) => ({
+      queryKey: futuresQueryKeys.positions(exchange),
+      queryFn: async (): Promise<FuturesPositionsResponse> => {
+        const signedRequest = signFuturesPositionsRequest(exchange as ExchangeType, apiKey);
+        if (!signedRequest) {
+          throw new ExchangeApiError(
+            '서명을 생성할 수 없습니다.',
+            'SIGN_FAILED',
+            exchange as ExchangeType,
+          );
+        }
+        return fetchFuturesPositions(exchange, signedRequest);
+      },
+      enabled: !!walletAddress,
+      refetchInterval: FUTURES_REFETCH_INTERVAL,
+      refetchOnWindowFocus: true,
+      placeholderData: (previousData: FuturesPositionsResponse | undefined) => previousData,
+      retry: 2,
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 4000),
+      staleTime: 10_000,
+    })),
+  });
+
+  // 결과 집계
+  const positions = useMemo(() => {
+    const allPositions: FuturesPosition[] = [];
+    for (const query of queries) {
+      if (query.data?.positions) {
+        allPositions.push(...query.data.positions);
+      }
+    }
+    return allPositions;
+  }, [queries]);
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  const errors = useMemo(() => {
+    const errorMap: Partial<Record<FuturesExchangeType, ExchangeApiError>> = {};
+    exchangeApiKeys.forEach(({ exchange }, index) => {
+      const query = queries[index];
+      if (query?.error) {
+        errorMap[exchange] = query.error instanceof ExchangeApiError
+          ? query.error
+          : new ExchangeApiError(
+              query.error instanceof Error ? query.error.message : String(query.error),
+              'UNKNOWN_ERROR',
+              exchange as ExchangeType,
+            );
+      }
+    });
+    return errorMap;
+  }, [exchangeApiKeys, queries]);
+
+  const refetchAll = useCallback(() => {
+    for (const exchange of FUTURES_API_EXCHANGES) {
+      queryClient.invalidateQueries({ queryKey: futuresQueryKeys.positions(exchange) });
+    }
+  }, [queryClient]);
+
+  return {
+    positions,
+    isLoading,
+    hasRegisteredExchanges: exchangeApiKeys.length > 0,
+    errors,
+    refetchAll,
+  };
 }
 
-// ===== useFuturesOpenOrders (placeholder) =====
+// ===== useFuturesOpenOrders =====
 
 /** useFuturesOpenOrders 반환 타입 */
 export interface UseFuturesOpenOrdersReturn {
@@ -147,6 +240,8 @@ export interface UseFuturesOpenOrdersReturn {
   openOrders: FuturesOpenOrder[];
   /** 로딩 중 여부 */
   isLoading: boolean;
+  /** API Key가 등록된 선물 거래소가 있는지 여부 */
+  hasRegisteredExchanges: boolean;
   /** 거래소별 에러 맵 */
   errors: Partial<Record<FuturesExchangeType, ExchangeApiError>>;
   /** 전체 거래소 새로고침 */
@@ -154,21 +249,96 @@ export interface UseFuturesOpenOrdersReturn {
 }
 
 /**
- * 선물 오픈 오더를 조회하는 React Query 훅 (placeholder)
+ * 선물 오픈 오더를 조회하는 React Query 훅
  *
- * 실제 서명+조회 로직은 Route Handler 구현 후 추가 예정이다.
- * 현재는 빈 배열을 반환하는 placeholder이다.
+ * 등록된 모든 선물 거래소(Binance, Gate.io, Bitget)에 대해 병렬로
+ * 오픈 오더를 조회하고 통합된 결과를 반환한다.
+ * 30초 간격으로 자동 갱신된다.
  *
- * @returns 빈 오픈 오더 배열과 로딩 상태
+ * @returns 통합 오픈 오더 목록, 로딩 상태, 에러 맵, 새로고침 함수
  */
 export function useFuturesOpenOrders(): UseFuturesOpenOrdersReturn {
-  return useMemo(
-    () => ({
-      openOrders: [],
-      isLoading: false,
-      errors: {},
-      refetchAll: () => {},
-    }),
-    [],
-  );
+  const { address } = useAccount();
+  const walletAddress = address ?? '';
+  const queryClient = useQueryClient();
+
+  // 각 선물 거래소에 대해 API Key가 있는지 확인하여 활성화할 거래소 결정
+  const exchangeApiKeys = useMemo(() => {
+    if (!walletAddress) return [];
+
+    return FUTURES_API_EXCHANGES
+      .map((exchange) => {
+        const apiKey = decryptApiKeyForExchange(walletAddress, exchange as ExchangeType);
+        return apiKey ? { exchange, apiKey } : null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [walletAddress]);
+
+  const queries = useQueries({
+    queries: exchangeApiKeys.map(({ exchange, apiKey }) => ({
+      queryKey: futuresQueryKeys.openOrders(exchange),
+      queryFn: async (): Promise<FuturesOpenOrdersResponse> => {
+        const signedRequest = signFuturesOpenOrdersRequest(exchange as ExchangeType, apiKey);
+        if (!signedRequest) {
+          throw new ExchangeApiError(
+            '서명을 생성할 수 없습니다.',
+            'SIGN_FAILED',
+            exchange as ExchangeType,
+          );
+        }
+        return fetchFuturesOpenOrders(exchange, signedRequest);
+      },
+      enabled: !!walletAddress,
+      refetchInterval: FUTURES_REFETCH_INTERVAL,
+      refetchOnWindowFocus: true,
+      placeholderData: (previousData: FuturesOpenOrdersResponse | undefined) => previousData,
+      retry: 2,
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 4000),
+      staleTime: 10_000,
+    })),
+  });
+
+  // 결과 집계
+  const openOrders = useMemo(() => {
+    const allOrders: FuturesOpenOrder[] = [];
+    for (const query of queries) {
+      if (query.data?.openOrders) {
+        allOrders.push(...query.data.openOrders);
+      }
+    }
+    return allOrders;
+  }, [queries]);
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  const errors = useMemo(() => {
+    const errorMap: Partial<Record<FuturesExchangeType, ExchangeApiError>> = {};
+    exchangeApiKeys.forEach(({ exchange }, index) => {
+      const query = queries[index];
+      if (query?.error) {
+        errorMap[exchange] = query.error instanceof ExchangeApiError
+          ? query.error
+          : new ExchangeApiError(
+              query.error instanceof Error ? query.error.message : String(query.error),
+              'UNKNOWN_ERROR',
+              exchange as ExchangeType,
+            );
+      }
+    });
+    return errorMap;
+  }, [exchangeApiKeys, queries]);
+
+  const refetchAll = useCallback(() => {
+    for (const exchange of FUTURES_API_EXCHANGES) {
+      queryClient.invalidateQueries({ queryKey: futuresQueryKeys.openOrders(exchange) });
+    }
+  }, [queryClient]);
+
+  return {
+    openOrders,
+    isLoading,
+    hasRegisteredExchanges: exchangeApiKeys.length > 0,
+    errors,
+    refetchAll,
+  };
 }

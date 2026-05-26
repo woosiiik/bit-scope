@@ -74,7 +74,7 @@ export interface FuturesIndicatorsResponse {
 // ─── 선물 거래 페이지 전용 타입 ───────────────────────────────
 
 /** 선물 거래 지원 거래소 타입 (해외 거래소만) */
-export type FuturesExchangeType = 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget';
+export type FuturesExchangeType = 'binance' | 'bybit' | 'okx' | 'gate' | 'bitget' | 'hyperliquid';
 
 /** 선물 코인 정보 */
 export interface FuturesCoin {
@@ -127,6 +127,8 @@ export interface FuturesPosition {
   quantity: number;
   /** 미실현 PnL (USDT) */
   unrealizedPnl: number;
+  /** 실현 PnL (USDT) - 거래소에서 제공하는 경우만 */
+  realizedPnl?: number;
   /** 레버리지 배수 */
   leverage: number;
   /** 청산가 */

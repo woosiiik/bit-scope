@@ -14,6 +14,7 @@ export const FUTURES_EXCHANGES: FuturesExchangeType[] = [
   'okx',
   'gate',
   'bitget',
+  'hyperliquid',
 ];
 
 /** 기본 선물 거래소 */
@@ -67,6 +68,10 @@ export const FUTURES_SYMBOL_CONFIGS: Record<FuturesExchangeType, FuturesSymbolCo
   bitget: {
     formatApiSymbol: (baseAsset: string) => `${baseAsset}USDT`,
     formatTradingViewSymbol: (baseAsset: string) => `BITGET:${baseAsset}USDT.P`,
+  },
+  hyperliquid: {
+    formatApiSymbol: (baseAsset: string) => baseAsset,
+    formatTradingViewSymbol: (baseAsset: string) => `HYPERLIQUID:${baseAsset}USD.P`,
   },
 };
 
