@@ -101,6 +101,21 @@ export type {
   FuturesSymbolConfig,
 } from './futures';
 
+// 멀티 거래소 선물 대시보드 타입
+export type {
+  FuturesDashboardIndicator,
+  Period,
+  ExchangeDataPoint,
+  ExchangeTimeSeriesPoint,
+  FundingRateSnapshot,
+  LiquidationPoint,
+  CVDPoint,
+  HourlyReturnPoint,
+  DailyReturnPoint,
+  SessionReturnPoint,
+  MultiExchangeResponse,
+} from './futures-dashboard';
+
 // 시그널 관련 타입
 export type {
   SignalDirection,

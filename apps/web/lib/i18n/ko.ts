@@ -54,6 +54,7 @@ const ko = {
     analytics: '성과 분석',
     alerts: '알림',
     cryptoDesk: '크립토 데스크',
+    futuresDashboard: '멀티 거래소 선물',
     futuresMarketData: '선물 마켓 데이터',
     futuresTrading: '선물 거래',
     charts: '차트',
@@ -735,6 +736,11 @@ const ko = {
         lbank: 'LBank > 설정 > API 관리에서 발급할 수 있습니다.',
       },
     },
+  },
+
+  /** 멀티 거래소 선물 대시보드 */
+  futuresDashboard: {
+    title: '멀티 거래소 선물',
   },
 
   /** 선물 거래 */

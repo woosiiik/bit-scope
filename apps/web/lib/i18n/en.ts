@@ -58,6 +58,7 @@ const en: Messages = {
     analytics: 'Analytics',
     alerts: 'Alerts',
     cryptoDesk: 'Crypto Desk',
+    futuresDashboard: 'Multi-Exchange Futures',
     futuresMarketData: 'Futures Data',
     futuresTrading: 'Futures Trading',
     charts: 'Charts',
@@ -737,6 +738,11 @@ const en: Messages = {
         lbank: 'LBank > Settings > API Management',
       },
     },
+  },
+
+  /** Multi-Exchange Futures Dashboard */
+  futuresDashboard: {
+    title: 'Multi-Exchange Futures',
   },
 
   /** Futures Trading */
