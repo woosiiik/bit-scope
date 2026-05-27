@@ -20,6 +20,7 @@ import { NewsArticleEntity } from '../modules/news/entities/news-article.entity'
 import { CustomCalendarEventEntity } from '../modules/market-intel/entities/custom-calendar-event.entity';
 import { SystemConfigEntity } from '../modules/signal/entities/system-config.entity';
 import { SignalEntity } from '../modules/signal/entities/signal.entity';
+import { LiquidationEntity } from '../modules/liquidation/entities/liquidation.entity';
 
 /** 모든 TypeORM 엔티티 목록 */
 export const ENTITIES = [
@@ -36,6 +37,7 @@ export const ENTITIES = [
   CustomCalendarEventEntity,
   SystemConfigEntity,
   SignalEntity,
+  LiquidationEntity,
 ];
 
 /**

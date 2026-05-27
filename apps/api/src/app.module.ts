@@ -23,6 +23,7 @@ import { NewsModule } from './modules/news/news.module';
 import { FuturesModule } from './modules/futures/futures.module';
 import { MarketIntelModule } from './modules/market-intel/market-intel.module';
 import { SignalModule } from './modules/signal/signal.module';
+import { LiquidationModule } from './modules/liquidation/liquidation.module';
 
 @Module({
   imports: [
@@ -59,6 +60,8 @@ import { SignalModule } from './modules/signal/signal.module';
     MarketIntelModule,
     // 롱/숏 시그널 (히든 메뉴)
     SignalModule,
+    // 실시간 청산 데이터 수집 (WebSocket + REST)
+    LiquidationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

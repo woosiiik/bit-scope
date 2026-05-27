@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { Period } from '@bitscope/shared';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ChartPanel } from './chart-panel';
 import { PriceChart } from './charts/price-chart';
 import { Volume24hChart } from './charts/volume24h-chart';
@@ -99,12 +101,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
       <div>
         <h2 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Liquidity & Flow</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          <ChartPanel
-            title="Liquidations"
-            indicator="liquidations"
-            coin={coin}
-            renderChart={() => <LiquidationsChart />}
-          />
+          <LiquidationsPanel coin={coin} period={period} />
           <ChartPanel
             title="CVD (Dollars)"
             indicator="cvd"
@@ -169,5 +166,46 @@ export function ChartGrid({ coin }: ChartGridProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Liquidations 차트 패널 — 별도 API 엔드포인트 사용 */
+function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
+  const periodMap: Record<Period, string> = { '1d': '1d', '1w': '1w', '1m': '1m', '3m': '1m', '6m': '1m', '1y': '1m' };
+  const liqPeriod = periodMap[period] ?? '1d';
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['futures-dashboard', 'liquidations', coin, liqPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/futures-dashboard/liquidations?coin=${coin}&period=${liqPeriod}`, {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    retry: 1,
+    placeholderData: (prev: unknown) => prev,
+  });
+
+  return (
+    <Card className="overflow-hidden" aria-label="Liquidations">
+      <CardContent className="p-3 space-y-2">
+        <h3 className="text-xs font-medium text-foreground">Liquidations</h3>
+        <div className="h-[180px]">
+          {isLoading ? (
+            <div className="h-full w-full animate-pulse bg-muted rounded" />
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2">
+              <p className="text-xs text-muted-foreground">청산 데이터를 불러올 수 없습니다</p>
+              <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => refetch()}>재시도</Button>
+            </div>
+          ) : (
+            <LiquidationsChart data={data?.data} />
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
