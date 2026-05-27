@@ -65,7 +65,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
         <h2 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Open Interest</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           <ChartPanel
-            title="OI Snapshot"
+            title="OI Snapshot (Coin)"
             indicator="oiSnapshot"
             coin={coin}
             renderChart={(data) => <OiSnapshotChart data={data} />}

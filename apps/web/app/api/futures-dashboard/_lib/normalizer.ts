@@ -75,11 +75,9 @@ export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown, 
 // ===== OI Snapshot 정규화 =====
 
 export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown, coin: string): ExchangeDataPoint {
+  // 모든 거래소를 코인 단위로 통일 (같은 코인 내 거래소 간 비교용)
   switch (exchange) {
     case 'binance': {
-      // Binance openInterest는 코인 단위. markPrice를 별도로 가져오지 않으므로
-      // ticker 24hr에서 함께 가져오거나, premiumIndex에서 가져올 수 있다.
-      // 현재는 단일 엔드포인트이므로 코인 단위 그대로 반환 (USDT 환산은 추후 개선)
       const d = raw as { openInterest?: string };
       return { exchange, value: safeFloat(d?.openInterest) };
     }
@@ -88,23 +86,20 @@ export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown,
       return { exchange, value: safeFloat(d?.result?.list?.[0]?.openInterest) };
     }
     case 'okx': {
-      // OKX oi는 계약 단위, oiCcy는 코인 단위
-      const d = raw as { data?: Array<{ oi?: string; oiCcy?: string }> };
+      const d = raw as { data?: Array<{ oiCcy?: string }> };
       return { exchange, value: safeFloat(d?.data?.[0]?.oiCcy) };
     }
     case 'gate': {
-      // Gate position_size는 계약 수, last는 현재가
-      const d = raw as { position_size?: number; last?: string; quanto_multiplier?: string };
-      return { exchange, value: safeFloat(d?.position_size) * safeFloat(d?.quanto_multiplier) };
+      const d = raw as { position_size?: number; quanto_multiplier?: string };
+      return { exchange, value: safeFloat(d?.position_size) * safeFloat(d?.quanto_multiplier || '1') };
     }
     case 'bitget': {
       const d = raw as { data?: Array<{ amount?: string }> };
       return { exchange, value: safeFloat(d?.data?.[0]?.amount) };
     }
     case 'hyperliquid': {
-      const oi = extractHyperliquidField(raw, coin, 'openInterest');
-      const markPx = extractHyperliquidField(raw, coin, 'markPx');
-      return { exchange, value: oi * markPx };
+      // Hyperliquid도 코인 단위로 통일
+      return { exchange, value: extractHyperliquidField(raw, coin, 'openInterest') };
     }
     default:
       return { exchange, value: 0 };
