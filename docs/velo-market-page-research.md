@@ -50,6 +50,35 @@ Velo Market 상단에는 250+ 코인 테이블이 있고, 프리셋 필터/탭�
 
 이것들은 본질적으로 **같은 테이블 데이터를 다른 정렬/필터로 보여주는 뷰**이다.
 
+#### Velo vs BitScope 필터 구조 비교
+
+Velo는 **단일 탭 그룹**으로 모든 필터를 같은 depth에 배치한다. 한 번에 하나만 선택 가능하며, 조합 필터링(예: "Large Cap + DeFi")은 불가능하다.
+
+```
+Velo: [Top Gainers] [Top Losers] [Top Volume] [New Listings] [Large Cap] [Mid Cap] [Small Cap] [DeFi] [L1] [L2] [Meme] ...
+→ 한 번에 하나만 활성화
+```
+
+BitScope에서는 **3개 독립 탭 그룹**으로 분리하여 AND 조합 필터링을 지원한다:
+
+```
+BitScope:
+  정렬:    [Top Gainers] [Top Losers] [Top Volume] [New Listings]
+  시가총액: [All] [Large] [Mid] [Small]
+  섹터:    [All] [DeFi] [L1] [L2] [Metaverse] [Meme] [Dino] [AI]
+→ 3개 그룹에서 각각 하나씩 선택 → AND 조합 (예: "Top Gainers + Large Cap + DeFi")
+```
+
+| | Velo | BitScope |
+|---|---|---|
+| 필터 구조 | 단일 선택 (1개 탭 그룹) | 3중 조합 (정렬 × 시가총액 × 섹터) |
+| "Large Cap + DeFi" | 불가능 | 가능 |
+| "Top Gainers + Meme" | 불가능 | 가능 |
+| UI 복잡도 | 단순 (1줄) | 약간 복잡 (3줄, ⓘ 도움말 제공) |
+| 분석 유연성 | 낮음 | 높음 |
+
+BitScope 방식이 분석 유연성이 높으므로 현재 구조를 유지한다.
+
 ### 데이터 소스 (거래소 벌크 Ticker API)
 
 모든 거래소가 **1번 호출로 전체 코인 ticker**를 무료 제공한다 (인증 불필요):
