@@ -39,14 +39,14 @@ const PERIOD_TO_BYBIT_KLINE: Record<Period, { interval: string; limit: number }>
   '1y': { interval: 'D', limit: 365 },
 };
 
-/** 기간별 OKX Kline bar 매핑 */
+/** 기간별 OKX Kline bar 매핑 (OKX 최대 limit: 100) */
 const PERIOD_TO_OKX_BAR: Record<Period, { bar: string; limit: number }> = {
   '1d': { bar: '15m', limit: 96 },
-  '1w': { bar: '1H', limit: 168 },
-  '1m': { bar: '4H', limit: 180 },
-  '3m': { bar: '12H', limit: 180 },
-  '6m': { bar: '1D', limit: 180 },
-  '1y': { bar: '1D', limit: 365 },
+  '1w': { bar: '2H', limit: 84 },
+  '1m': { bar: '8H', limit: 90 },
+  '3m': { bar: '1D', limit: 90 },
+  '6m': { bar: '2D', limit: 90 },
+  '1y': { bar: '1W', limit: 52 },
 };
 
 /** 기간별 Gate.io Kline interval 매핑 (허용값: 10s, 30s, 1m, 5m, 15m, 30m, 1h, 4h, 8h, 1d, 7d, 30d) */
@@ -108,13 +108,21 @@ export function buildIndicatorUrl(
  */
 export function buildHyperliquidBody(
   indicator: FuturesDashboardIndicator,
-  _coin: string,
+  coin: string,
 ): string {
   switch (indicator) {
     case 'volume24h':
     case 'oiSnapshot':
     case 'fundingRate':
       return JSON.stringify({ type: 'metaAndAssetCtxs' });
+    case 'price':
+    case 'volumeHistory':
+    case 'oiHistory':
+    case 'cvd':
+      return JSON.stringify({
+        type: 'candleSnapshot',
+        req: { coin, interval: '1h', startTime: Date.now() - 30 * 24 * 3600 * 1000 },
+      });
     default:
       return JSON.stringify({ type: 'metaAndAssetCtxs' });
   }

@@ -5,6 +5,7 @@
  */
 
 import type { HourlyReturnPoint, DailyReturnPoint, SessionReturnPoint, CVDPoint } from '@bitscope/shared';
+import { SESSION_RANGES } from '@bitscope/shared';
 import type { FuturesExchangeType } from '@bitscope/shared';
 
 /** 정규화된 Kline 데이터 */
@@ -128,8 +129,8 @@ export function calculateCumReturnBySession(klines: NormalizedKline[]): SessionR
     const hour = new Date(k.openTime).getUTCHours();
     const ret = ((k.close - k.open) / k.open) * 100;
 
-    if (hour >= 0 && hour < 8) apacCum += ret;
-    else if (hour >= 8 && hour < 16) euCum += ret;
+    if (hour >= SESSION_RANGES.APAC.start && hour < SESSION_RANGES.APAC.end) apacCum += ret;
+    else if (hour >= SESSION_RANGES.EU.start && hour < SESSION_RANGES.EU.end) euCum += ret;
     else usCum += ret;
 
     return { timestamp: k.openTime, apac: apacCum, eu: euCum, us: usCum };

@@ -50,16 +50,15 @@ export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown, 
       return { exchange, value: safeFloat(d?.result?.list?.[0]?.turnover24h) };
     }
     case 'okx': {
-      // OKX volCcy24h는 코인 단위, vol24h가 USDT 단위
-      const d = raw as { data?: Array<{ volCcy24h?: string; vol24h?: string; last?: string }> };
+      // OKX volCcy24h는 코인 단위 → * last로 USDT 환산
+      const d = raw as { data?: Array<{ volCcy24h?: string; last?: string }> };
       const item = d?.data?.[0];
-      // vol24h * last = 대략적인 USDT 거래량
-      const vol = safeFloat(item?.volCcy24h) * safeFloat(item?.last);
-      return { exchange, value: vol || safeFloat(item?.vol24h) };
+      return { exchange, value: safeFloat(item?.volCcy24h) * safeFloat(item?.last) };
     }
     case 'gate': {
-      const d = raw as { trade_size?: number; last?: string };
-      return { exchange, value: safeFloat(d?.trade_size) * safeFloat(d?.last) };
+      // Gate trade_size는 계약 수 → * quanto_multiplier * last로 USDT 환산
+      const d = raw as { trade_size?: number; last?: string; quanto_multiplier?: string };
+      return { exchange, value: safeFloat(d?.trade_size) * safeFloat(d?.quanto_multiplier || '1') * safeFloat(d?.last) };
     }
     case 'bitget': {
       const d = raw as { data?: Array<{ usdtVolume?: string }> };
@@ -144,8 +143,10 @@ export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown
       return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
     }
     case 'hyperliquid': {
-      rate8h = extractHyperliquidField(raw, coin, 'funding');
-      return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
+      // Hyperliquid 펀딩은 1시간 주기 (8시간이 아님)
+      const rate1h = extractHyperliquidField(raw, coin, 'funding');
+      rate8h = rate1h * 8; // 8h 환산 (다른 거래소와 비교용)
+      return { exchange, rate8h, rateAnnual: rate1h * 24 * 365 * 100 };
     }
     default:
       return { exchange, rate8h: 0, rateAnnual: 0 };
@@ -253,13 +254,24 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
       }));
     }
     case 'bitget': {
+      // Bitget Kline: [ts, open, high, low, close, baseVol, quoteVol]
+      // k[6] = quoteVol (USDT 단위)
       const d = raw as { data?: string[][] };
       const data = d?.data;
       if (!Array.isArray(data)) return [];
       return data.map((k) => ({
         timestamp: Number(k[0]),
-        values: { [exchange]: safeFloat(k[5]) } as Partial<Record<FuturesExchangeType, number>>,
+        values: { [exchange]: safeFloat(k[6]) } as Partial<Record<FuturesExchangeType, number>>,
       })).reverse();
+    }
+    case 'hyperliquid': {
+      // candleSnapshot 응답: [{ t, o, h, l, c, v, n }]
+      const d = raw as Array<{ t?: number; v?: string; c?: string }>;
+      if (!Array.isArray(d)) return [];
+      return d.map((k) => ({
+        timestamp: k.t ?? 0,
+        values: { [exchange]: safeFloat(k.v) } as Partial<Record<FuturesExchangeType, number>>,
+      }));
     }
     default:
       return [];

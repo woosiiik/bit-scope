@@ -38,6 +38,8 @@ export function useMultiExchangeIndicator<T = unknown>(
     },
     enabled: options?.enabled !== false && !!coin,
     staleTime,
+    refetchInterval: getRefetchInterval(indicator),
+    refetchOnWindowFocus: true,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     placeholderData: (prev) => prev,
@@ -48,4 +50,9 @@ function getStaleTime(indicator: FuturesDashboardIndicator): number {
   if (SNAPSHOT_INDICATORS.includes(indicator)) return 30_000;
   if (KLINE_INDICATORS.includes(indicator)) return 600_000;
   return 300_000;
+}
+
+function getRefetchInterval(indicator: FuturesDashboardIndicator): number | false {
+  if (SNAPSHOT_INDICATORS.includes(indicator)) return 30_000;
+  return false; // 히스토리/Kline 지표는 자동 갱신 안 함
 }

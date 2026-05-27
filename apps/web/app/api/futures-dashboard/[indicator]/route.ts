@@ -58,9 +58,25 @@ export async function GET(
     // 멀티 거래소 데이터 수집
     const result = await fetchMultiExchangeIndicator(indicator, coin, { period });
 
-    // 캐시 저장 (TTL 분류)
-    const ttl = getCacheTtl(indicator);
-    cache.set(cacheKey, result, ttl);
+    // 모든 거래소가 실패한 경우 스테일 캐시 폴백
+    const errorCount = Object.keys(result.errors).length;
+    const hasData = result.data !== null && result.data !== undefined &&
+      (Array.isArray(result.data) ? result.data.length > 0 : true);
+
+    if (!hasData && errorCount > 0 && cached.hit && cached.data) {
+      return NextResponse.json({
+        success: true,
+        ...(cached.data as object),
+        cached: true,
+        stale: true,
+      });
+    }
+
+    // 캐시 저장 (데이터가 있는 경우만)
+    if (hasData) {
+      const ttl = getCacheTtl(indicator);
+      cache.set(cacheKey, result, ttl);
+    }
 
     return NextResponse.json({
       success: true,

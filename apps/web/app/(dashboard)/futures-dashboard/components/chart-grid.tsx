@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Period } from '@bitscope/shared';
+import { Card, CardContent } from '@/components/ui/card';
 import { ChartPanel } from './chart-panel';
 import { PriceChart } from './charts/price-chart';
 import { Volume24hChart } from './charts/volume24h-chart';
@@ -102,9 +103,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
             title="Liquidations"
             indicator="liquidations"
             coin={coin}
-            period={period}
-            onPeriodChange={setPeriod}
-            renderChart={(data) => <LiquidationsChart data={data} />}
+            renderChart={() => <LiquidationsChart />}
           />
           <ChartPanel
             title="CVD (Dollars)"
@@ -118,16 +117,28 @@ export function ChartGrid({ coin }: ChartGridProps) {
             ]}
             activeToggle={cvdMode}
             onToggleChange={setCvdMode}
-            renderChart={(data) => <CVDChart data={data} />}
+            renderChart={(data) => <CVDChart data={data} mode={cvdMode as 'dollars' | 'oi-norm'} />}
           />
-          <ChartPanel
-            title="3M Annualized Basis"
-            indicator="basis3m"
-            coin={coin}
-            period={period}
-            onPeriodChange={setPeriod}
-            renderChart={(data) => <Basis3mChart data={data} coin={coin} />}
-          />
+          {/* 3M Basis: BTC/ETH만 지원, 미지원 코인은 API 호출 안 함 */}
+          {['BTC', 'ETH'].includes(coin) ? (
+            <ChartPanel
+              title="3M Annualized Basis"
+              indicator="basis3m"
+              coin={coin}
+              period={period}
+              onPeriodChange={setPeriod}
+              renderChart={(data) => <Basis3mChart data={data} coin={coin} />}
+            />
+          ) : (
+            <Card className="overflow-hidden">
+              <CardContent className="p-3 space-y-2">
+                <h3 className="text-xs font-medium text-foreground">3M Annualized Basis</h3>
+                <div className="h-[180px] flex items-center justify-center">
+                  <p className="text-xs text-muted-foreground">이 코인은 3M Basis를 지원하지 않습니다</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

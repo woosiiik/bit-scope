@@ -63,7 +63,15 @@ export async function fetchMultiExchangeIndicator(
       }
 
       const rawData = await response.json();
-      // coin을 직접 전달하여 전역 변수 의존성 제거
+
+      // OKX/Bitget: HTTP 200이지만 응답 body에 에러 코드가 있을 수 있음
+      if (exchange === 'okx' && rawData?.code !== undefined && rawData.code !== '0') {
+        throw new Error(`OKX API error: code=${rawData.code} msg=${rawData.msg ?? ''}`);
+      }
+      if (exchange === 'bitget' && rawData?.code !== undefined && rawData.code !== '00000') {
+        throw new Error(`Bitget API error: code=${rawData.code} msg=${rawData.msg ?? ''}`);
+      }
+
       const normalized = normalizeIndicator(exchange, indicator, rawData, coin);
       return { exchange, data: normalized };
     }),

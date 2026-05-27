@@ -70,7 +70,7 @@ export const INDICATOR_EXCHANGE_SUPPORT: Record<FuturesDashboardIndicator, Futur
   oiSnapshot: ['binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'],
   oiHistory: ['binance', 'bybit', 'okx', 'gate', 'bitget'],
   fundingRate: ['binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'],
-  liquidations: ['binance', 'bybit', 'okx', 'gate'],
+  liquidations: [], // WebSocket 기반 수집 필요 — Phase 2에서 구현 예정
   cvd: ['binance'],
   basis3m: ['binance', 'okx'],
   avgReturnByHour: ['binance'],
