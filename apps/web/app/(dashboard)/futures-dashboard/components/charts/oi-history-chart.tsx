@@ -21,7 +21,15 @@ export function OiHistoryChart({ data }: { data: unknown }) {
           tick={{ fontSize: 9 }}
           stroke="var(--muted-foreground)"
         />
-        <YAxis tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
+        <YAxis
+          tickFormatter={(v) => {
+            if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+            if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+            return String(v);
+          }}
+          tick={{ fontSize: 9 }}
+          stroke="var(--muted-foreground)"
+        />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           labelFormatter={(t) => new Date(t as number).toLocaleString()}
@@ -33,7 +41,7 @@ export function OiHistoryChart({ data }: { data: unknown }) {
             dataKey={`values.${ex}`}
             name={EXCHANGE_CONFIGS[ex as ExchangeType]?.nameEn ?? ex}
             stroke={EXCHANGE_COLORS[ex]}
-            dot={false}
+            dot={false} isAnimationActive={false}
             strokeWidth={1.5}
             connectNulls
           />

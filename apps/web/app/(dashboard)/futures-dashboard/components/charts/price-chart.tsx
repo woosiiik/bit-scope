@@ -34,7 +34,7 @@ export function PriceChart({ data }: { data: unknown }) {
             dataKey={`values.${ex}`}
             name={EXCHANGE_CONFIGS[ex as ExchangeType]?.nameEn ?? ex}
             stroke={EXCHANGE_COLORS[ex]}
-            dot={false}
+            dot={false} isAnimationActive={false}
             strokeWidth={1.5}
             connectNulls
           />

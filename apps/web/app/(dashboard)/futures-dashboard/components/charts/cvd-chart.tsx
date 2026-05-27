@@ -28,7 +28,7 @@ export function CVDChart({ data, mode: _mode }: { data: unknown; mode?: 'dollars
           dataKey="values.binance"
           name="Binance CVD"
           stroke={EXCHANGE_COLORS.binance}
-          dot={false}
+          dot={false} isAnimationActive={false}
           strokeWidth={1.5}
         />
       </LineChart>

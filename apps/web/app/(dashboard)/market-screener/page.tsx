@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { SortTab, CapFilter, SectorFilter } from '@bitscope/shared';
 import { Card, CardContent } from '@/components/ui/card'; // ScreenerTable wrapper
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { useMarketScreenerTickers } from '@/hooks/useMarketScreenerTickers';
+import { useNewListings } from '@/hooks/useNewListings';
 import { useScreenerFilter } from '@/hooks/useScreenerFilter';
 import { TabFilterBar } from './components/tab-filter-bar';
 import { SearchInput } from './components/search-input';
@@ -21,14 +22,27 @@ import { SectorPerformanceChart } from './components/charts/sector-performance-c
 export default function MarketScreenerPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: response, isLoading, error } = useMarketScreenerTickers();
+  const { data: response, isLoading, error, isFetching } = useMarketScreenerTickers();
+  const { data: newListingsData } = useNewListings();
 
   const [sortTab, setSortTab] = useState<SortTab>('topVolume');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const coins = response?.data?.coins ?? [];
+  // New Listings 데이터를 coins에 병합
+  const rawCoins = response?.data?.coins ?? [];
+  const newListings = newListingsData?.data ?? [];
+  const coins = useMemo(() => {
+    if (newListings.length === 0) return rawCoins;
+    const nlSet = new Map(newListings.map((nl) => [nl.symbol, nl.listDate]));
+    return rawCoins.map((coin) => {
+      const listDate = nlSet.get(coin.symbol);
+      if (listDate) return { ...coin, isNewListing: true, listDate };
+      return coin;
+    });
+  }, [rawCoins, newListings]);
+
   const exchangeVolumes = response?.data?.exchangeVolumes ?? [];
   const exchangeOI = response?.data?.exchangeOI ?? [];
   const errors = response?.errors;
@@ -49,7 +63,10 @@ export default function MarketScreenerPage() {
           </h1>
           {response && (
             <p className="text-xs text-muted-foreground mt-1">
-              {coins.length} coins from {response.exchangeCount ?? 0} exchanges
+              {filteredCoins.length !== coins.length
+                ? `${filteredCoins.length} / ${coins.length} coins`
+                : `${coins.length} coins`
+              } from {response.exchangeCount ?? 0} exchanges
               {errors && Object.keys(errors).length > 0 && (
                 <span className="text-destructive ml-2">
                   ({Object.keys(errors).length} exchange errors)
@@ -60,8 +77,8 @@ export default function MarketScreenerPage() {
         </div>
         <div className="flex items-center gap-2">
           <SearchInput value={searchQuery} onChange={setSearchQuery} />
-          <Button variant="outline" size="sm" className="h-8" onClick={handleRefresh}>
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" className="h-8" onClick={handleRefresh} disabled={isFetching}>
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>

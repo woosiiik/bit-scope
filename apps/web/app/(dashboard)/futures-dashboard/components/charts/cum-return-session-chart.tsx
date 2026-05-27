@@ -34,9 +34,9 @@ export function CumReturnSessionChart({ data }: { data: unknown }) {
           formatter={(v, name) => [`${Number(v).toFixed(3)}%`, String(name)]}
         />
         <Legend wrapperStyle={{ fontSize: 10 }} />
-        <Line type="monotone" dataKey="apac" name="APAC" stroke={SESSION_COLORS.apac} dot={false} strokeWidth={1.5} />
-        <Line type="monotone" dataKey="eu" name="EU" stroke={SESSION_COLORS.eu} dot={false} strokeWidth={1.5} />
-        <Line type="monotone" dataKey="us" name="US" stroke={SESSION_COLORS.us} dot={false} strokeWidth={1.5} />
+        <Line type="monotone" dataKey="apac" name="APAC" stroke={SESSION_COLORS.apac} dot={false} isAnimationActive={false} strokeWidth={1.5} />
+        <Line type="monotone" dataKey="eu" name="EU" stroke={SESSION_COLORS.eu} dot={false} isAnimationActive={false} strokeWidth={1.5} />
+        <Line type="monotone" dataKey="us" name="US" stroke={SESSION_COLORS.us} dot={false} isAnimationActive={false} strokeWidth={1.5} />
       </LineChart>
     </ResponsiveContainer>
   );
