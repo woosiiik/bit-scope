@@ -187,8 +187,8 @@ export class LiquidationCollectorService implements OnModuleInit, OnModuleDestro
           const symbol = instId.split('-')[0];
           if (!symbol) continue;
 
-          const quantity = parseFloat(d.sz) || 0;
-          const price = parseFloat(d.bkPx) || 0;
+          const quantity = parseFloat(d.sz ?? '0') || 0;
+          const price = parseFloat(d.bkPx ?? '0') || 0;
 
           this.addToBuffer({
             symbol,
@@ -197,7 +197,7 @@ export class LiquidationCollectorService implements OnModuleInit, OnModuleDestro
             quantity,
             price,
             usdValue: quantity * price,
-            timestamp: parseInt(d.ts) || Date.now(),
+            timestamp: parseInt(d.ts ?? '0') || Date.now(),
           });
         }
       }
@@ -225,17 +225,18 @@ export class LiquidationCollectorService implements OnModuleInit, OnModuleDestro
         const symbol = contract.split('_')[0];
         if (!symbol) continue;
 
-        const quantity = Math.abs(parseFloat(item.size)) || 0;
-        const price = parseFloat(item.fill_price || item.order_price) || 0;
+        const sizeStr = item.size ?? '0';
+        const quantity = Math.abs(parseFloat(sizeStr)) || 0;
+        const price = parseFloat(item.fill_price ?? item.order_price ?? '0') || 0;
 
         this.addToBuffer({
           symbol,
           exchange: 'gate',
-          side: parseFloat(item.size) < 0 ? 'SHORT' : 'LONG',
+          side: parseFloat(sizeStr) < 0 ? 'SHORT' : 'LONG',
           quantity,
           price,
           usdValue: quantity * price,
-          timestamp: (item.time ?? 0) * 1000 || Date.now(),
+          timestamp: Number(item.time ?? 0) * 1000 || Date.now(),
         });
       }
     } catch (err) {
