@@ -31,7 +31,7 @@ export function FundingRateChart({ data, mode }: FundingRateChartProps) {
         />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
-          formatter={(v: number) => [`${v.toFixed(mode === 'annual' ? 2 : 4)}%`, mode === 'annual' ? 'Annual' : '8h Rate']}
+          formatter={(v) => [`${Number(v).toFixed(mode === 'annual' ? 2 : 4)}%`, mode === 'annual' ? 'Annual' : '8h Rate']}
         />
         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>

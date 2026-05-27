@@ -31,7 +31,7 @@ export function CumReturnSessionChart({ data }: { data: unknown }) {
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
           labelFormatter={(t) => new Date(t as number).toLocaleString()}
-          formatter={(v: number, name: string) => [`${v.toFixed(3)}%`, name]}
+          formatter={(v, name) => [`${Number(v).toFixed(3)}%`, String(name)]}
         />
         <Legend wrapperStyle={{ fontSize: 10 }} />
         <Line type="monotone" dataKey="apac" name="APAC" stroke={SESSION_COLORS.apac} dot={false} strokeWidth={1.5} />

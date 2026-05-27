@@ -18,7 +18,7 @@ export function AvgReturnHourChart({ data }: { data: unknown }) {
         />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
-          formatter={(v: number) => [`${v.toFixed(4)}%`, 'Avg Return']}
+          formatter={(v) => [`${Number(v).toFixed(4)}%`, 'Avg Return']}
           labelFormatter={(h) => `UTC ${h}:00`}
         />
         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />

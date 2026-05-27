@@ -31,7 +31,7 @@ export function Volume24hChart({ data }: { data: unknown }) {
         <YAxis tickFormatter={formatVolume} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
-          formatter={(v: number) => [`$${formatVolume(v)}`, '24h Volume']}
+          formatter={(v) => [`$${formatVolume(Number(v))}`, '24h Volume']}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
           {chartData.map((entry) => (
