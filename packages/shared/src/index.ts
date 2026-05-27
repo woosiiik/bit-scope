@@ -79,6 +79,18 @@ export type {
   FuturesOrderSide,
   FuturesOpenOrder,
   FuturesSymbolConfig,
+  // 멀티 거래소 선물 대시보드 타입
+  FuturesDashboardIndicator,
+  Period,
+  ExchangeDataPoint,
+  ExchangeTimeSeriesPoint,
+  FundingRateSnapshot,
+  LiquidationPoint,
+  CVDPoint,
+  HourlyReturnPoint,
+  DailyReturnPoint,
+  SessionReturnPoint,
+  MultiExchangeResponse,
   // 시그널 관련
   SignalDirection,
   CoinLatestSignal,
@@ -153,6 +165,14 @@ export {
   FUTURES_SYMBOL_CONFIGS,
   getFuturesApiSymbol,
   getTradingViewFuturesSymbol,
+  // 멀티 거래소 선물 대시보드 상수
+  EXCHANGE_COLORS,
+  VALID_INDICATORS,
+  SNAPSHOT_INDICATORS,
+  HISTORY_INDICATORS,
+  KLINE_INDICATORS,
+  SESSION_RANGES,
+  INDICATOR_EXCHANGE_SUPPORT,
 } from './constants';
 
 export type { ExchangeConfig, ExchangeEndpoints, CoinInfo } from './constants';
