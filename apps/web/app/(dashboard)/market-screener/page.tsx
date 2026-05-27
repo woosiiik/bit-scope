@@ -21,7 +21,7 @@ import { TotalOIChart } from './components/charts/total-oi-chart';
 import { SectorPerformanceChart } from './components/charts/sector-performance-chart';
 import { PriceChangesChart } from './components/charts/price-changes-chart';
 import { FundingRateScreenerChart } from './components/charts/funding-rate-chart';
-import { DominanceChart } from './components/charts/dominance-chart';
+import { DominanceChart, type DominanceMetric } from './components/charts/dominance-chart';
 import { OIChangesChart } from './components/charts/oi-changes-chart';
 
 /** 기간 선택 버튼 */
@@ -64,18 +64,23 @@ function FundingModeToggle({ mode, onChange }: { mode: '8hrs' | 'annual'; onChan
 }
 
 /** Dominance 메트릭 토글 */
-function DominanceToggle({ metric, onChange }: { metric: 'volume' | 'oi'; onChange: (m: 'volume' | 'oi') => void }) {
+function DominanceToggle({ metric, onChange }: { metric: DominanceMetric; onChange: (m: DominanceMetric) => void }) {
+  const options: { key: DominanceMetric; label: string }[] = [
+    { key: 'marketCap', label: 'Market Cap' },
+    { key: 'volume', label: 'Futures Vol' },
+    { key: 'oi', label: 'Futures OI' },
+  ];
   return (
     <div className="flex items-center gap-0.5">
-      {(['volume', 'oi'] as const).map((m) => (
+      {options.map((o) => (
         <Button
-          key={m}
-          variant={metric === m ? 'default' : 'ghost'}
+          key={o.key}
+          variant={metric === o.key ? 'default' : 'ghost'}
           size="sm"
           className="text-[10px] h-5 px-1.5"
-          onClick={() => onChange(m)}
+          onClick={() => onChange(o.key)}
         >
-          {m === 'volume' ? 'Volume' : 'OI'}
+          {o.label}
         </Button>
       ))}
     </div>
@@ -94,7 +99,7 @@ export default function MarketScreenerPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('1d');
   const [fundingMode, setFundingMode] = useState<'8hrs' | 'annual'>('annual');
-  const [dominanceMetric, setDominanceMetric] = useState<'volume' | 'oi'>('volume');
+  const [dominanceMetric, setDominanceMetric] = useState<DominanceMetric>('marketCap');
 
   // Kline changes (1w/1m)
   const { data: klineData } = useKlineChanges(chartPeriod);
@@ -226,8 +231,8 @@ export default function MarketScreenerPage() {
 
         {/* 6. Dominance */}
         <ChartCard
-          title={`Dominance (${dominanceMetric === 'volume' ? 'Volume' : 'OI'})`}
-          description="BTC, ETH, SOL의 선물 거래량 또는 OI가 전체 시장에서 차지하는 비중(%)을 도넛 차트로 보여줍니다. 시장 지배력 변화를 추적할 수 있습니다."
+          title={`Dominance (${dominanceMetric === 'marketCap' ? 'Market Cap' : dominanceMetric === 'volume' ? 'Futures Vol' : 'Futures OI'})`}
+          description="Market Cap: CoinGecko 시가총액 기준 도미넌스 (BTC ~58%). Futures Vol: 선물 거래량 기준. Futures OI: 미결제약정 기준. 시장 지배력 변화를 추적할 수 있습니다."
           extra={<DominanceToggle metric={dominanceMetric} onChange={setDominanceMetric} />}
         >
           {coins.length > 0 ? <DominanceChart coins={coins} metric={dominanceMetric} /> : <ChartSkeleton />}
