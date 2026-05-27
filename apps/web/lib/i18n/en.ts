@@ -59,7 +59,7 @@ const en: Messages = {
     alerts: 'Alerts',
     cryptoDesk: 'Crypto Desk',
     marketScreener: 'Market Screener',
-    futuresDashboard: 'Multi-Exchange Futures',
+    futuresDashboard: 'Multi-Exchange Futures Data',
     futuresMarketData: 'Futures Data',
     futuresTrading: 'Futures Trading',
     charts: 'Charts',
@@ -752,7 +752,7 @@ const en: Messages = {
 
   /** Multi-Exchange Futures Dashboard */
   futuresDashboard: {
-    title: 'Multi-Exchange Futures',
+    title: 'Multi-Exchange Futures Data',
   },
 
   /** Futures Trading */

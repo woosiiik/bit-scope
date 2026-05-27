@@ -55,7 +55,7 @@ const ko = {
     alerts: '알림',
     cryptoDesk: '크립토 데스크',
     marketScreener: '마켓 스크리너',
-    futuresDashboard: '멀티 거래소 선물',
+    futuresDashboard: '멀티 거래소 선물 마켓 데이터',
     futuresMarketData: '선물 마켓 데이터',
     futuresTrading: '선물 거래',
     charts: '차트',
@@ -750,7 +750,7 @@ const ko = {
 
   /** 멀티 거래소 선물 대시보드 */
   futuresDashboard: {
-    title: '멀티 거래소 선물',
+    title: '멀티 거래소 선물 마켓 데이터',
   },
 
   /** 선물 거래 */
