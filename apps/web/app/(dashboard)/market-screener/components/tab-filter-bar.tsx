@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import type { SortTab, CapFilter, SectorFilter } from '@bitscope/shared';
 import { Button } from '@/components/ui/button';
+import { Info } from 'lucide-react';
 
 const SORT_TABS: { key: SortTab; label: string; desc: string }[] = [
   { key: 'topGainers', label: 'Top Gainers', desc: '24시간 가격 상승률이 가장 높은 코인' },
@@ -41,84 +43,94 @@ export function TabFilterBar({
   sortTab, capFilter, sectorFilter,
   onSortTabChange, onCapFilterChange, onSectorFilterChange,
 }: TabFilterBarProps) {
+  const [showHelp, setShowHelp] = useState(false);
+
   return (
     <div className="space-y-2">
-      {/* 정렬 탭 */}
-      <div className="flex items-center gap-1 overflow-x-auto">
-        {SORT_TABS.map((tab) => (
-          <TooltipButton
-            key={tab.key}
-            label={tab.label}
-            desc={tab.desc}
-            isActive={sortTab === tab.key}
-            onClick={() => onSortTabChange(tab.key)}
-            size="normal"
-          />
-        ))}
+      {/* 정렬 탭 + 도움말 버튼 */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {SORT_TABS.map((tab) => (
+            <Button
+              key={tab.key}
+              variant={sortTab === tab.key ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7 shrink-0"
+              onClick={() => onSortTabChange(tab.key)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setShowHelp(!showHelp)}
+          aria-label="필터 설명"
+        >
+          <Info className="h-4 w-4" />
+        </button>
       </div>
+
+      {/* 도움말 패널 */}
+      {showHelp && (
+        <div className="rounded-md bg-muted/50 border border-border p-3 text-[11px] text-muted-foreground leading-relaxed space-y-3">
+          <div>
+            <p className="font-medium text-foreground mb-1">정렬</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {SORT_TABS.map((t) => (
+                <div key={t.key}><span className="font-medium text-foreground">{t.label}</span> — {t.desc}</div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="font-medium text-foreground mb-1">시가총액</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {CAP_FILTERS.filter((c) => c.key !== 'all').map((c) => (
+                <div key={c.key}><span className="font-medium text-foreground">{c.label}</span> — {c.desc}</div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="font-medium text-foreground mb-1">섹터</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {SECTOR_FILTERS.filter((s) => s.key !== 'all').map((s) => (
+                <div key={s.key}><span className="font-medium text-foreground">{s.label}</span> — {s.desc}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 시가총액 + 섹터 */}
       <div className="flex items-center gap-3 overflow-x-auto">
         <div className="flex items-center gap-0.5">
           {CAP_FILTERS.map((cap) => (
-            <TooltipButton
+            <Button
               key={cap.key}
-              label={cap.label}
-              desc={cap.desc}
-              isActive={capFilter === cap.key}
+              variant={capFilter === cap.key ? 'default' : 'ghost'}
+              size="sm"
+              className="text-[10px] h-6 px-2 shrink-0"
               onClick={() => onCapFilterChange(cap.key)}
-              size="small"
-              variant="ghost"
-            />
+            >
+              {cap.label}
+            </Button>
           ))}
         </div>
         <div className="w-px h-4 bg-border" />
         <div className="flex items-center gap-0.5">
           {SECTOR_FILTERS.map((s) => (
-            <TooltipButton
+            <Button
               key={s.key}
-              label={s.label}
-              desc={s.desc}
-              isActive={sectorFilter === s.key}
+              variant={sectorFilter === s.key ? 'default' : 'ghost'}
+              size="sm"
+              className="text-[10px] h-6 px-2 shrink-0"
               onClick={() => onSectorFilterChange(s.key)}
-              size="small"
-              variant="ghost"
-            />
+            >
+              {s.label}
+            </Button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-/** 호버 시 설명 tooltip이 나오는 버튼 */
-function TooltipButton({
-  label, desc, isActive, onClick, size, variant,
-}: {
-  label: string;
-  desc: string;
-  isActive: boolean;
-  onClick: () => void;
-  size: 'normal' | 'small';
-  variant?: 'ghost';
-}) {
-  const activeVariant = isActive ? 'default' : (variant ?? 'outline');
-  const sizeClass = size === 'normal'
-    ? 'text-xs h-7 shrink-0'
-    : 'text-[10px] h-6 px-2 shrink-0';
-
-  return (
-    <div className="relative group">
-      <Button
-        variant={activeVariant}
-        size="sm"
-        className={sizeClass}
-        onClick={onClick}
-      >
-        {label}
-      </Button>
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover:block z-50 w-max max-w-[200px] rounded bg-popover text-popover-foreground border border-border px-2.5 py-1.5 text-[10px] shadow-md whitespace-normal pointer-events-none">
-        {desc}
-        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border" />
       </div>
     </div>
   );
