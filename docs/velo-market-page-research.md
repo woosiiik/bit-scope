@@ -433,6 +433,67 @@ Phase 1은 6개 거래소의 벌크 ticker API만 필요:
 - 스크리너 테이블, Return Buckets, Sector Performance는 **벌크 ticker API만으로 즉시 구현 가능**
 - 히트맵/시계열 데이터(Funding, OI, CVD)는 `apps/api`의 **cron + DB 적재**로 점진적 히스토리 축적
 - 청산 히트맵만 일부 거래소(Bitget, Hyperliquid) 데이터 부재로 완전한 커버리지 불가
+
+---
+
+## Appendix A: 구현 결과 현행화 (2026-05-27)
+
+> 본 리서치 이후 실제 구현을 완료하면서 변경/확인된 사항을 기록한다.
+
+### Phase 1 구현 완료 현황
+
+| # | 항목 | 구현 상태 | 페이지 | 비고 |
+|---|------|:--------:|--------|------|
+| 1 | **스크리너 테이블** | 구현 완료 | `/market-screener` | Top Gainers/Losers/Volume/New Listings + Large/Mid/Small Cap + 7개 섹터 필터 |
+| 2 | **Return Buckets** | 구현 완료 | `/market-screener` | 24h 수익률 분포 히스토그램, ±Infinity 극단값 포함 |
+| 3 | **Market Volume** | 구현 완료 | `/market-screener` | 6개 거래소별 24h 거래량 바 차트 |
+| 4 | **Total Open Interest** | 구현 완료 | `/market-screener` | 5개 거래소 OI 바 차트 (Binance OI는 벌크 API 없어 미포함) |
+| 5 | **Sector Performance** | 구현 완료 | `/market-screener` | 7개 섹터 (DeFi, L1, L2, Metaverse, Meme, Dino, AI) 평균 수익률 |
+| 6 | **New Listings** | 구현 완료 | `/market-screener` | Binance/Bybit exchangeInfo에서 30일 이내 신규 상장 감지, NEW 배지 |
+| 7 | **Kline Changes** | 구현 완료 | `/market-screener` | 상위 50개 코인 1w/1m 가격 변화율 (Binance Kline 기반) |
+
+### Phase 2/3 미구현 항목
+
+| # | 항목 | 상태 | 비고 |
+|---|------|:----:|------|
+| 6 | **Price Changes** (멀티 코인 시계열) | 미구현 | 250코인 × 6거래소 = 1500 API 호출, 서버 캐싱 필요 |
+| 7 | **OI Changes** (OI 변화 시계열) | 미구현 | 서버에서 주기적 OI 스냅샷 저장 필요 |
+| 8 | **Funding Heatmap** | 미구현 | 주기적 수집 + OI 가중 평균 계산 필요 |
+| 9 | **CVD (OI-Normalized)** | 미구현 | taker 데이터 누적 계산 필수 |
+| 10 | **Liquidations Heatmap** | 부분 구현 | WebSocket 수집은 `apps/api`에 구현 완료, 히트맵 시각화는 미구현 |
+
+### 구현 중 발견된 주요 이슈
+
+#### 1000x 접두사 코인 (P0 이슈)
+Binance/Bybit에서 `1000PEPEUSDT`, `1000SHIBUSDT` 등을 사용하여 `1000PEPE`와 `PEPE`가 별도 코인으로 집계되는 문제 발생.
+**해결**: `symbol-normalizer.ts`에서 1000x 접두사 제거 + 가격 보정(×1000) 적용.
+
+#### OKX/Bitget 에러 응답 패턴 (P0 이슈)
+OKX(`code !== "0"`)와 Bitget(`code !== "00000"`)은 에러 시에도 HTTP 200을 반환.
+**해결**: `response.json()` 후 `code` 필드 별도 체크 추가.
+
+#### Binance OI 벌크 API 부재
+Binance 벌크 ticker(`/fapi/v1/ticker/24hr`)에 OI 미포함. 개별 심볼당 `/fapi/v1/openInterest` 호출 필요(250+ 호출).
+**현재**: Binance OI = 0으로 표시, 나머지 5개 거래소 OI로 비교. Phase 2에서 상위 50개 코인 개별 보충 예정.
+
+#### OKX 벌크 ticker에 OI/펀딩 미포함
+OKX 벌크 ticker에 OI와 펀딩이 없어 별도 벌크 API 2개 추가 호출로 보충:
+- `/api/v5/public/open-interest?instType=SWAP` (OI)
+- `/api/v5/public/funding-rate` (펀딩)
+
+#### 섹터 매핑 커버리지
+초기 ~70개 → 120+개로 확대. 250+ 코인 중 미분류 코인(~130개)은 섹터 필터에서 제외되고 'All' 탭에서만 표시.
+
+### 아키텍처 결정 사항
+
+| 결정 | 내용 |
+|------|------|
+| 데이터 수집 | 단일 Route Handler `/api/market-screener/tickers`에서 6개 거래소 벌크 ticker 병렬 호출 |
+| 심볼 정규화 | `symbol-normalizer.ts`에서 거래소별 포맷 통일 (1000x 접두사 처리 포함) |
+| 집계 방식 | 가격=거래량 가중평균, 거래량/OI=합산, 펀딩=OI 가중평균 |
+| 분류 방식 | 시가총액/섹터 정적 매핑 (`packages/shared` TypeScript 상수) |
+| 캐싱 | 서버 InMemoryCache 30초 TTL, 클라이언트 TanStack Query 30초 staleTime / 60초 refetchInterval |
+| 에러 처리 | Promise.allSettled + 부분 장애 허용 (일부 거래소 실패 시 나머지로 서비스) |
 - Velo의 유료($199/월) 가치는 **수년간 축적된 히스토리**에 있으며, 실시간 + 최근 히스토리는 자체 구현으로 충분
 
 ---

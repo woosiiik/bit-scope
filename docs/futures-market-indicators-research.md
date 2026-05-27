@@ -371,3 +371,60 @@ Velo는 거래소 데이터를 직접 생산하는 것이 아니라, 각 거래�
 - 수년간의 장기 히스토리가 필요하지 않다면 Velo에 비용을 낼 이유 없음
 - `apps/api`에서 cron으로 데이터를 주기적으로 수집하면 히스토리도 점진적으로 쌓을 수 있음
 - Velo와 동일한 데이터를 거래소 무료 API로 직접 수집하는 것은 기술적으로 완전히 가능하며, BitScope의 기존 인프라(NestJS cron + MySQL)로 바로 적용 가능
+
+---
+
+## Appendix B: 구현 결과 현행화 (2026-05-27)
+
+> 본 리서치 이후 실제 구현을 완료하면서 변경/확인된 사항을 기록한다.
+
+### 구현 완료 현황
+
+| # | 지표 | 구현 상태 | 페이지 | 비고 |
+|---|------|:--------:|--------|------|
+| 1 | **24h Volume** | 구현 완료 | `/futures-dashboard` | 6개 거래소 바 차트 |
+| 2 | **Price** | 구현 완료 | `/futures-dashboard` | 6개 거래소 라인 차트, 기간 선택 |
+| 3 | **Open Interest** | 구현 완료 | `/futures-dashboard` | 스냅샷(바) + 히스토리(라인) |
+| 4 | **Funding Rate** | 구현 완료 | `/futures-dashboard` | Annual/8hrs 토글, 6개 거래소 |
+| 5 | **Liquidations** | 구현 완료 | `/futures-dashboard` | WebSocket 실시간 수집 (Binance/Bybit) + REST 폴링 (OKX/Gate) |
+| 6 | **CVD** | 구현 완료 | `/futures-dashboard` | Binance Kline 기반, Dollars/OI-norm 토글 |
+| 7 | **3M Basis** | Phase 2 연기 | `/futures-dashboard` | 분기 선물 심볼 동적 조합 필요 |
+| 8 | **Avg Return/Hour** | 구현 완료 | `/futures-dashboard` | Binance 1시간봉 기반 (리서치 문서는 1분봉이었으나 API 부하로 1시간봉 사용) |
+| 9 | **Avg Return/Day** | 구현 완료 | `/futures-dashboard` | Binance 1시간봉 기반 |
+| 10 | **Return/Session** | 구현 완료 | `/futures-dashboard` | APAC/EU/US 세션별, Binance 1시간봉 기반 |
+
+### 구현 중 발견된 주요 차이점
+
+#### OKX API 제약
+- OKX `/api/v5/market/candles` 엔드포인트의 **최대 limit은 100개**임 (리서치 시 미확인)
+- OKX는 에러 시에도 HTTP 200을 반환하고 `{ code: "50014" }` 형태로 에러 전달 → 별도 체크 필요
+- OKX rubik 통계 API(`/api/v5/rubik/stat/`)는 접근 제한이 있을 수 있음
+
+#### Hyperliquid 펀딩 주기
+- 리서치 문서에서 미확인이었으나, Hyperliquid 펀딩은 **1시간 주기** (다른 거래소는 8시간)
+- 연환산 계산: `rate1h × 24 × 365` (8시간 기준 `rate8h × 3 × 365`가 아님)
+
+#### OI 단위 불일치
+- 거래소마다 OI 반환 단위가 다름 (코인/계약/USDT)
+- 현재 구현: 동일 코인 내 비교는 **코인 단위 통일**로 해결
+- 마켓 스크리너(크로스 코인 비교)에서는 **USDT 환산** 필요 → Bybit/Gate/Bitget/Hyperliquid는 USDT, Binance/OKX는 별도 보충 API 필요
+
+#### Liquidations 구현 방식
+- 리서치 문서: "WebSocket 상시 수집 필요"로 Phase 3으로 분류
+- 실제 구현: `apps/api`에 NestJS LiquidationModule 생성, Binance/Bybit WebSocket + OKX/Gate REST 폴링
+- DB(MySQL)에 이벤트별 저장 → REST API로 시간별 집계 제공
+- Bitget/Hyperliquid는 여전히 청산 공개 API 없음
+
+#### 1000x 접두사 코인
+- Binance/Bybit에서 `1000PEPEUSDT`, `1000SHIBUSDT` 등 밈 코인에 1000x 접두사 사용
+- 심볼 정규화 시 접두사 제거 + 가격 보정(×1000) 필요 (마켓 스크리너에서 구현 완료)
+
+### 아키텍처 결정 사항
+
+| 결정 | 내용 |
+|------|------|
+| Route Handler 패턴 | 동적 라우트 `/api/futures-dashboard/[indicator]`로 12개 지표를 단일 핸들러에서 처리 |
+| 캐싱 전략 | 3단계 TTL (스냅샷 30초 / 히스토리 5분 / Kline 집계 10분) |
+| 파생 지표 계산 | 서버에서 Kline 기반 계산 후 결과만 클라이언트 전달 (대역폭 절감) |
+| Liquidations 수집 | `apps/api`에서 WebSocket 상시 연결 + 배치 인서트(5초 flush) |
+| Binance Futures 도메인 | `fapi.binance.com` 전용 도메인 사용 (일반 `api.binance.com`과 분리) |
