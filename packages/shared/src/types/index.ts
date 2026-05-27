@@ -116,6 +116,25 @@ export type {
   MultiExchangeResponse,
 } from './futures-dashboard';
 
+// 마켓 스크리너 타입
+export type {
+  SortTab,
+  CapFilter,
+  SectorFilter,
+  ChartPeriod,
+  MarketCapCategory,
+  CoinSector,
+  NormalizedTicker,
+  ExchangeTotal,
+  AggregatedCoin,
+  MarketScreenerResponse,
+  NewListingCoin,
+  NewListingsResponse,
+  ReturnBucket,
+  SectorPerformanceData,
+  KlineChangesResponse,
+} from './market-screener';
+
 // 시그널 관련 타입
 export type {
   SignalDirection,

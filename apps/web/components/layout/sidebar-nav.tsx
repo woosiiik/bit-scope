@@ -67,6 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
       { labelKey: 'cryptoDesk', href: '/life', icon: Monitor },
       { labelKey: 'market', href: '/market', icon: TrendingUp },
       { labelKey: 'premium', href: '/premium', icon: BarChart3 },
+      { labelKey: 'marketScreener', href: '/market-screener', icon: BarChart3 },
       { labelKey: 'futuresDashboard', href: '/futures-dashboard', icon: BarChart3 },
       { labelKey: 'futuresMarketData', href: '/futures', icon: Activity },
       { labelKey: 'futuresTrading', href: '/futures-trading', icon: ArrowUpDown },

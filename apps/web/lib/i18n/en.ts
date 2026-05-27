@@ -58,6 +58,7 @@ const en: Messages = {
     analytics: 'Analytics',
     alerts: 'Alerts',
     cryptoDesk: 'Crypto Desk',
+    marketScreener: 'Market Screener',
     futuresDashboard: 'Multi-Exchange Futures',
     futuresMarketData: 'Futures Data',
     futuresTrading: 'Futures Trading',
@@ -738,6 +739,11 @@ const en: Messages = {
         lbank: 'LBank > Settings > API Management',
       },
     },
+  },
+
+  /** Market Screener */
+  marketScreener: {
+    title: 'Market Screener',
   },
 
   /** Multi-Exchange Futures Dashboard */

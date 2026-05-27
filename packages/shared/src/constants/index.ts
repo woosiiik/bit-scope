@@ -83,3 +83,12 @@ export {
   SESSION_RANGES,
   INDICATOR_EXCHANGE_SUPPORT,
 } from './futures-dashboard';
+
+// 마켓 스크리너 상수
+export {
+  COIN_MARKET_CAP_MAP,
+  COIN_SECTOR_MAP,
+  SECTOR_LABELS,
+  BULK_TICKER_CONFIGS,
+  BINANCE_PREMIUM_INDEX_URL,
+} from './market-screener';

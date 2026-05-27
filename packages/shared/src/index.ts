@@ -91,6 +91,22 @@ export type {
   DailyReturnPoint,
   SessionReturnPoint,
   MultiExchangeResponse,
+  // 마켓 스크리너 타입
+  SortTab,
+  CapFilter,
+  SectorFilter,
+  ChartPeriod,
+  MarketCapCategory,
+  CoinSector,
+  NormalizedTicker,
+  ExchangeTotal,
+  AggregatedCoin,
+  MarketScreenerResponse,
+  NewListingCoin,
+  NewListingsResponse,
+  ReturnBucket,
+  SectorPerformanceData,
+  KlineChangesResponse,
   // 시그널 관련
   SignalDirection,
   CoinLatestSignal,
@@ -173,6 +189,12 @@ export {
   KLINE_INDICATORS,
   SESSION_RANGES,
   INDICATOR_EXCHANGE_SUPPORT,
+  // 마켓 스크리너 상수
+  COIN_MARKET_CAP_MAP,
+  COIN_SECTOR_MAP,
+  SECTOR_LABELS,
+  BULK_TICKER_CONFIGS,
+  BINANCE_PREMIUM_INDEX_URL,
 } from './constants';
 
 export type { ExchangeConfig, ExchangeEndpoints, CoinInfo } from './constants';
