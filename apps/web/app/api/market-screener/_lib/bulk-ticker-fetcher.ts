@@ -92,7 +92,7 @@ export async function fetchAllBulkTickers(): Promise<BulkTickerResult> {
   // Binance 보충: premiumIndex에서 펀딩비율 + markPrice → OI 계산
   if (premiumData) {
     enrichBinanceFunding(allTickers, premiumData);
-    enrichBinanceOI(allTickers, premiumData);
+    // Binance OI: 벌크 API 없음, Phase 2에서 상위 50개 개별 호출로 보충 예정
   }
 
   // OKX 보충: OI + 펀딩비율
