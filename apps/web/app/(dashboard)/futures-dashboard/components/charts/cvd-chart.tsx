@@ -4,7 +4,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import type { CVDPoint } from '@bitscope/shared';
 import { EXCHANGE_COLORS } from '@bitscope/shared';
 
-export function CVDChart({ data }: { data: unknown }) {
+export function CVDChart({ data, mode: _mode }: { data: unknown; mode?: 'dollars' | 'oi-norm' }) {
   const points = data as CVDPoint[];
   if (!Array.isArray(points) || points.length === 0) return null;
 
