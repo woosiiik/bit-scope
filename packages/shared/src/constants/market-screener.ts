@@ -28,38 +28,50 @@ export const COIN_MARKET_CAP_MAP: Record<string, MarketCapCategory> = {
   // 나머지는 small cap으로 처리 (getMarketCap 함수에서 기본값)
 };
 
-/** 섹터 분류 매핑 */
+/** 섹터 분류 매핑 (120+ 코인) */
 export const COIN_SECTOR_MAP: Record<string, CoinSector[]> = {
   // DeFi
   AAVE: ['DeFi'], UNI: ['DeFi'], MKR: ['DeFi'], CRV: ['DeFi'], COMP: ['DeFi'],
   SNX: ['DeFi'], DYDX: ['DeFi'], '1INCH': ['DeFi'], JUP: ['DeFi'], PENDLE: ['DeFi'],
-  SUSHI: ['DeFi'], YFI: ['DeFi'], BAL: ['DeFi'], CAKE: ['DeFi'],
+  SUSHI: ['DeFi'], YFI: ['DeFi'], BAL: ['DeFi'], CAKE: ['DeFi'], RUNE: ['DeFi'],
+  LQTY: ['DeFi'], GMX: ['DeFi'], AEVO: ['DeFi'], ENA: ['DeFi'], ONDO: ['DeFi'],
+  JUPITER: ['DeFi'], RAY: ['DeFi'], OSMO: ['DeFi'],
 
   // L1
   BTC: ['L1', 'Dino'], ETH: ['L1', 'Dino'], SOL: ['L1'], BNB: ['L1'],
   ADA: ['L1'], AVAX: ['L1'], DOT: ['L1'], ATOM: ['L1'], NEAR: ['L1', 'AI'],
   APT: ['L1'], SUI: ['L1'], SEI: ['L1'], INJ: ['L1'], TON: ['L1'],
   FTM: ['L1'], ALGO: ['L1'], HBAR: ['L1'], TRX: ['L1'], TIA: ['L1'],
+  ICP: ['L1'], FIL: ['L1'], EGLD: ['L1'], KAVA: ['L1'], MINA: ['L1'],
+  CELO: ['L1'], FLOW: ['L1'], KAS: ['L1'], CFX: ['L1'],
 
   // L2
   ARB: ['L2'], OP: ['L2'], ZK: ['L2'], POL: ['L2'], STRK: ['L2'],
-  MNT: ['L2'], IMX: ['L2'], STX: ['L2'],
+  MNT: ['L2'], IMX: ['L2'], STX: ['L2'], METIS: ['L2'], MANTA: ['L2'],
+  BLAST: ['L2'], SCROLL: ['L2'], MODE: ['L2'],
 
   // Metaverse / Gaming
   SAND: ['Metaverse'], MANA: ['Metaverse'], AXS: ['Metaverse'], GALA: ['Metaverse'],
-  ENJ: ['Metaverse'], RONIN: ['Metaverse'],
+  ENJ: ['Metaverse'], RONIN: ['Metaverse'], ILV: ['Metaverse'], PIXEL: ['Metaverse'],
+  YGG: ['Metaverse'], SUPER: ['Metaverse'], PORTAL: ['Metaverse'], BEAM: ['Metaverse'],
+  NOT: ['Metaverse'], PRIME: ['Metaverse'],
 
   // Meme
   DOGE: ['Meme', 'Dino'], SHIB: ['Meme'], PEPE: ['Meme'], BONK: ['Meme'],
-  WIF: ['Meme'], POPCAT: ['Meme'], FLOKI: ['Meme'],
+  WIF: ['Meme'], POPCAT: ['Meme'], FLOKI: ['Meme'], NEIRO: ['Meme'],
+  TURBO: ['Meme'], PEOPLE: ['Meme'], BABYDOGE: ['Meme'], SATS: ['Meme'],
+  CATS: ['Meme'], MEME: ['Meme'], MYRO: ['Meme'], MOG: ['Meme'],
 
   // Dino (2017 이전)
   LTC: ['Dino'], XRP: ['L1', 'Dino'], XLM: ['Dino'], XMR: ['Dino'],
   ZEC: ['Dino'], DASH: ['Dino'], ETC: ['Dino'], BCH: ['Dino'],
-  NEO: ['Dino'], EOS: ['Dino'], IOTA: ['Dino'],
+  NEO: ['Dino'], EOS: ['Dino'], IOTA: ['Dino'], XTZ: ['Dino'],
+  QTUM: ['Dino'], ZIL: ['Dino'], BAT: ['Dino'], ONT: ['Dino'],
 
   // AI
   FET: ['AI'], RENDER: ['AI'], TAO: ['AI'], WLD: ['AI'],
+  ARKM: ['AI'], IOTX: ['AI'], JASMY: ['AI'], OCEAN: ['AI'],
+  AGIX: ['AI'], NMR: ['AI'], GRT: ['AI'],
 };
 
 /** 섹터 표시 라벨 */

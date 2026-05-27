@@ -12,10 +12,18 @@ interface SearchInputProps {
 export function SearchInput({ value, onChange }: SearchInputProps) {
   const [local, setLocal] = useState(value);
 
+  // 부모 value 동기화
   useEffect(() => {
-    const timer = setTimeout(() => onChange(local), 300);
+    setLocal(value);
+  }, [value]);
+
+  // debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (local !== value) onChange(local);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [local, onChange]);
+  }, [local, value, onChange]);
 
   return (
     <div className="relative w-full max-w-[240px]">

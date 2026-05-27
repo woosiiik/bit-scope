@@ -742,6 +742,10 @@ const ko = {
   /** 마켓 스크리너 */
   marketScreener: {
     title: '마켓 스크리너',
+    noResults: '해당 조건에 맞는 코인이 없습니다',
+    fetchError: '데이터를 불러올 수 없습니다.',
+    retry: '재시도',
+    exchangeErrors: '거래소 에러',
   },
 
   /** 멀티 거래소 선물 대시보드 */

@@ -744,6 +744,10 @@ const en: Messages = {
   /** Market Screener */
   marketScreener: {
     title: 'Market Screener',
+    noResults: 'No coins match the current filters',
+    fetchError: 'Failed to load data.',
+    retry: 'Retry',
+    exchangeErrors: 'exchange errors',
   },
 
   /** Multi-Exchange Futures Dashboard */
