@@ -174,7 +174,7 @@ export class LiquidationCollectorService implements OnModuleInit, OnModuleDestro
         { signal: AbortSignal.timeout(10_000) },
       );
       if (!res.ok) return;
-      const data = await res.json();
+      const data = (await res.json()) as { code?: string; data?: Array<{ instId?: string; details?: Array<Record<string, string>> }> };
 
       if (data?.code !== '0' || !Array.isArray(data?.data)) return;
 
@@ -216,7 +216,7 @@ export class LiquidationCollectorService implements OnModuleInit, OnModuleDestro
         { signal: AbortSignal.timeout(10_000) },
       );
       if (!res.ok) return;
-      const data = await res.json();
+      const data = (await res.json()) as Array<Record<string, string>>;
 
       if (!Array.isArray(data)) return;
 
