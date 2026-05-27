@@ -14,10 +14,9 @@ import type {
   FundingRateSnapshot,
   ExchangeTimeSeriesPoint,
 } from '@bitscope/shared';
-import { INDICATOR_EXCHANGE_SUPPORT } from '@bitscope/shared';
-import { EXCHANGE_CONFIGS } from '@bitscope/shared';
+import { INDICATOR_EXCHANGE_SUPPORT, EXCHANGE_CONFIGS } from '@bitscope/shared';
 import { buildIndicatorUrl, buildHyperliquidBody } from './url-builder';
-import { normalizeIndicator, setHyperliquidCoin } from './normalizer';
+import { normalizeIndicator } from './normalizer';
 import {
   parseBinanceKlines,
   calculateCVD,
@@ -30,13 +29,6 @@ import {
 const FETCH_TIMEOUT = 10_000;
 
 /**
- * 지표별 지원 거래소 목록을 반환한다.
- */
-function getExchangesForIndicator(indicator: FuturesDashboardIndicator): FuturesExchangeType[] {
-  return INDICATOR_EXCHANGE_SUPPORT[indicator] ?? [];
-}
-
-/**
  * 멀티 거래소 지표 데이터를 수집한다.
  */
 export async function fetchMultiExchangeIndicator(
@@ -44,10 +36,7 @@ export async function fetchMultiExchangeIndicator(
   coin: string,
   options?: { period?: Period },
 ): Promise<MultiExchangeResponse> {
-  const exchanges = getExchangesForIndicator(indicator);
-
-  // Hyperliquid coin 컨텍스트 설정
-  setHyperliquidCoin(coin);
+  const exchanges = INDICATOR_EXCHANGE_SUPPORT[indicator] ?? [];
 
   const results = await Promise.allSettled(
     exchanges.map(async (exchange) => {
@@ -74,6 +63,7 @@ export async function fetchMultiExchangeIndicator(
       }
 
       const rawData = await response.json();
+      // coin을 직접 전달하여 전역 변수 의존성 제거
       const normalized = normalizeIndicator(exchange, indicator, rawData, coin);
       return { exchange, data: normalized };
     }),
@@ -116,22 +106,19 @@ function mergeExchangeData(
   switch (indicator) {
     case 'volume24h':
     case 'oiSnapshot':
-      // ExchangeDataPoint[] 형태
       return entries.map((e) => e.data as ExchangeDataPoint);
 
     case 'fundingRate':
-      // FundingRateSnapshot[] 형태
       return entries.map((e) => e.data as FundingRateSnapshot);
 
     case 'price':
     case 'volumeHistory':
-    case 'oiHistory': {
-      // 거래소별 시계열을 타임스탬프 기준으로 병합
+    case 'oiHistory':
       return mergeTimeSeries(entries);
-    }
 
+    // Kline 기반 파생 지표: normalizer가 raw 데이터를 그대로 넘겨줌
+    // parseBinanceKlines()로 원본 Kline을 파싱 후 계산
     case 'cvd': {
-      // Binance Kline을 CVD로 변환
       const binanceEntry = entries.find((e) => e.exchange === 'binance');
       if (!binanceEntry) return [];
       const klines = parseBinanceKlines(binanceEntry.data);

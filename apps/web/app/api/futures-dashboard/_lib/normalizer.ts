@@ -18,9 +18,28 @@ function safeFloat(v: unknown): number {
   return 0;
 }
 
+// ===== Hyperliquid 헬퍼 =====
+
+/**
+ * Hyperliquid metaAndAssetCtxs 응답에서 코인별 필드를 추출한다.
+ * coin을 파라미터로 받아 전역 변수 의존성을 제거했다.
+ */
+function extractHyperliquidField(raw: unknown, coin: string, field: string): number {
+  const arr = raw as [{ universe: Array<{ name: string }> }, Array<Record<string, string>>];
+  if (!Array.isArray(arr) || arr.length < 2) return 0;
+
+  const [meta, ctxs] = arr;
+  if (!meta?.universe || !Array.isArray(ctxs)) return 0;
+
+  const idx = meta.universe.findIndex((u) => u.name === coin);
+  if (idx < 0 || !ctxs[idx]) return 0;
+
+  return safeFloat(ctxs[idx][field]);
+}
+
 // ===== Volume 24h 정규화 =====
 
-export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown): ExchangeDataPoint {
+export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown, coin: string): ExchangeDataPoint {
   switch (exchange) {
     case 'binance': {
       const d = raw as { quoteVolume?: string };
@@ -31,8 +50,12 @@ export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown):
       return { exchange, value: safeFloat(d?.result?.list?.[0]?.turnover24h) };
     }
     case 'okx': {
-      const d = raw as { data?: Array<{ volCcy24h?: string }> };
-      return { exchange, value: safeFloat(d?.data?.[0]?.volCcy24h) };
+      // OKX volCcy24h는 코인 단위, vol24h가 USDT 단위
+      const d = raw as { data?: Array<{ volCcy24h?: string; vol24h?: string; last?: string }> };
+      const item = d?.data?.[0];
+      // vol24h * last = 대략적인 USDT 거래량
+      const vol = safeFloat(item?.volCcy24h) * safeFloat(item?.last);
+      return { exchange, value: vol || safeFloat(item?.vol24h) };
     }
     case 'gate': {
       const d = raw as { trade_size?: number; last?: string };
@@ -43,9 +66,7 @@ export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown):
       return { exchange, value: safeFloat(d?.data?.[0]?.usdtVolume) };
     }
     case 'hyperliquid': {
-      // metaAndAssetCtxs 응답에서 해당 코인 찾기
-      const d = raw as unknown;
-      return { exchange, value: extractHyperliquidField(d, 'dayNtlVlm') };
+      return { exchange, value: extractHyperliquidField(raw, coin, 'dayNtlVlm') };
     }
     default:
       return { exchange, value: 0 };
@@ -54,10 +75,13 @@ export function normalizeVolume24h(exchange: FuturesExchangeType, raw: unknown):
 
 // ===== OI Snapshot 정규화 =====
 
-export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown): ExchangeDataPoint {
+export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown, coin: string): ExchangeDataPoint {
   switch (exchange) {
     case 'binance': {
-      const d = raw as { openInterest?: string; symbol?: string };
+      // Binance openInterest는 코인 단위. markPrice를 별도로 가져오지 않으므로
+      // ticker 24hr에서 함께 가져오거나, premiumIndex에서 가져올 수 있다.
+      // 현재는 단일 엔드포인트이므로 코인 단위 그대로 반환 (USDT 환산은 추후 개선)
+      const d = raw as { openInterest?: string };
       return { exchange, value: safeFloat(d?.openInterest) };
     }
     case 'bybit': {
@@ -65,21 +89,22 @@ export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown)
       return { exchange, value: safeFloat(d?.result?.list?.[0]?.openInterest) };
     }
     case 'okx': {
+      // OKX oi는 계약 단위, oiCcy는 코인 단위
       const d = raw as { data?: Array<{ oi?: string; oiCcy?: string }> };
-      return { exchange, value: safeFloat(d?.data?.[0]?.oi) };
+      return { exchange, value: safeFloat(d?.data?.[0]?.oiCcy) };
     }
     case 'gate': {
-      const d = raw as { position_size?: number; last?: string };
-      return { exchange, value: safeFloat(d?.position_size) * safeFloat(d?.last) };
+      // Gate position_size는 계약 수, last는 현재가
+      const d = raw as { position_size?: number; last?: string; quanto_multiplier?: string };
+      return { exchange, value: safeFloat(d?.position_size) * safeFloat(d?.quanto_multiplier) };
     }
     case 'bitget': {
       const d = raw as { data?: Array<{ amount?: string }> };
       return { exchange, value: safeFloat(d?.data?.[0]?.amount) };
     }
     case 'hyperliquid': {
-      const d = raw as unknown;
-      const oi = extractHyperliquidField(d, 'openInterest');
-      const markPx = extractHyperliquidField(d, 'markPx');
+      const oi = extractHyperliquidField(raw, coin, 'openInterest');
+      const markPx = extractHyperliquidField(raw, coin, 'markPx');
       return { exchange, value: oi * markPx };
     }
     default:
@@ -89,7 +114,7 @@ export function normalizeOiSnapshot(exchange: FuturesExchangeType, raw: unknown)
 
 // ===== Funding Rate 정규화 =====
 
-export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown): FundingRateSnapshot {
+export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown, coin: string): FundingRateSnapshot {
   let rate8h = 0;
 
   switch (exchange) {
@@ -104,7 +129,7 @@ export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown
       return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
     }
     case 'okx': {
-      const d = raw as { data?: Array<{ fundingRate?: string; nextFundingRate?: string }> };
+      const d = raw as { data?: Array<{ fundingRate?: string }> };
       rate8h = safeFloat(d?.data?.[0]?.fundingRate);
       return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
     }
@@ -119,8 +144,7 @@ export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown
       return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
     }
     case 'hyperliquid': {
-      const d = raw as unknown;
-      rate8h = extractHyperliquidField(d, 'funding');
+      rate8h = extractHyperliquidField(raw, coin, 'funding');
       return { exchange, rate8h, rateAnnual: rate8h * 3 * 365 * 100 };
     }
     default:
@@ -133,8 +157,7 @@ export function normalizeFundingRate(exchange: FuturesExchangeType, raw: unknown
 export function normalizePriceHistory(exchange: FuturesExchangeType, raw: unknown): ExchangeTimeSeriesPoint[] {
   switch (exchange) {
     case 'binance': {
-      // [[openTime, open, high, low, close, volume, closeTime, ...], ...]
-      const d = raw as number[][];
+      const d = raw as unknown[][];
       if (!Array.isArray(d)) return [];
       return d.map((k) => ({
         timestamp: Number(k[0]),
@@ -194,11 +217,11 @@ export function normalizePriceHistory(exchange: FuturesExchangeType, raw: unknow
 export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unknown): ExchangeTimeSeriesPoint[] {
   switch (exchange) {
     case 'binance': {
-      const d = raw as number[][];
+      const d = raw as unknown[][];
       if (!Array.isArray(d)) return [];
       return d.map((k) => ({
         timestamp: Number(k[0]),
-        values: { [exchange]: safeFloat(k[7]) } as Partial<Record<FuturesExchangeType, number>>, // quoteAssetVolume
+        values: { [exchange]: safeFloat(k[7]) } as Partial<Record<FuturesExchangeType, number>>,
       }));
     }
     case 'bybit': {
@@ -207,16 +230,18 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
       if (!Array.isArray(list)) return [];
       return list.map((k) => ({
         timestamp: Number(k[0]),
-        values: { [exchange]: safeFloat(k[6]) } as Partial<Record<FuturesExchangeType, number>>, // turnover
+        values: { [exchange]: safeFloat(k[6]) } as Partial<Record<FuturesExchangeType, number>>,
       })).reverse();
     }
     case 'okx': {
       const d = raw as { data?: string[][] };
       const data = d?.data;
       if (!Array.isArray(data)) return [];
+      // OKX candles: [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
+      // volCcyQuote(index 7) = USDT 기준 거래량
       return data.map((k) => ({
         timestamp: Number(k[0]),
-        values: { [exchange]: safeFloat(k[7]) } as Partial<Record<FuturesExchangeType, number>>, // volCcyQuote
+        values: { [exchange]: safeFloat(k[7]) } as Partial<Record<FuturesExchangeType, number>>,
       })).reverse();
     }
     case 'gate': {
@@ -233,7 +258,7 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
       if (!Array.isArray(data)) return [];
       return data.map((k) => ({
         timestamp: Number(k[0]),
-        values: { [exchange]: safeFloat(k[5]) } as Partial<Record<FuturesExchangeType, number>>, // quoteVolume
+        values: { [exchange]: safeFloat(k[5]) } as Partial<Record<FuturesExchangeType, number>>,
       })).reverse();
     }
     default:
@@ -272,7 +297,7 @@ export function normalizeOiHistory(exchange: FuturesExchangeType, raw: unknown):
       })).reverse();
     }
     case 'gate': {
-      const d = raw as Array<{ time?: number; open_interest?: string; lsr_account?: string }>;
+      const d = raw as Array<{ time?: number; open_interest?: string }>;
       if (!Array.isArray(d)) return [];
       return d.map((item) => ({
         timestamp: (item.time ?? 0) * 1000,
@@ -293,62 +318,46 @@ export function normalizeOiHistory(exchange: FuturesExchangeType, raw: unknown):
   }
 }
 
-// ===== Hyperliquid 헬퍼: coin별 필드 추출 =====
-
-/** 글로벌 coin 컨텍스트 (fetchMultiExchangeIndicator에서 설정) */
-let _hyperliquidCoin = 'BTC';
-
-export function setHyperliquidCoin(coin: string): void {
-  _hyperliquidCoin = coin;
-}
-
-function extractHyperliquidField(raw: unknown, field: string): number {
-  // metaAndAssetCtxs 응답: [{ universe: [...] }, [{ markPx, dayNtlVlm, openInterest, funding, ... }]]
-  const arr = raw as [{ universe: Array<{ name: string }> }, Array<Record<string, string>>];
-  if (!Array.isArray(arr) || arr.length < 2) return 0;
-
-  const [meta, ctxs] = arr;
-  if (!meta?.universe || !Array.isArray(ctxs)) return 0;
-
-  const idx = meta.universe.findIndex((u) => u.name === _hyperliquidCoin);
-  if (idx < 0 || !ctxs[idx]) return 0;
-
-  return safeFloat(ctxs[idx][field]);
-}
-
 // ===== 통합 정규화 디스패처 =====
 
+/**
+ * 지표별로 적절한 정규화 함수를 호출한다.
+ *
+ * 핵심: cvd, avgReturn 등 Kline 기반 파생 지표는 정규화하지 않고
+ * raw 데이터를 그대로 반환한다. kline-aggregator에서 원본 Kline 필드가 필요하기 때문.
+ */
 export function normalizeIndicator(
   exchange: FuturesExchangeType,
   indicator: FuturesDashboardIndicator,
   raw: unknown,
-  coin?: string,
+  coin: string,
 ): unknown {
-  if (exchange === 'hyperliquid' && coin) {
-    setHyperliquidCoin(coin);
-  }
-
   switch (indicator) {
     case 'volume24h':
-      return normalizeVolume24h(exchange, raw);
+      return normalizeVolume24h(exchange, raw, coin);
     case 'oiSnapshot':
-      return normalizeOiSnapshot(exchange, raw);
+      return normalizeOiSnapshot(exchange, raw, coin);
     case 'fundingRate':
-      return normalizeFundingRate(exchange, raw);
+      return normalizeFundingRate(exchange, raw, coin);
     case 'price':
       return normalizePriceHistory(exchange, raw);
     case 'volumeHistory':
       return normalizeVolumeHistory(exchange, raw);
     case 'oiHistory':
       return normalizeOiHistory(exchange, raw);
-    case 'liquidations':
+
+    // Kline 기반 파생 지표: raw 데이터 그대로 반환 (정규화 안 함)
+    // parseBinanceKlines()가 원본 Kline 배열([openTime, o, h, l, c, vol, ...])을 필요로 함
     case 'cvd':
-    case 'basis3m':
     case 'avgReturnByHour':
     case 'avgReturnByDay':
     case 'cumReturnBySession':
-      // Kline 기반 파생 지표는 kline-aggregator에서 처리
-      return normalizePriceHistory(exchange, raw);
+      return raw;
+
+    case 'liquidations':
+    case 'basis3m':
+      return raw;
+
     default:
       return null;
   }
