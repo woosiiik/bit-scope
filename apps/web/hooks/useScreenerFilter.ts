@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { AggregatedCoin, SortTab, CapFilter, SectorFilter } from '@bitscope/shared';
+import type { AggregatedCoin, SortTab, CapFilter, SectorFilter, CoinSector } from '@bitscope/shared';
 
 interface FilterState {
   sortTab: SortTab;
@@ -27,7 +27,8 @@ export function useScreenerFilter(coins: AggregatedCoin[], state: FilterState): 
 
     // 3. 섹터 필터
     if (state.sectorFilter !== 'all') {
-      filtered = filtered.filter((c) => c.sectors.includes(state.sectorFilter));
+      const sector = state.sectorFilter as CoinSector;
+      filtered = filtered.filter((c) => c.sectors.includes(sector));
     }
 
     // 4. 정렬
