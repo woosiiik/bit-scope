@@ -5,7 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Refere
 import type { AggregatedCoin, CoinSector, SectorPerformanceData } from '@bitscope/shared';
 import { SECTOR_LABELS } from '@bitscope/shared';
 
-const SECTORS: CoinSector[] = ['DeFi', 'L1', 'L2', 'Metaverse', 'Meme', 'AI'];
+const SECTORS: CoinSector[] = ['DeFi', 'L1', 'L2', 'Metaverse', 'Meme', 'Dino', 'AI'];
 
 function calcSectorPerformance(coins: AggregatedCoin[]): SectorPerformanceData[] {
   return SECTORS.map((sector) => {
@@ -31,7 +31,7 @@ export function SectorPerformanceChart({ coins }: { coins: AggregatedCoin[] }) {
         <XAxis dataKey="label" tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <YAxis tickFormatter={(v) => `${Number(v).toFixed(1)}%`} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <Tooltip
-          contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
+          contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           formatter={(v) => [`${Number(v).toFixed(2)}%`, 'Avg Return']}
         />
         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />

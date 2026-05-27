@@ -32,6 +32,15 @@ export async function fetchAllBulkTickers(): Promise<BulkTickerResult> {
     const response = await fetch(config.url, fetchOptions);
     if (!response.ok) throw new Error(`${exchange}: ${response.status} ${response.statusText}`);
     const rawData = await response.json();
+
+    // OKX/Bitget: HTTP 200이지만 응답 body에 에러 코드가 있을 수 있음
+    if (exchange === 'okx' && rawData?.code !== undefined && rawData.code !== '0') {
+      throw new Error(`OKX error: code=${rawData.code} msg=${rawData.msg ?? ''}`);
+    }
+    if (exchange === 'bitget' && rawData?.code !== undefined && rawData.code !== '00000') {
+      throw new Error(`Bitget error: code=${rawData.code} msg=${rawData.msg ?? ''}`);
+    }
+
     return { exchange, tickers: normalizeBulkTickers(exchange, rawData) };
   });
 

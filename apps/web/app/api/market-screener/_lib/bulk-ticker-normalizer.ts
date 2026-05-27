@@ -38,16 +38,17 @@ function normalizeBinance(raw: unknown): NormalizedTicker[] {
 
   return arr
     .map((item) => {
-      const symbol = normalizeSymbol('binance', item.symbol ?? '');
-      if (!symbol) return null;
+      const result = normalizeSymbol('binance', item.symbol ?? '');
+      if (!result) return null;
+      const { symbol, priceMultiplier: pm } = result;
       return {
         exchange: 'binance' as FuturesExchangeType,
         symbol,
-        price: safeFloat(item.lastPrice),
+        price: safeFloat(item.lastPrice) * pm,
         change24h: safeFloat(item.priceChangePercent),
         volume24h: safeFloat(item.quoteVolume),
-        openInterest: 0, // Binance 벌크 ticker에 OI 없음
-        fundingRate: 0, // premiumIndex에서 보충
+        openInterest: 0,
+        fundingRate: 0,
       };
     })
     .filter((t): t is NormalizedTicker => t !== null);
@@ -61,22 +62,19 @@ export function enrichBinanceFunding(
   const arr = premiumData as Array<{ symbol?: string; lastFundingRate?: string; markPrice?: string }>;
   if (!Array.isArray(arr)) return;
 
-  const fundingMap = new Map<string, { rate: number; markPrice: number }>();
+  const fundingMap = new Map<string, number>();
   for (const item of arr) {
-    const symbol = normalizeSymbol('binance', item.symbol ?? '');
-    if (symbol) {
-      fundingMap.set(symbol, {
-        rate: safeFloat(item.lastFundingRate),
-        markPrice: safeFloat(item.markPrice),
-      });
+    const result = normalizeSymbol('binance', item.symbol ?? '');
+    if (result) {
+      fundingMap.set(result.symbol, safeFloat(item.lastFundingRate));
     }
   }
 
   for (const ticker of tickers) {
     if (ticker.exchange !== 'binance') continue;
-    const info = fundingMap.get(ticker.symbol);
-    if (info) {
-      ticker.fundingRate = info.rate;
+    const rate = fundingMap.get(ticker.symbol);
+    if (rate !== undefined) {
+      ticker.fundingRate = rate;
     }
   }
 }
@@ -88,9 +86,10 @@ function normalizeBybit(raw: unknown): NormalizedTicker[] {
 
   return list
     .map((item) => {
-      const symbol = normalizeSymbol('bybit', item.symbol ?? '');
-      if (!symbol) return null;
-      const price = safeFloat(item.lastPrice);
+      const result = normalizeSymbol('bybit', item.symbol ?? '');
+      if (!result) return null;
+      const { symbol, priceMultiplier: pm } = result;
+      const price = safeFloat(item.lastPrice) * pm;
       return {
         exchange: 'bybit' as FuturesExchangeType,
         symbol,
@@ -111,18 +110,18 @@ function normalizeOkx(raw: unknown): NormalizedTicker[] {
 
   return data
     .map((item) => {
-      const symbol = normalizeSymbol('okx', item.instId ?? '');
-      if (!symbol) return null;
+      const result = normalizeSymbol('okx', item.instId ?? '');
+      if (!result) return null;
       const last = safeFloat(item.last);
       const open24h = safeFloat(item.open24h);
       const change24h = open24h > 0 ? ((last - open24h) / open24h) * 100 : 0;
       return {
         exchange: 'okx' as FuturesExchangeType,
-        symbol,
+        symbol: result.symbol,
         price: last,
         change24h,
         volume24h: safeFloat(item.volCcy24h) * last,
-        openInterest: 0, // OKX 벌크 ticker에 OI 없음 (별도 API 필요)
+        openInterest: 0,
         fundingRate: 0,
       };
     })
@@ -135,13 +134,13 @@ function normalizeGate(raw: unknown): NormalizedTicker[] {
 
   return arr
     .map((item) => {
-      const symbol = normalizeSymbol('gate', item.contract ?? '');
-      if (!symbol) return null;
+      const result = normalizeSymbol('gate', item.contract ?? '');
+      if (!result) return null;
       const last = safeFloat(item.last);
       const quantoMul = safeFloat(item.quanto_multiplier) || 1;
       return {
         exchange: 'gate' as FuturesExchangeType,
-        symbol,
+        symbol: result.symbol,
         price: last,
         change24h: safeFloat(item.change_percentage),
         volume24h: safeFloat(item.volume_24h_quote) || safeFloat(item.volume_24h) * last,
@@ -159,10 +158,11 @@ function normalizeBitget(raw: unknown): NormalizedTicker[] {
 
   return data
     .map((item) => {
-      const symbol = normalizeSymbol('bitget', item.symbol ?? '');
-      if (!symbol) return null;
-      const last = safeFloat(item.lastPr || item.last);
-      const open24h = safeFloat(item.open24h);
+      const result = normalizeSymbol('bitget', item.symbol ?? '');
+      if (!result) return null;
+      const { symbol, priceMultiplier: pm } = result;
+      const last = safeFloat(item.lastPr || item.last) * pm;
+      const open24h = safeFloat(item.open24h) * pm;
       const change24h = open24h > 0 ? ((last - open24h) / open24h) * 100 : safeFloat(item.change24h);
       return {
         exchange: 'bitget' as FuturesExchangeType,
@@ -190,8 +190,8 @@ function normalizeHyperliquid(raw: unknown): NormalizedTicker[] {
     const coin = meta.universe[i]!;
     const ctx = ctxs[i]!;
 
-    const symbol = normalizeSymbol('hyperliquid', coin.name);
-    if (!symbol) continue;
+    const result = normalizeSymbol('hyperliquid', coin.name);
+    if (!result) continue;
 
     const markPx = safeFloat(ctx.markPx);
     const prevDayPx = safeFloat(ctx.prevDayPx);
@@ -199,7 +199,7 @@ function normalizeHyperliquid(raw: unknown): NormalizedTicker[] {
 
     tickers.push({
       exchange: 'hyperliquid',
-      symbol,
+      symbol: result.symbol,
       price: markPx,
       change24h,
       volume24h: safeFloat(ctx.dayNtlVlm),

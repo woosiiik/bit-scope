@@ -23,7 +23,7 @@ export function PriceChart({ data }: { data: unknown }) {
         />
         <YAxis tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" domain={['auto', 'auto']} />
         <Tooltip
-          contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
+          contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           labelFormatter={(t) => new Date(t as number).toLocaleString()}
           formatter={(v, name) => [Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }), String(name)]}
         />

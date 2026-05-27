@@ -59,7 +59,7 @@ export function ScreenerTable({ coins, isLoading }: ScreenerTableProps) {
           </tr>
         </thead>
         <tbody>
-          {coins.slice(0, 100).map((coin, idx) => (
+          {coins.slice(0, 200).map((coin, idx) => (
             <tr
               key={coin.symbol}
               className="border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors"

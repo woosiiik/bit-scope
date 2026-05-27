@@ -60,7 +60,6 @@ export const COIN_SECTOR_MAP: Record<string, CoinSector[]> = {
 
   // AI
   FET: ['AI'], RENDER: ['AI'], TAO: ['AI'], WLD: ['AI'],
-  RNDR: ['AI'], AGIX: ['AI'],
 };
 
 /** 섹터 표시 라벨 */

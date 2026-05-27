@@ -19,9 +19,9 @@ function buildBuckets(coins: AggregatedCoin[]): ReturnBucket[] {
       coins: [],
     });
   }
-  // < -30% 과 > 30% 구간
-  buckets.unshift({ rangeLabel: '< -30%', rangeMin: -100, rangeMax: -30, count: 0, coins: [] });
-  buckets.push({ rangeLabel: '> 30%', rangeMin: 30, rangeMax: 100, count: 0, coins: [] });
+  // < -30% 과 > 30% 구간 (Infinity로 극단값 포함)
+  buckets.unshift({ rangeLabel: '< -30%', rangeMin: -Infinity, rangeMax: -30, count: 0, coins: [] });
+  buckets.push({ rangeLabel: '> 30%', rangeMin: 30, rangeMax: Infinity, count: 0, coins: [] });
 
   for (const coin of coins) {
     const bucket = buckets.find((b) => coin.change24h >= b.rangeMin && coin.change24h < b.rangeMax);
@@ -43,7 +43,7 @@ export function ReturnBucketsChart({ coins }: { coins: AggregatedCoin[] }) {
         <XAxis dataKey="rangeLabel" tick={{ fontSize: 8 }} stroke="var(--muted-foreground)" angle={-45} textAnchor="end" height={50} />
         <YAxis tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <Tooltip
-          contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
+          contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           formatter={(v) => [v, 'Coins']}
           labelFormatter={(label) => String(label)}
         />

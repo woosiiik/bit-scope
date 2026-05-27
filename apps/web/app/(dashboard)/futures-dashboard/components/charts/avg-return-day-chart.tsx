@@ -17,7 +17,7 @@ export function AvgReturnDayChart({ data }: { data: unknown }) {
           stroke="var(--muted-foreground)"
         />
         <Tooltip
-          contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
+          contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           formatter={(v) => [`${Number(v).toFixed(4)}%`, 'Avg Return']}
         />
         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />

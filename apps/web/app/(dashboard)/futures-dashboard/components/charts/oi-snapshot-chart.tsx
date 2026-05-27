@@ -30,7 +30,7 @@ export function OiSnapshotChart({ data }: { data: unknown }) {
         <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <YAxis tickFormatter={formatOi} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <Tooltip
-          contentStyle={{ fontSize: 11, background: 'var(--popover)', border: '1px solid var(--border)' }}
+          contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           formatter={(v) => [`$${formatOi(Number(v))}`, 'Open Interest']}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
