@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { SortTab, CapFilter, SectorFilter } from '@bitscope/shared';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // ScreenerTable wrapper
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { useScreenerFilter } from '@/hooks/useScreenerFilter';
 import { TabFilterBar } from './components/tab-filter-bar';
 import { SearchInput } from './components/search-input';
 import { ScreenerTable } from './components/screener-table';
+import { ChartCard } from './components/chart-card';
 import { ReturnBucketsChart } from './components/charts/return-buckets-chart';
 import { MarketVolumeChart } from './components/charts/market-volume-chart';
 import { TotalOIChart } from './components/charts/total-oi-chart';
@@ -92,41 +93,33 @@ export default function MarketScreenerPage() {
 
       {/* 차트 위젯 그리드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-foreground mb-2">Return Distribution (24h)</h3>
-            <div className="h-[200px]">
-              {coins.length > 0 ? <ReturnBucketsChart coins={coins} /> : <ChartSkeleton />}
-            </div>
-          </CardContent>
-        </Card>
+        <ChartCard
+          title="Return Distribution (24h)"
+          description="24시간 동안 각 코인의 수익률을 구간별로 분류한 히스토그램입니다. 시장 전체의 수익률 분포를 한눈에 파악하여 과열/공포 상태를 진단할 수 있습니다. 막대 위에 마우스를 올리면 해당 구간의 코인 목록이 표시됩니다."
+        >
+          {coins.length > 0 ? <ReturnBucketsChart coins={coins} /> : <ChartSkeleton />}
+        </ChartCard>
 
-        <Card>
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-foreground mb-2">Sector Performance (24h)</h3>
-            <div className="h-[200px]">
-              {coins.length > 0 ? <SectorPerformanceChart coins={coins} /> : <ChartSkeleton />}
-            </div>
-          </CardContent>
-        </Card>
+        <ChartCard
+          title="Sector Performance (24h)"
+          description="DeFi, L1, L2, Metaverse, Meme, AI 6개 크립토 섹터의 24시간 평균 수익률을 비교합니다. 어떤 섹터에 자금이 몰리고 있는지, 시장 로테이션이 어디로 향하는지 파악할 수 있습니다."
+        >
+          {coins.length > 0 ? <SectorPerformanceChart coins={coins} /> : <ChartSkeleton />}
+        </ChartCard>
 
-        <Card>
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-foreground mb-2">Market Volume (24h)</h3>
-            <div className="h-[200px]">
-              {exchangeVolumes.length > 0 ? <MarketVolumeChart data={exchangeVolumes} /> : <ChartSkeleton />}
-            </div>
-          </CardContent>
-        </Card>
+        <ChartCard
+          title="Market Volume (24h)"
+          description="6개 거래소(Binance, Bybit, OKX, Gate.io, Bitget, Hyperliquid)의 24시간 총 선물 거래량을 비교합니다. 유동성이 어느 거래소에 집중되어 있는지 보여줍니다."
+        >
+          {exchangeVolumes.length > 0 ? <MarketVolumeChart data={exchangeVolumes} /> : <ChartSkeleton />}
+        </ChartCard>
 
-        <Card>
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-foreground mb-2">Total Open Interest</h3>
-            <div className="h-[200px]">
-              {exchangeOI.length > 0 ? <TotalOIChart data={exchangeOI} /> : <ChartSkeleton />}
-            </div>
-          </CardContent>
-        </Card>
+        <ChartCard
+          title="Total Open Interest"
+          description="6개 거래소의 총 미결제약정(OI)을 비교합니다. 시장에 얼마나 많은 선물 포지션이 열려 있는지, 어느 거래소에 포지션이 집중되는지 보여줍니다. OI 급증은 큰 움직임의 전조일 수 있습니다."
+        >
+          {exchangeOI.length > 0 ? <TotalOIChart data={exchangeOI} /> : <ChartSkeleton />}
+        </ChartCard>
       </div>
     </div>
   );
