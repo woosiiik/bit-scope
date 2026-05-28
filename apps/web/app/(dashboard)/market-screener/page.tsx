@@ -23,6 +23,11 @@ import { PriceChangesChart } from './components/charts/price-changes-chart';
 import { FundingRateScreenerChart } from './components/charts/funding-rate-chart';
 import { DominanceChart, type DominanceMetric } from './components/charts/dominance-chart';
 import { OIChangesChart } from './components/charts/oi-changes-chart';
+import { FundingHeatmapChart } from './components/charts/funding-heatmap-chart';
+import { NormalizedCVDChart } from './components/charts/normalized-cvd-chart';
+import { useFundingHeatmap } from '@/hooks/useFundingHeatmap';
+import { useOIChanges } from '@/hooks/useOIChanges';
+import { useNormalizedCVD } from '@/hooks/useNormalizedCVD';
 
 /** 기간 선택 버튼 */
 function PeriodTabs({ selected, onChange }: { selected: ChartPeriod; onChange: (p: ChartPeriod) => void }) {
@@ -103,6 +108,11 @@ export default function MarketScreenerPage() {
 
   // Kline changes (1w/1m)
   const { data: klineData } = useKlineChanges(chartPeriod);
+
+  // Phase 2 hooks
+  const { data: fundingHeatmapData } = useFundingHeatmap(chartPeriod);
+  const { data: oiChangesData } = useOIChanges(chartPeriod);
+  const { data: normalizedCVDData } = useNormalizedCVD(chartPeriod);
 
   // New Listings 데이터를 coins에 병합
   const rawCoins = response?.data?.coins ?? [];
@@ -221,12 +231,13 @@ export default function MarketScreenerPage() {
           {coins.length > 0 ? <FundingRateScreenerChart coins={coins} mode={fundingMode} /> : <ChartSkeleton />}
         </ChartCard>
 
-        {/* 5. Open Interest (Top Coins) */}
+        {/* 5. OI Changes */}
         <ChartCard
-          title="Open Interest (Top Coins)"
-          description="OI(미결제약정)가 가장 큰 코인을 순서대로 보여줍니다. 어떤 코인에 선물 포지션이 집중되어 있는지 파악할 수 있습니다. OI 변화율(%)은 Phase 2에서 제공 예정입니다."
+          title="OI Changes"
+          description="코인별 미결제약정(OI) 변화율(%)을 보여줍니다. OI 급증 = 새 포지션 대량 진입 → 큰 움직임 예고. OI 감소 = 포지션 정리 중. 서버 데이터 수집 후 변화율이 표시됩니다."
+          extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <OIChangesChart coins={coins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <OIChangesChart serverData={oiChangesData} coins={coins} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 6. Dominance */}
@@ -254,32 +265,22 @@ export default function MarketScreenerPage() {
           {exchangeOI.length > 0 ? <TotalOIChart data={exchangeOI} /> : <ChartSkeleton />}
         </ChartCard>
 
-        {/* 9. Funding APR Heatmap (Phase 2) */}
+        {/* 9. Funding APR Heatmap */}
         <ChartCard
           title="Funding APR Heatmap"
-          description="코인 × 시간 축의 히트맵으로 펀딩 비율의 시간별 변화를 시각화합니다. 펀딩 과열 코인을 한눈에 파악하고 차익거래 기회를 발견할 수 있습니다."
+          description="코인 × 시간 축의 히트맵으로 펀딩 비율의 시간별 변화를 시각화합니다. 빨강=양의 펀딩(롱 과열), 파랑=음의 펀딩(숏 과열). OI 가중 평균으로 계산됩니다."
+          extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          <div className="h-full flex items-center justify-center">
-            <p className="text-xs text-muted-foreground text-center">
-              Funding Heatmap은 시간별 히스토리 수집이 필요합니다.
-              <br />
-              Phase 2에서 구현 예정
-            </p>
-          </div>
+          <FundingHeatmapChart data={fundingHeatmapData} />
         </ChartCard>
 
-        {/* 10. OI-Normalized CVD (Phase 2) */}
+        {/* 10. OI-Normalized CVD */}
         <ChartCard
           title="OI-Normalized CVD"
-          description="CVD(누적 거래량 델타)를 OI로 정규화한 지표입니다. OI가 큰 코인과 작은 코인을 동일 선상에서 비교하여 매수/매도 압력을 측정합니다."
+          description="CVD(Taker Buy - Sell 누적)를 전 거래소 OI로 정규화한 지표입니다. 양수=순매수 우세, 음수=순매도 우세. OI가 다른 코인을 동일 선상에서 비교합니다."
+          extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          <div className="h-full flex items-center justify-center">
-            <p className="text-xs text-muted-foreground text-center">
-              OI-Normalized CVD는 taker 데이터 누적 수집이 필요합니다.
-              <br />
-              Phase 2에서 구현 예정
-            </p>
-          </div>
+          <NormalizedCVDChart data={normalizedCVDData} />
         </ChartCard>
       </div>
     </div>

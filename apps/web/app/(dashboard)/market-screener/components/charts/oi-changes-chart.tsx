@@ -4,21 +4,41 @@ import { useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
 import type { AggregatedCoin } from '@bitscope/shared';
 
-/**
- * OI Changes — 현재는 스냅샷 기반 OI 크기 순위만 표시.
- * OI 변화율(%)을 보려면 서버에서 주기적 OI 스냅샷을 저장해야 함 (Phase 2).
- * 현재: OI 상위 20개 코인의 절대 OI 크기를 바 차트로 표시.
- */
-export function OIChangesChart({ coins }: { coins: AggregatedCoin[] }) {
+interface OIChangeEntry {
+  symbol: string;
+  changePercent: number;
+  currentOI: number;
+  baselineOI: number;
+}
+
+interface OIChangesChartProps {
+  /** Phase 2 서버 집계 데이터 (있으면 우선 사용) */
+  serverData?: { data: OIChangeEntry[] } | null;
+  /** 폴백: 기존 tickers 코인 데이터 */
+  coins: AggregatedCoin[];
+}
+
+export function OIChangesChart({ serverData, coins }: OIChangesChartProps) {
   const data = useMemo(() => {
+    // Phase 2 서버 데이터가 있으면 변화율 차트
+    if (serverData?.data && serverData.data.length > 0) {
+      return serverData.data.slice(0, 20).map((d) => ({
+        symbol: d.symbol,
+        value: d.changePercent,
+        isPercent: true,
+      }));
+    }
+
+    // 폴백: 기존 OI 절대값 순위
     return coins
       .filter((c) => c.openInterest > 0)
       .slice(0, 15)
       .map((c) => ({
         symbol: c.symbol,
-        oi: c.openInterest,
+        value: c.openInterest,
+        isPercent: false,
       }));
-  }, [coins]);
+  }, [serverData, coins]);
 
   if (data.length === 0) {
     return (
@@ -28,14 +48,18 @@ export function OIChangesChart({ coins }: { coins: AggregatedCoin[] }) {
     );
   }
 
+  const isPercent = data[0]?.isPercent ?? false;
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} layout="vertical" margin={{ left: 5 }}>
         <XAxis
           type="number"
           tickFormatter={(v) => {
-            if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-            if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+            if (isPercent) return `${Number(v).toFixed(1)}%`;
+            const abs = Math.abs(v);
+            if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+            if (abs >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
             return `${(v / 1e3).toFixed(0)}K`;
           }}
           tick={{ fontSize: 9 }}
@@ -46,15 +70,16 @@ export function OIChangesChart({ coins }: { coins: AggregatedCoin[] }) {
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           formatter={(v) => {
             const val = Number(v);
-            if (val >= 1e9) return [`$${(val / 1e9).toFixed(2)}B`, 'OI'];
-            if (val >= 1e6) return [`$${(val / 1e6).toFixed(1)}M`, 'OI'];
+            if (isPercent) return [`${val.toFixed(2)}%`, 'OI Change'];
+            if (Math.abs(val) >= 1e9) return [`$${(val / 1e9).toFixed(2)}B`, 'OI'];
+            if (Math.abs(val) >= 1e6) return [`$${(val / 1e6).toFixed(1)}M`, 'OI'];
             return [`$${(val / 1e3).toFixed(0)}K`, 'OI'];
           }}
         />
-        <ReferenceLine x={0} stroke="var(--muted-foreground)" />
-        <Bar dataKey="oi" fill="#8884d8" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+        {isPercent && <ReferenceLine x={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />}
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {data.map((d) => (
-            <Cell key={d.symbol} fill="#6366f1" />
+            <Cell key={d.symbol} fill={isPercent ? (d.value >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))') : '#6366f1'} />
           ))}
         </Bar>
       </BarChart>

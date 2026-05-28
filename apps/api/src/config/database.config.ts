@@ -21,6 +21,9 @@ import { CustomCalendarEventEntity } from '../modules/market-intel/entities/cust
 import { SystemConfigEntity } from '../modules/signal/entities/system-config.entity';
 import { SignalEntity } from '../modules/signal/entities/signal.entity';
 import { LiquidationEntity } from '../modules/liquidation/entities/liquidation.entity';
+import { FundingOISnapshotEntity } from '../modules/phase2/entities/funding-oi-snapshot.entity';
+import { TakerVolumeSnapshotEntity } from '../modules/phase2/entities/taker-volume-snapshot.entity';
+import { BasisSnapshotEntity } from '../modules/phase2/entities/basis-snapshot.entity';
 
 /** 모든 TypeORM 엔티티 목록 */
 export const ENTITIES = [
@@ -38,6 +41,9 @@ export const ENTITIES = [
   SystemConfigEntity,
   SignalEntity,
   LiquidationEntity,
+  FundingOISnapshotEntity,
+  TakerVolumeSnapshotEntity,
+  BasisSnapshotEntity,
 ];
 
 /**

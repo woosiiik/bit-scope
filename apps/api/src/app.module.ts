@@ -24,6 +24,7 @@ import { FuturesModule } from './modules/futures/futures.module';
 import { MarketIntelModule } from './modules/market-intel/market-intel.module';
 import { SignalModule } from './modules/signal/signal.module';
 import { LiquidationModule } from './modules/liquidation/liquidation.module';
+import { Phase2Module } from './modules/phase2/phase2.module';
 
 @Module({
   imports: [
@@ -62,6 +63,8 @@ import { LiquidationModule } from './modules/liquidation/liquidation.module';
     SignalModule,
     // 실시간 청산 데이터 수집 (WebSocket + REST)
     LiquidationModule,
+    // Phase 2: 서버 사이드 데이터 수집 (Funding/OI/Taker/Basis)
+    Phase2Module,
   ],
   controllers: [AppController],
   providers: [AppService],

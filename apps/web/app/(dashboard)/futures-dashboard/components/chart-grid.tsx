@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Period } from '@bitscope/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useBasis } from '@/hooks/useBasis';
 import { ChartPanel } from './chart-panel';
 import { PriceChart } from './charts/price-chart';
 import { Volume24hChart } from './charts/volume24h-chart';
@@ -117,25 +118,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
             renderChart={(data) => <CVDChart data={data} mode={cvdMode as 'dollars' | 'oi-norm'} />}
           />
           {/* 3M Basis: BTC/ETH만 지원, 미지원 코인은 API 호출 안 함 */}
-          {['BTC', 'ETH'].includes(coin) ? (
-            <ChartPanel
-              title="3M Annualized Basis"
-              indicator="basis3m"
-              coin={coin}
-              period={period}
-              onPeriodChange={setPeriod}
-              renderChart={(data) => <Basis3mChart data={data} coin={coin} />}
-            />
-          ) : (
-            <Card className="overflow-hidden">
-              <CardContent className="p-3 space-y-2">
-                <h3 className="text-xs font-medium text-foreground">3M Annualized Basis</h3>
-                <div className="h-[180px] flex items-center justify-center">
-                  <p className="text-xs text-muted-foreground">이 코인은 3M Basis를 지원하지 않습니다</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <BasisPanel coin={coin} period={period} />
         </div>
       </div>
 
@@ -204,6 +187,23 @@ function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
           ) : (
             <LiquidationsChart data={data?.data} />
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** 3M Basis 패널 — Phase 2 서버 데이터 사용 */
+function BasisPanel({ coin, period }: { coin: string; period: Period }) {
+  const periodMap: Record<Period, string> = { '1d': '1d', '1w': '1w', '1m': '1m', '3m': '1m', '6m': '1m', '1y': '1m' };
+  const { data: basisData } = useBasis(coin, periodMap[period] ?? '1d');
+
+  return (
+    <Card className="overflow-hidden" aria-label="3M Annualized Basis">
+      <CardContent className="p-3 space-y-2">
+        <h3 className="text-xs font-medium text-foreground">3M Annualized Basis</h3>
+        <div className="h-[180px]">
+          <Basis3mChart data={null} coin={coin} serverData={basisData} />
         </div>
       </CardContent>
     </Card>
