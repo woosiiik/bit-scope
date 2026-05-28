@@ -118,11 +118,14 @@ export function buildHyperliquidBody(
     case 'price':
     case 'volumeHistory':
     case 'oiHistory':
-    case 'cvd':
+    case 'cvd': {
+      // period에 따라 interval과 startTime 조정
+      // candleSnapshot은 coin과 interval만 지원 (period 직접 미지원)
       return JSON.stringify({
         type: 'candleSnapshot',
         req: { coin, interval: '1h', startTime: Date.now() - 30 * 24 * 3600 * 1000 },
       });
+    }
     default:
       return JSON.stringify({ type: 'metaAndAssetCtxs' });
   }

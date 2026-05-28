@@ -33,6 +33,8 @@ export function OiHistoryChart({ data }: { data: unknown }) {
           tickFormatter={(t) => {
             const d = new Date(t);
             if (isShortRange) return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+            // 중간 범위(2일~14일): 날짜 + 시간
+            if (timeRange < 14 * 24 * 3600 * 1000) return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}h`;
             return `${d.getMonth() + 1}/${d.getDate()}`;
           }}
           tick={{ fontSize: 9 }}

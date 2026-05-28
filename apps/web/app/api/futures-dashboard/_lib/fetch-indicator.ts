@@ -95,7 +95,7 @@ export async function fetchMultiExchangeIndicator(
   }
 
   // 지표별 데이터 병합
-  const data = mergeExchangeData(indicator, successEntries);
+  const data = mergeExchangeData(indicator, successEntries, options?.period);
 
   return {
     indicator,
@@ -112,6 +112,7 @@ export async function fetchMultiExchangeIndicator(
 function mergeExchangeData(
   indicator: FuturesDashboardIndicator,
   entries: Array<{ exchange: FuturesExchangeType; data: unknown }>,
+  period?: Period,
 ): unknown {
   switch (indicator) {
     case 'volume24h':
@@ -124,7 +125,7 @@ function mergeExchangeData(
     case 'price':
     case 'volumeHistory':
     case 'oiHistory':
-      return mergeTimeSeries(entries);
+      return mergeTimeSeries(entries, period);
 
     // Kline 기반 파생 지표: normalizer가 raw 데이터를 그대로 넘겨줌
     // parseBinanceKlines()로 원본 Kline을 파싱 후 계산
@@ -165,18 +166,25 @@ function mergeExchangeData(
   }
 }
 
+/** 기간별 적정 버킷 크기 (ms) */
+const PERIOD_BUCKET_MS: Record<string, number> = {
+  '1d': 900_000,      // 15분
+  '1w': 3_600_000,    // 1시간
+  '1m': 14_400_000,   // 4시간
+  '3m': 43_200_000,   // 12시간
+  '6m': 86_400_000,   // 1일
+  '1y': 86_400_000,   // 1일
+};
+
 /**
  * 거래소별 시계열 데이터를 타임스탬프 기준으로 병합한다.
- *
- * 문제: 거래소마다 interval이 다름 (5min, 15min, 30min, 1h, 4h)
- * 해결: 1시간 단위 버킷으로 통일. 같은 버킷 내 여러 포인트는 마지막 값 사용.
- * 이렇게 하면 모든 거래소가 동일한 X축 타임스탬프를 공유하여 차트에서 정상 비교 가능.
+ * 버킷 크기를 기간에 맞게 동적으로 설정하여 데이터 해상도를 보존한다.
  */
 function mergeTimeSeries(
   entries: Array<{ exchange: FuturesExchangeType; data: unknown }>,
+  period?: string,
 ): ExchangeTimeSeriesPoint[] {
-  // 고정 1시간 버킷 (모든 거래소 통일)
-  const BUCKET_MS = 3_600_000;
+  const BUCKET_MS = PERIOD_BUCKET_MS[period ?? '1m'] ?? 3_600_000;
 
   const timeMap = new Map<number, Partial<Record<FuturesExchangeType, number>>>();
 

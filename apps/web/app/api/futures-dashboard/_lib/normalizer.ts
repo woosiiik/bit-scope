@@ -261,11 +261,12 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
     }
     case 'hyperliquid': {
       // candleSnapshot 응답: [{ t, o, h, l, c, v, n }]
+      // v는 코인 단위 → c(close price)를 곱하여 USDT 환산
       const d = raw as Array<{ t?: number; v?: string; c?: string }>;
       if (!Array.isArray(d)) return [];
       return d.map((k) => ({
         timestamp: k.t ?? 0,
-        values: { [exchange]: safeFloat(k.v) } as Partial<Record<FuturesExchangeType, number>>,
+        values: { [exchange]: safeFloat(k.v) * safeFloat(k.c) } as Partial<Record<FuturesExchangeType, number>>,
       }));
     }
     default:
@@ -278,11 +279,12 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
 export function normalizeOiHistory(exchange: FuturesExchangeType, raw: unknown): ExchangeTimeSeriesPoint[] {
   switch (exchange) {
     case 'binance': {
-      const d = raw as Array<{ timestamp?: number; sumOpenInterestValue?: string }>;
+      // 코인 단위로 통일 (Bybit/Gate와 단위 맞춤)
+      const d = raw as Array<{ timestamp?: number; sumOpenInterest?: string; sumOpenInterestValue?: string }>;
       if (!Array.isArray(d)) return [];
       return d.map((item) => ({
         timestamp: item.timestamp ?? 0,
-        values: { [exchange]: safeFloat(item.sumOpenInterestValue) } as Partial<Record<FuturesExchangeType, number>>,
+        values: { [exchange]: safeFloat(item.sumOpenInterest) } as Partial<Record<FuturesExchangeType, number>>,
       }));
     }
     case 'bybit': {

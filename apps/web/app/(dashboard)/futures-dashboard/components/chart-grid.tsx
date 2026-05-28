@@ -74,7 +74,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
             renderChart={(data) => <OiSnapshotChart data={data} />}
           />
           <ChartPanel
-            title="Open Interest"
+            title="Open Interest (Coin)"
             indicator="oiHistory"
             coin={coin}
             period={period}
