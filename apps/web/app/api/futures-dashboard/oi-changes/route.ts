@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { buildCacheKey, getGlobalCache } from '../../exchange/_lib/cache';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4500';
+import { getApiBaseUrl } from '@/lib/api-url';
 const CACHE_TTL = 60_000;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const url = `${API_BASE}/phase2/oi-changes?period=${period}`;
+    const url = `${getApiBaseUrl()}/phase2/oi-changes?period=${period}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data = await res.json();
