@@ -52,7 +52,8 @@ export class BasisCollectorService implements OnModuleInit {
   /** Binance exchangeInfo에서 CURRENT_QUARTER 심볼 조회 */
   private async refreshQuarterlySymbols(): Promise<void> {
     try {
-      const res = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo', { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+      // COIN-M(dapi)에만 분기 선물이 있음. USD-M(fapi)에는 없음.
+      const res = await fetch('https://dapi.binance.com/dapi/v1/exchangeInfo', { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
       if (!res.ok) return;
 
       const data = (await res.json()) as { symbols?: Array<{ symbol: string; contractType: string; baseAsset: string; quoteAsset: string; deliveryDate: number }> };
@@ -60,7 +61,7 @@ export class BasisCollectorService implements OnModuleInit {
       this.quarterlySymbols = (data.symbols ?? [])
         .filter((s) =>
           s.contractType === 'CURRENT_QUARTER' &&
-          s.quoteAsset === 'USDT' &&
+          s.quoteAsset === 'USD' && // COIN-M은 USD (USDT 아님)
           ['BTC', 'ETH'].includes(s.baseAsset),
         )
         .map((s) => ({
@@ -93,12 +94,14 @@ export class BasisCollectorService implements OnModuleInit {
 
       for (const qs of this.quarterlySymbols) {
         try {
-          // 선물 가격
+          // 선물 가격 (COIN-M dapi 도메인)
           const futuresRes = await fetch(
-            `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${qs.symbol}`,
+            `https://dapi.binance.com/dapi/v1/ticker/price?symbol=${qs.symbol}`,
             { signal: AbortSignal.timeout(FETCH_TIMEOUT) },
           );
-          const futuresData = futuresRes.ok ? (await futuresRes.json()) as { price?: string } : null;
+          // dapi ticker/price 응답은 배열: [{ symbol, price, time }]
+          const futuresRaw = futuresRes.ok ? await futuresRes.json() : null;
+          const futuresData = Array.isArray(futuresRaw) ? futuresRaw[0] as { price?: string } : futuresRaw as { price?: string } | null;
 
           // 스팟 가격
           const spotSymbol = `${qs.baseAsset}USDT`;
