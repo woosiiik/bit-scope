@@ -167,10 +167,27 @@ function mergeExchangeData(
 
 /**
  * 거래소별 시계열 데이터를 타임스탬프 기준으로 병합한다.
+ *
+ * 거래소마다 interval이 다를 수 있으므로(5min, 15min, 1h, 4h 등)
+ * 타임스탬프를 가장 큰 공통 interval(1시간)로 정규화하여 매칭한다.
+ * 같은 시간 버킷에 여러 포인트가 있으면 마지막 값을 사용한다.
  */
 function mergeTimeSeries(
   entries: Array<{ exchange: FuturesExchangeType; data: unknown }>,
 ): ExchangeTimeSeriesPoint[] {
+  // 데이터 간격 자동 감지: 가장 빈도 높은 거래소의 interval 사용
+  let minInterval = 3_600_000; // 기본 1시간
+  for (const entry of entries) {
+    const points = entry.data as ExchangeTimeSeriesPoint[];
+    if (!Array.isArray(points) || points.length < 2) continue;
+    const interval = points[1]!.timestamp - points[0]!.timestamp;
+    if (interval > 0 && interval < minInterval) {
+      minInterval = interval;
+    }
+  }
+  // 최소 15분, 최대 4시간으로 클램프
+  const bucketMs = Math.max(900_000, Math.min(minInterval, 14_400_000));
+
   const timeMap = new Map<number, Partial<Record<FuturesExchangeType, number>>>();
 
   for (const entry of entries) {
@@ -178,12 +195,14 @@ function mergeTimeSeries(
     if (!Array.isArray(points)) continue;
 
     for (const point of points) {
-      const existing = timeMap.get(point.timestamp) ?? {};
+      // 타임스탬프를 공통 버킷으로 정규화
+      const normalizedTs = Math.floor(point.timestamp / bucketMs) * bucketMs;
+      const existing = timeMap.get(normalizedTs) ?? {};
       const value = point.values[entry.exchange];
       if (value !== undefined) {
         existing[entry.exchange] = value;
       }
-      timeMap.set(point.timestamp, existing);
+      timeMap.set(normalizedTs, existing);
     }
   }
 

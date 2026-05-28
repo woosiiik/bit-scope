@@ -166,6 +166,16 @@ function buildBinanceUrl(baseUrl: string, indicator: FuturesDashboardIndicator, 
 
 // ===== Bybit =====
 
+/** 기간별 Bybit OI intervalTime 매핑 (허용값: 5min, 15min, 30min, 1h, 4h, 1d) */
+const PERIOD_TO_BYBIT_OI: Record<Period, { intervalTime: string; limit: number }> = {
+  '1d': { intervalTime: '30min', limit: 48 },
+  '1w': { intervalTime: '4h', limit: 42 },
+  '1m': { intervalTime: '4h', limit: 180 },
+  '3m': { intervalTime: '1d', limit: 90 },
+  '6m': { intervalTime: '1d', limit: 180 },
+  '1y': { intervalTime: '1d', limit: 200 },
+};
+
 function buildBybitUrl(baseUrl: string, indicator: FuturesDashboardIndicator, symbol: string, period: Period): string {
   switch (indicator) {
     case 'volume24h':
@@ -173,8 +183,10 @@ function buildBybitUrl(baseUrl: string, indicator: FuturesDashboardIndicator, sy
       return `${baseUrl}/v5/market/tickers?category=linear&symbol=${symbol}`;
     case 'oiSnapshot':
       return `${baseUrl}/v5/market/open-interest?category=linear&symbol=${symbol}&intervalTime=5min&limit=1`;
-    case 'oiHistory':
-      return `${baseUrl}/v5/market/open-interest?category=linear&symbol=${symbol}&intervalTime=5min&limit=200`;
+    case 'oiHistory': {
+      const p = PERIOD_TO_BYBIT_OI[period];
+      return `${baseUrl}/v5/market/open-interest?category=linear&symbol=${symbol}&intervalTime=${p.intervalTime}&limit=${p.limit}`;
+    }
     case 'price':
     case 'volumeHistory': {
       const p = PERIOD_TO_BYBIT_KLINE[period];
@@ -219,8 +231,12 @@ function buildGateUrl(baseUrl: string, indicator: FuturesDashboardIndicator, sym
     case 'oiSnapshot':
     case 'fundingRate':
       return `${baseUrl}/api/v4/futures/usdt/contracts/${symbol}`;
-    case 'oiHistory':
-      return `${baseUrl}/api/v4/futures/usdt/contract_stats?contract=${symbol}&limit=100`;
+    case 'oiHistory': {
+      // Gate contract_stats는 시간 기반 조회, from 파라미터로 범위 지정
+      const hoursMap: Record<Period, number> = { '1d': 24, '1w': 168, '1m': 720, '3m': 2160, '6m': 4320, '1y': 8760 };
+      const fromTs = Math.floor((Date.now() - (hoursMap[period] ?? 24) * 3600 * 1000) / 1000);
+      return `${baseUrl}/api/v4/futures/usdt/contract_stats?contract=${symbol}&from=${fromTs}&limit=200`;
+    }
     case 'price':
     case 'volumeHistory': {
       const p = PERIOD_TO_GATE_INTERVAL[period];
