@@ -219,7 +219,20 @@ function mergeTimeSeries(
     }
   }
 
+  // 참여하는 모든 거래소 목록 수집
+  const allExchanges = new Set<FuturesExchangeType>();
+  for (const entry of entries) {
+    allExchanges.add(entry.exchange);
+  }
+
+  // 누락된 거래소를 null로 채워서 connectNulls가 작동하도록
   return Array.from(timeMap.entries())
-    .map(([timestamp, values]) => ({ timestamp, values }))
+    .map(([timestamp, values]) => {
+      const filled: Partial<Record<FuturesExchangeType, number | null>> = {};
+      for (const ex of allExchanges) {
+        filled[ex] = values[ex] ?? null;
+      }
+      return { timestamp, values: filled as Partial<Record<FuturesExchangeType, number>> };
+    })
     .sort((a, b) => a.timestamp - b.timestamp);
 }
