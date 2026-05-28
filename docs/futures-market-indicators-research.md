@@ -374,57 +374,96 @@ Velo는 거래소 데이터를 직접 생산하는 것이 아니라, 각 거래�
 
 ---
 
-## Appendix B: 구현 결과 현행화 (2026-05-27)
+## Appendix B: 구현 결과 현행화 (최종 업데이트: 2026-05-28)
 
 > 본 리서치 이후 실제 구현을 완료하면서 변경/확인된 사항을 기록한다.
 
-### 구현 완료 현황
+### 구현 완료 현황 및 실제 거래소 지원 상태
 
-| # | 지표 | 구현 상태 | 페이지 | 비고 |
-|---|------|:--------:|--------|------|
-| 1 | **24h Volume** | 구현 완료 | `/futures-dashboard` | 6개 거래소 바 차트 |
-| 2 | **Price** | 구현 완료 | `/futures-dashboard` | 6개 거래소 라인 차트, 기간 선택 |
-| 3 | **Open Interest** | 구현 완료 | `/futures-dashboard` | 스냅샷(바) + 히스토리(라인) |
-| 4 | **Funding Rate** | 구현 완료 | `/futures-dashboard` | Annual/8hrs 토글, 6개 거래소 |
-| 5 | **Liquidations** | 구현 완료 | `/futures-dashboard` | WebSocket 실시간 수집 (Binance/Bybit) + REST 폴링 (OKX/Gate) |
-| 6 | **CVD** | 구현 완료 | `/futures-dashboard` | Binance Kline 기반, Dollars/OI-norm 토글 |
-| 7 | **3M Basis** | Phase 2 연기 | `/futures-dashboard` | 분기 선물 심볼 동적 조합 필요 |
-| 8 | **Avg Return/Hour** | 구현 완료 | `/futures-dashboard` | Binance 1시간봉 기반 (리서치 문서는 1분봉이었으나 API 부하로 1시간봉 사용) |
-| 9 | **Avg Return/Day** | 구현 완료 | `/futures-dashboard` | Binance 1시간봉 기반 |
-| 10 | **Return/Session** | 구현 완료 | `/futures-dashboard` | APAC/EU/US 세션별, Binance 1시간봉 기반 |
+| # | 지표 | 구현 상태 | 실제 지원 거래소 | 비고 |
+|---|------|:--------:|----------------|------|
+| 1 | **24h Volume** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 스냅샷 바 차트 |
+| 2 | **Price** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 라인 차트, 기간 선택 |
+| 3 | **Volume History** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 스택 바 차트, 기간 선택 |
+| 4 | **OI Snapshot** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | **코인 단위** 바 차트 |
+| 5 | **OI History** | **부분** | **Binance, Bybit만 (2개)** | OKX ~24h 고정, Gate USD 단위 불일치, Bitget/Hyperliquid 히스토리 API 없음 |
+| 6 | **Funding Rate** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | Annual/8hrs 토글 |
+| 7 | **Liquidations** | 구현 완료 | Binance, Bybit (WebSocket), OKX, Gate (REST 폴링) | **NestJS 백엔드 필수**, Bitget/Hyperliquid 미지원 |
+| 8 | **CVD** | 구현 완료 | **Binance만 (1개)** | Binance Kline `takerBuyQuoteVol` 기반, 다른 거래소는 taker 데이터 미제공 |
+| 9 | **3M Basis** | 구현 완료 | **Binance만 (1개)** | COIN-M(`dapi`) 분기 선물 사용, **NestJS 백엔드 필수**, BTC/ETH만 |
+| 10 | **Avg Return/Hour** | 구현 완료 | **Binance만 (1개)** | 1시간봉 기반 (리서치는 1분봉이었으나 API 부하로 변경) |
+| 11 | **Avg Return/Day** | 구현 완료 | **Binance만 (1개)** | 1시간봉 기반 |
+| 12 | **Return/Session** | 구현 완료 | **Binance만 (1개)** | APAC/EU/US 세션별, 1시간봉 기반 |
+
+### OI History 상세 — 거래소별 제외 사유
+
+| 거래소 | OI 히스토리 API | 지원 | 단위 | 제외 사유 |
+|--------|----------------|:---:|------|----------|
+| **Binance** | `/futures/data/openInterestHist` | O | 코인 (`sumOpenInterest`) | - |
+| **Bybit** | `/v5/market/open-interest` | O | 코인 (`openInterest`) | - |
+| OKX | `/api/v5/rubik/stat/contracts/open-interest-volume` | X | 불명확 | **항상 ~24시간만 반환** (기간 파라미터 무시) |
+| Gate.io | `/api/v4/futures/usdt/contract_stats` | X | USD (`open_interest_usd`) | **다른 거래소와 단위 불일치** (코인 vs USD). Gate OI $4.6B vs Binance 102K BTC → Y축 스케일 차이로 다른 거래소 라인이 바닥에 깔림 |
+| Bitget | - | X | - | OI 히스토리 전용 API 없음 |
+| Hyperliquid | - | X | - | OI 히스토리 전용 API 없음. `candleSnapshot`에 OI 미포함 |
+
+**향후 해결**: Phase 2 서버 수집(`funding_oi_snapshot` 테이블)이 1시간마다 6개 거래소 OI를 USD 단위로 수집 중. 데이터 충분히 축적되면 자체 DB 기반 OI 히스토리로 전환하여 6개 거래소 전부 표시 가능.
 
 ### 구현 중 발견된 주요 차이점
 
 #### OKX API 제약
-- OKX `/api/v5/market/candles` 엔드포인트의 **최대 limit은 100개**임 (리서치 시 미확인)
-- OKX는 에러 시에도 HTTP 200을 반환하고 `{ code: "50014" }` 형태로 에러 전달 → 별도 체크 필요
-- OKX rubik 통계 API(`/api/v5/rubik/stat/`)는 접근 제한이 있을 수 있음
+- `/api/v5/market/candles` **최대 limit 100개** (리서치 시 미확인). interval을 크게 설정하여 대응 (1w→2H/84개, 1m→8H/90개)
+- 에러 시에도 **HTTP 200 반환** + `{ code: "50014" }` 형태 → 별도 `code !== '0'` 체크 필수
+- rubik 통계 API (`/api/v5/rubik/stat/`) → OI 히스토리는 ~24시간만 반환하여 사용 불가
 
-#### Hyperliquid 펀딩 주기
-- 리서치 문서에서 미확인이었으나, Hyperliquid 펀딩은 **1시간 주기** (다른 거래소는 8시간)
-- 연환산 계산: `rate1h × 24 × 365` (8시간 기준 `rate8h × 3 × 365`가 아님)
+#### Hyperliquid 제약
+- 펀딩은 **1시간 주기** (다른 거래소는 8시간). 연환산: `rate1h × 24 × 365`
+- `candleSnapshot`은 **항상 30일/1h 고정** 반환 → period 파라미터 미지원, 서버에서 기간 트리밍으로 대응
+- OI 히스토리, taker buy/sell 데이터 없음
 
-#### OI 단위 불일치
-- 거래소마다 OI 반환 단위가 다름 (코인/계약/USDT)
-- 현재 구현: 동일 코인 내 비교는 **코인 단위 통일**로 해결
-- 마켓 스크리너(크로스 코인 비교)에서는 **USDT 환산** 필요 → Bybit/Gate/Bitget/Hyperliquid는 USDT, Binance/OKX는 별도 보충 API 필요
+#### OI 단위 불일치 (가장 까다로운 문제)
+- **코인 단위**: Binance `sumOpenInterest`, Bybit `openInterest`
+- **USD 단위**: Gate `open_interest_usd`, Hyperliquid `openInterest * markPx`
+- **계약 수**: Gate `open_interest` (코인이 아님, `quanto_multiplier` 필요)
+- **현재 해결**: OI Snapshot/History는 코인 단위 통일 (USD 거래소 제외). 마켓 스크리너는 Phase 2 서버 수집으로 USD 통일.
 
-#### Liquidations 구현 방식
-- 리서치 문서: "WebSocket 상시 수집 필요"로 Phase 3으로 분류
-- 실제 구현: `apps/api`에 NestJS LiquidationModule 생성, Binance/Bybit WebSocket + OKX/Gate REST 폴링
-- DB(MySQL)에 이벤트별 저장 → REST API로 시간별 집계 제공
-- Bitget/Hyperliquid는 여전히 청산 공개 API 없음
+#### Gate.io Volume History 단위
+- candlestick `v` = **계약 수** (코인이 아님). `v × c(close)` = 비정상적 큰 값 ($3.3조/캔들)
+- **수정**: `sum` 필드 사용 (실제 USDT 거래대금)
+
+#### Binance 3M Basis 엔드포인트
+- 분기 선물은 **COIN-M(`dapi.binance.com`)에만 존재**. USD-M(`fapi`)에는 없음.
+- 초기 구현이 `fapi`를 사용하여 0건 조회 → `dapi`로 수정
+- 심볼 형식: `BTCUSD_260626` (USD, USDT 아님), `quoteAsset === 'USD'`
 
 #### 1000x 접두사 코인
 - Binance/Bybit에서 `1000PEPEUSDT`, `1000SHIBUSDT` 등 밈 코인에 1000x 접두사 사용
-- 심볼 정규화 시 접두사 제거 + 가격 보정(×1000) 필요 (마켓 스크리너에서 구현 완료)
+- 심볼 정규화 시 접두사 제거 + 가격 보정(×1000) 필요
+
+#### 시계열 차트 X축 문제
+- 거래소마다 다른 interval(5분/15분/30분/1시간/4시간) → 타임스탬프 불일치 → 같은 시간에 합쳐지지 않음
+- **해결**: `mergeTimeSeries`에서 기간별 동적 버킷 정규화 (1d=15분, 1w=1시간, 1m=4시간)
+- Hyperliquid 30일 고정 → 요청 기간 기준 트리밍
+
+### NestJS 백엔드 의존 지표
+
+아래 지표들은 거래소 API 직접 호출이 아닌 **NestJS 백엔드(`apps/api`) + MySQL DB**에 의존한다. 백엔드가 실행 중이지 않으면 데이터가 표시되지 않는다.
+
+| 지표 | NestJS 모듈 | 수집 방식 | DB 테이블 |
+|------|------------|----------|----------|
+| **Liquidations** | `LiquidationModule` | Binance/Bybit WebSocket + OKX/Gate REST 5분 폴링 | `liquidation` |
+| **3M Basis** | `Phase2Module` | Binance COIN-M 분기 선물 + Spot 가격 1시간 수집 | `basis_snapshot` |
+| **Funding Heatmap** | `Phase2Module` | 6개 거래소 펀딩+OI 1시간 수집 | `funding_oi_snapshot` |
+| **OI Changes (Phase 2)** | `Phase2Module` | 위와 동일 | `funding_oi_snapshot` |
+| **Normalized CVD** | `Phase2Module` | Binance taker buy/sell 1시간 수집 | `taker_volume_snapshot` |
 
 ### 아키텍처 결정 사항
 
 | 결정 | 내용 |
 |------|------|
 | Route Handler 패턴 | 동적 라우트 `/api/futures-dashboard/[indicator]`로 12개 지표를 단일 핸들러에서 처리 |
+| 백엔드 프록시 | NestJS 의존 지표는 별도 Route Handler에서 `getApiBaseUrl()` 유틸리티로 프록시 |
 | 캐싱 전략 | 3단계 TTL (스냅샷 30초 / 히스토리 5분 / Kline 집계 10분) |
 | 파생 지표 계산 | 서버에서 Kline 기반 계산 후 결과만 클라이언트 전달 (대역폭 절감) |
-| Liquidations 수집 | `apps/api`에서 WebSocket 상시 연결 + 배치 인서트(5초 flush) |
-| Binance Futures 도메인 | `fapi.binance.com` 전용 도메인 사용 (일반 `api.binance.com`과 분리) |
+| 시계열 병합 | 기간별 동적 버킷 (1d=15분, 1w=1시간, 1m=4시간) + 기간 트리밍 |
+| Liquidations 수집 | WebSocket 상시 연결 + 배치 인서트(5초 flush) |
+| Binance 도메인 분리 | USD-M: `fapi.binance.com`, COIN-M: `dapi.binance.com`, Spot: `api.binance.com` |
