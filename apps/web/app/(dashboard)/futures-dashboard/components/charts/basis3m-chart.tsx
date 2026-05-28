@@ -28,9 +28,9 @@ export function Basis3mChart({ coin, serverData }: Basis3mChartProps) {
     );
   }
 
-  const chartData = serverData?.data;
+  const chartData = Array.isArray(serverData?.data) ? serverData.data : [];
 
-  if (!chartData || chartData.length === 0) {
+  if (chartData.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-xs text-muted-foreground text-center">
