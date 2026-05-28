@@ -37,7 +37,7 @@ export function PriceChart({ data }: { data: unknown }) {
           }}
           tick={{ fontSize: 9 }}
           stroke="var(--muted-foreground)"
-          interval="preserveStartEnd"
+          interval={Math.max(0, Math.floor(sampled.length / 8))}
         />
         <YAxis tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" domain={['auto', 'auto']} />
         <Tooltip

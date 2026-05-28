@@ -37,7 +37,7 @@ export function OiHistoryChart({ data }: { data: unknown }) {
           }}
           tick={{ fontSize: 9 }}
           stroke="var(--muted-foreground)"
-          interval="preserveStartEnd"
+          interval={Math.max(0, Math.floor(sampled.length / 8))}
         />
         <YAxis
           tickFormatter={(v) => {

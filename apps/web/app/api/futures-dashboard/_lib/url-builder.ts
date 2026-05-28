@@ -232,10 +232,11 @@ function buildGateUrl(baseUrl: string, indicator: FuturesDashboardIndicator, sym
     case 'fundingRate':
       return `${baseUrl}/api/v4/futures/usdt/contracts/${symbol}`;
     case 'oiHistory': {
-      // Gate contract_stats는 시간 기반 조회, from 파라미터로 범위 지정
+      // Gate contract_stats: 5분 간격 고정. 1D=288개, 1W=2000+이므로 1D만 지원.
+      // 1W 이상은 데이터가 너무 많아 limit으로 커버 불가 → 최근 2000개(약 7일)까지.
       const hoursMap: Record<Period, number> = { '1d': 24, '1w': 168, '1m': 720, '3m': 2160, '6m': 4320, '1y': 8760 };
       const fromTs = Math.floor((Date.now() - (hoursMap[period] ?? 24) * 3600 * 1000) / 1000);
-      return `${baseUrl}/api/v4/futures/usdt/contract_stats?contract=${symbol}&from=${fromTs}&limit=200`;
+      return `${baseUrl}/api/v4/futures/usdt/contract_stats?contract=${symbol}&from=${fromTs}&limit=2000`;
     }
     case 'price':
     case 'volumeHistory': {

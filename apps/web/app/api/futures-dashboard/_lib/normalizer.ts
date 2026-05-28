@@ -304,11 +304,11 @@ export function normalizeOiHistory(exchange: FuturesExchangeType, raw: unknown):
       })).reverse();
     }
     case 'gate': {
-      const d = raw as Array<{ time?: number; open_interest?: string }>;
+      const d = raw as Array<{ time?: number; open_interest?: string; open_interest_usd?: number }>;
       if (!Array.isArray(d)) return [];
       return d.map((item) => ({
         timestamp: (item.time ?? 0) * 1000,
-        values: { [exchange]: safeFloat(item.open_interest) } as Partial<Record<FuturesExchangeType, number>>,
+        values: { [exchange]: safeFloat(item.open_interest_usd ?? item.open_interest) } as Partial<Record<FuturesExchangeType, number>>,
       }));
     }
     case 'bitget': {
