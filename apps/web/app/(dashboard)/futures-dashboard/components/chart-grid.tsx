@@ -203,7 +203,7 @@ function BasisPanel({ coin, period }: { coin: string; period: Period }) {
       <CardContent className="p-3 space-y-2">
         <h3 className="text-xs font-medium text-foreground">3M Annualized Basis</h3>
         <div className="h-[180px]">
-          <Basis3mChart data={null} coin={coin} serverData={basisData} />
+          <Basis3mChart coin={coin} serverData={basisData} />
         </div>
       </CardContent>
     </Card>

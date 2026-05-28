@@ -37,7 +37,8 @@ export class BasisService {
         const timestamp = Number(r.timestamp);
         const daysToExpiry = (deliveryDate - timestamp) / 86_400_000;
 
-        if (spotPrice === 0 || daysToExpiry <= 0) return null;
+        // 만기 1일 미만이면 극단값 방지
+        if (spotPrice === 0 || daysToExpiry < 1) return null;
 
         return {
           timestamp,

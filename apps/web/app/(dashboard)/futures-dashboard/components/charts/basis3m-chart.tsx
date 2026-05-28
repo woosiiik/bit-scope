@@ -11,7 +11,6 @@ interface BasisEntry {
 }
 
 interface Basis3mChartProps {
-  data: unknown;
   coin: string;
   serverData?: { data: BasisEntry[] } | null;
 }

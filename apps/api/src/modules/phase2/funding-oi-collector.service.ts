@@ -122,6 +122,7 @@ export class FundingOICollectorService implements OnModuleInit {
   }
 
   private async fetchBinance(): Promise<TickerData[]> {
+    // premiumIndex (펀딩비율 + markPrice)
     const res = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex', { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
     if (!res.ok) throw new Error(`Binance: ${res.status}`);
     const data = (await res.json()) as Array<{ symbol?: string; lastFundingRate?: string; markPrice?: string }>;
@@ -129,20 +130,51 @@ export class FundingOICollectorService implements OnModuleInit {
 
     const tickers: TickerData[] = [];
     const symbols: string[] = [];
+    const markPriceMap = new Map<string, number>();
 
     for (const item of data) {
       const symbol = this.symbolNormalizer.normalize('binance', item.symbol ?? '');
       if (!symbol) continue;
-      symbols.push(item.symbol ?? '');
+      const rawSymbol = item.symbol ?? '';
+      symbols.push(rawSymbol);
+      markPriceMap.set(rawSymbol, safeFloat(item.markPrice));
       tickers.push({
         symbol,
         exchange: 'binance',
         fundingRate: safeFloat(item.lastFundingRate),
-        openInterest: 0, // premiumIndex에 OI 없음
+        openInterest: 0,
       });
     }
 
     this.binanceSymbols = symbols;
+
+    // 상위 50개 코인 OI 별도 수집 (개별 API 호출)
+    const top50 = symbols.slice(0, 50);
+    const oiResults = await Promise.allSettled(
+      top50.map(async (rawSymbol) => {
+        const oiRes = await fetch(
+          `https://fapi.binance.com/fapi/v1/openInterest?symbol=${rawSymbol}`,
+          { signal: AbortSignal.timeout(5000) },
+        );
+        if (!oiRes.ok) return null;
+        const oiData = (await oiRes.json()) as { openInterest?: string };
+        return { rawSymbol, oi: safeFloat(oiData?.openInterest) };
+      }),
+    );
+
+    // OI를 USD로 환산하여 tickers에 병합
+    for (const result of oiResults) {
+      if (result.status !== 'fulfilled' || !result.value) continue;
+      const { rawSymbol, oi } = result.value;
+      const normalizedSymbol = this.symbolNormalizer.normalize('binance', rawSymbol);
+      if (!normalizedSymbol) continue;
+      const markPrice = markPriceMap.get(rawSymbol) ?? 0;
+      const ticker = tickers.find((t) => t.symbol === normalizedSymbol);
+      if (ticker) {
+        ticker.openInterest = oi * markPrice; // USD 환산
+      }
+    }
+
     return tickers;
   }
 
@@ -167,32 +199,50 @@ export class FundingOICollectorService implements OnModuleInit {
   }
 
   private async fetchOkx(): Promise<TickerData[]> {
-    // OKX: 펀딩 + OI 별도 API
-    const [fundingRes, oiRes] = await Promise.all([
-      fetch('https://www.okx.com/api/v5/public/funding-rate', { signal: AbortSignal.timeout(FETCH_TIMEOUT) }),
+    // OKX: 펀딩 + OI + 가격(OI USD 환산용) 병렬 호출
+    const [fundingRes, oiRes, tickerRes] = await Promise.all([
+      fetch('https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) })
+        .catch(() => null),
       fetch('https://www.okx.com/api/v5/public/open-interest?instType=SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) }),
+      fetch('https://www.okx.com/api/v5/market/tickers?instType=SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) }),
     ]);
 
-    const fundingData = fundingRes.ok ? (await fundingRes.json()) as { code?: string; data?: Array<Record<string, string>> } : null;
-    const oiData = oiRes.ok ? (await oiRes.json()) as { code?: string; data?: Array<Record<string, string>> } : null;
-
-    const fundingMap = new Map<string, number>();
-    if (fundingData?.code === '0' && Array.isArray(fundingData.data)) {
-      for (const item of fundingData.data) {
-        const sym = this.symbolNormalizer.normalize('okx', item.instId ?? '');
-        if (sym) fundingMap.set(sym, safeFloat(item.fundingRate));
+    // 가격 맵 (OI USD 환산용)
+    const priceMap = new Map<string, number>();
+    const fundingFromTicker = new Map<string, number>();
+    if (tickerRes?.ok) {
+      const tickerData = (await tickerRes.json()) as { code?: string; data?: Array<Record<string, string>> };
+      if (tickerData?.code === '0' && Array.isArray(tickerData.data)) {
+        for (const item of tickerData.data) {
+          const sym = this.symbolNormalizer.normalize('okx', item.instId ?? '');
+          if (sym) {
+            priceMap.set(sym, safeFloat(item.last));
+          }
+        }
       }
     }
 
+    // OI (코인 단위 → USD 환산)
     const oiMap = new Map<string, number>();
-    if (oiData?.code === '0' && Array.isArray(oiData.data)) {
-      for (const item of oiData.data) {
-        const sym = this.symbolNormalizer.normalize('okx', item.instId ?? '');
-        if (sym) oiMap.set(sym, safeFloat(item.oiCcy));
+    if (oiRes?.ok) {
+      const oiData = (await oiRes.json()) as { code?: string; data?: Array<Record<string, string>> };
+      if (oiData?.code === '0' && Array.isArray(oiData.data)) {
+        for (const item of oiData.data) {
+          const sym = this.symbolNormalizer.normalize('okx', item.instId ?? '');
+          if (sym) {
+            const oiCcy = safeFloat(item.oiCcy);
+            const price = priceMap.get(sym) ?? 0;
+            oiMap.set(sym, oiCcy * price); // USD 환산
+          }
+        }
       }
     }
 
-    const allSymbols = new Set([...fundingMap.keys(), ...oiMap.keys()]);
+    // 펀딩: OKX funding-rate API는 instId 필수이므로 ticker에서 없으면 개별 호출 불가
+    // 대안: 수집하지 않고 0으로 남김 (OKX 펀딩은 마켓 스크리너 벌크에서 이미 수집 중)
+    const fundingMap = new Map<string, number>();
+
+    const allSymbols = new Set([...oiMap.keys(), ...priceMap.keys()]);
     return Array.from(allSymbols).map((symbol) => ({
       symbol,
       exchange: 'okx',

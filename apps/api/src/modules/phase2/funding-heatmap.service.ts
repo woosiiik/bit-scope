@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { FundingOISnapshotEntity } from './entities/funding-oi-snapshot.entity';
 
 export interface HeatmapCell {
@@ -25,27 +25,34 @@ export class FundingHeatmapService {
     const bucket = BUCKET_MS[period] ?? 3_600_000;
     const since = Date.now() - hours * 3_600_000;
 
-    const rows = await this.repo.find({
-      where: { timestamp: MoreThan(since) },
-      order: { timestamp: 'ASC' },
-    });
+    // 1단계: 상위 30개 심볼을 DB에서 추출 (P0-3 수정: 전체 행 로드 방지)
+    const topSymbolRows = await this.repo
+      .createQueryBuilder('s')
+      .select('s.symbol', 'symbol')
+      .addSelect('SUM(s.open_interest)', 'totalOI')
+      .where('s.timestamp > :since', { since })
+      .groupBy('s.symbol')
+      .orderBy('SUM(s.open_interest)', 'DESC')
+      .limit(30)
+      .getRawMany<{ symbol: string; totalOI: string }>();
 
-    // 심볼별 전체 OI 합산 → 상위 30개
-    const oiBySymbol = new Map<string, number>();
-    for (const r of rows) {
-      oiBySymbol.set(r.symbol, (oiBySymbol.get(r.symbol) ?? 0) + Number(r.openInterest));
+    const topSymbols = topSymbolRows.map((r) => r.symbol);
+    if (topSymbols.length === 0) {
+      return { cells: [], symbols: [], dataRange: { from: since, to: Date.now() } };
     }
-    const topSymbols = Array.from(oiBySymbol.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 30)
-      .map(([s]) => s);
-    const topSet = new Set(topSymbols);
+
+    // 2단계: 상위 심볼만 조회 (메모리 사용량 대폭 감소)
+    const rows = await this.repo
+      .createQueryBuilder('s')
+      .where('s.timestamp > :since', { since })
+      .andWhere('s.symbol IN (:...symbols)', { symbols: topSymbols })
+      .orderBy('s.timestamp', 'ASC')
+      .getMany();
 
     // 시간 버킷별 OI 가중 평균 펀딩 계산
-    const cellMap = new Map<string, { totalWeighted: number; totalOI: number; details: Map<string, { rate: number; oi: number }> }>();
+    const cellMap = new Map<string, { totalWeighted: number; totalOI: number; details: Map<string, { rate: number; oi: number; count: number }> }>();
 
     for (const r of rows) {
-      if (!topSet.has(r.symbol)) continue;
       const bucketTs = Math.floor(Number(r.timestamp) / bucket) * bucket;
       const key = `${r.symbol}:${bucketTs}`;
 
@@ -54,7 +61,17 @@ export class FundingHeatmapService {
       const rate = Number(r.fundingRate);
       cell.totalWeighted += rate * oi;
       cell.totalOI += oi;
-      cell.details.set(r.exchange, { rate, oi });
+
+      // P1-4 수정: 동일 버킷 내 같은 거래소는 평균 (덮어쓰기 대신)
+      const existing = cell.details.get(r.exchange);
+      if (existing) {
+        existing.rate = (existing.rate * existing.count + rate) / (existing.count + 1);
+        existing.oi += oi;
+        existing.count++;
+      } else {
+        cell.details.set(r.exchange, { rate, oi, count: 1 });
+      }
+
       cellMap.set(key, cell);
     }
 

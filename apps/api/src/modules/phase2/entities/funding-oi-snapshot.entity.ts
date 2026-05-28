@@ -3,6 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, Index, Unique } from 'typeorm';
 @Entity('funding_oi_snapshot')
 @Index('idx_fos_symbol_time', ['symbol', 'timestamp'])
 @Index('idx_fos_exchange_time', ['exchange', 'timestamp'])
+@Index('idx_fos_timestamp', ['timestamp'])
 @Unique('uq_fos_symbol_exchange_time', ['symbol', 'exchange', 'timestamp'])
 export class FundingOISnapshotEntity {
   @PrimaryGeneratedColumn('increment')

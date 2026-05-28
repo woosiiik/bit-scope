@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, Index, Unique } from 'typeorm';
 
 @Entity('taker_volume_snapshot')
 @Index('idx_tvs_symbol_time', ['symbol', 'timestamp'])
+@Index('idx_tvs_timestamp', ['timestamp'])
 @Unique('uq_tvs_symbol_time', ['symbol', 'timestamp'])
 export class TakerVolumeSnapshotEntity {
   @PrimaryGeneratedColumn('increment')

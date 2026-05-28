@@ -17,7 +17,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const url = `${API_BASE}/phase2/basis?symbol=${symbol}&period=${period}`;
+    const url = `${API_BASE}/phase2/basis?symbol=${encodeURIComponent(symbol)}&period=${encodeURIComponent(period)}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data = await res.json();
