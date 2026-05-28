@@ -241,11 +241,12 @@ export function normalizeVolumeHistory(exchange: FuturesExchangeType, raw: unkno
       })).reverse();
     }
     case 'gate': {
-      const d = raw as Array<{ t?: number; v?: number; c?: string }>;
+      // Gate candlestick: v=계약 수, sum=USDT 거래대금
+      const d = raw as Array<{ t?: number; v?: number; c?: string; sum?: string }>;
       if (!Array.isArray(d)) return [];
       return d.map((k) => ({
         timestamp: (k.t ?? 0) * 1000,
-        values: { [exchange]: safeFloat(k.v) * safeFloat(k.c) } as Partial<Record<FuturesExchangeType, number>>,
+        values: { [exchange]: safeFloat(k.sum) } as Partial<Record<FuturesExchangeType, number>>,
       }));
     }
     case 'bitget': {

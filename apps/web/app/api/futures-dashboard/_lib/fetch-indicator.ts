@@ -176,15 +176,28 @@ const PERIOD_BUCKET_MS: Record<string, number> = {
   '1y': 86_400_000,   // 1일
 };
 
+/** 기간별 시간 범위 (ms) — X축 범위 제한용 */
+const PERIOD_RANGE_MS: Record<string, number> = {
+  '1d': 24 * 3_600_000,
+  '1w': 7 * 24 * 3_600_000,
+  '1m': 30 * 24 * 3_600_000,
+  '3m': 90 * 24 * 3_600_000,
+  '6m': 180 * 24 * 3_600_000,
+  '1y': 365 * 24 * 3_600_000,
+};
+
 /**
  * 거래소별 시계열 데이터를 타임스탬프 기준으로 병합한다.
- * 버킷 크기를 기간에 맞게 동적으로 설정하여 데이터 해상도를 보존한다.
+ * - 버킷 크기를 기간에 맞게 동적으로 설정
+ * - 요청 기간보다 오래된 데이터는 트리밍 (Hyperliquid 30일 고정 등 대응)
  */
 function mergeTimeSeries(
   entries: Array<{ exchange: FuturesExchangeType; data: unknown }>,
   period?: string,
 ): ExchangeTimeSeriesPoint[] {
   const BUCKET_MS = PERIOD_BUCKET_MS[period ?? '1m'] ?? 3_600_000;
+  const rangeMs = PERIOD_RANGE_MS[period ?? '1m'] ?? 30 * 24 * 3_600_000;
+  const cutoff = Date.now() - rangeMs;
 
   const timeMap = new Map<number, Partial<Record<FuturesExchangeType, number>>>();
 
@@ -193,6 +206,9 @@ function mergeTimeSeries(
     if (!Array.isArray(points)) continue;
 
     for (const point of points) {
+      // 요청 기간보다 오래된 데이터 제외
+      if (point.timestamp < cutoff) continue;
+
       const normalizedTs = Math.floor(point.timestamp / BUCKET_MS) * BUCKET_MS;
       const existing = timeMap.get(normalizedTs) ?? {};
       const value = point.values[entry.exchange];
