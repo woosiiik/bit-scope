@@ -53,6 +53,7 @@ export function OiHistoryChart({ data }: { data: unknown }) {
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
           labelFormatter={(t) => new Date(t as number).toLocaleString()}
+          formatter={(v, name) => [Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }), String(name)]}
         />
         {exchanges.map((ex) => (
           <Line
