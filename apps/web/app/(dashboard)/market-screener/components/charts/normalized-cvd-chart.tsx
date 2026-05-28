@@ -12,8 +12,9 @@ interface CVDEntry {
 
 export function NormalizedCVDChart({ data }: { data: { data: CVDEntry[] } | null | undefined }) {
   const chartData = useMemo(() => {
-    if (!data?.data || data.data.length === 0) return [];
-    return data.data.slice(0, 20);
+    if (!data?.data) return [];
+    const arr = Array.isArray(data.data) ? data.data : [];
+    return arr.slice(0, 20);
   }, [data]);
 
   if (chartData.length === 0) {

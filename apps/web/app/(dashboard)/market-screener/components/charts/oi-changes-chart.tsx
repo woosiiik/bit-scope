@@ -21,7 +21,7 @@ interface OIChangesChartProps {
 export function OIChangesChart({ serverData, coins }: OIChangesChartProps) {
   const data = useMemo(() => {
     // Phase 2 서버 데이터가 있으면 변화율 차트
-    if (serverData?.data && serverData.data.length > 0) {
+    if (serverData?.data && Array.isArray(serverData.data) && serverData.data.length > 0) {
       return serverData.data.slice(0, 20).map((d) => ({
         symbol: d.symbol,
         value: d.changePercent,
