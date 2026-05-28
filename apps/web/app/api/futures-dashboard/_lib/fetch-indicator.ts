@@ -44,16 +44,16 @@ export async function fetchMultiExchangeIndicator(
       const config = EXCHANGE_CONFIGS[exchange as ExchangeType];
       const timeoutMs = config?.timeoutMs ?? FETCH_TIMEOUT;
 
+      const isPost = exchange === 'hyperliquid';
       const fetchOptions: RequestInit = {
-        method: exchange === 'hyperliquid' ? 'POST' : 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        method: isPost ? 'POST' : 'GET',
+        headers: isPost
+          ? { 'Content-Type': 'application/json', Accept: 'application/json' }
+          : { Accept: 'application/json' },
         signal: AbortSignal.timeout(timeoutMs),
       };
 
-      if (exchange === 'hyperliquid') {
+      if (isPost) {
         fetchOptions.body = buildHyperliquidBody(indicator, coin);
       }
 
@@ -88,7 +88,9 @@ export async function fetchMultiExchangeIndicator(
     if (result.status === 'fulfilled') {
       successEntries.push(result.value);
     } else {
-      errors[exchange] = result.reason?.message ?? 'Unknown error';
+      const errMsg = result.reason?.message ?? 'Unknown error';
+      errors[exchange] = errMsg;
+      console.error(`[futures-dashboard] ${indicator} ${exchange} failed: ${errMsg}`);
     }
   }
 
