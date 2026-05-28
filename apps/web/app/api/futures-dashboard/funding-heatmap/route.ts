@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { buildCacheKey, getGlobalCache } from '../../exchange/_lib/cache';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4500';
 const CACHE_TTL = 60_000;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
