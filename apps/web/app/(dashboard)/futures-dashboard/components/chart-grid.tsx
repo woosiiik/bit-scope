@@ -181,7 +181,11 @@ function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
             <div className="h-full w-full animate-pulse bg-muted rounded" />
           ) : error ? (
             <div className="h-full flex flex-col items-center justify-center gap-2">
-              <p className="text-xs text-muted-foreground">청산 데이터를 불러올 수 없습니다</p>
+              <p className="text-xs text-muted-foreground text-center">
+                백엔드 서버(NestJS)에 연결할 수 없습니다.
+                <br />
+                서버가 실행 중인지 확인해주세요.
+              </p>
               <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => refetch()}>재시도</Button>
             </div>
           ) : (

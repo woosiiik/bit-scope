@@ -5,7 +5,7 @@
  * 지정 기간의 청산 데이터를 시간별로 집계하여 반환한다.
  */
 
-import { Controller, Get, Query, Logger } from '@nestjs/common';
+import { Controller, Get, Query, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { LiquidationService } from './liquidation.service';
 
 @Controller('liquidations')
@@ -40,7 +40,7 @@ export class LiquidationController {
       return { success: true, data, symbol: coin, period: p, timestamp: Date.now() };
     } catch (err) {
       this.logger.error(`Liquidation 조회 실패: ${err instanceof Error ? err.message : String(err)}`);
-      return { success: false, error: { message: '청산 데이터 조회 실패' } };
+      throw new HttpException({ success: false, error: { message: '청산 데이터 조회 실패' } }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -54,7 +54,7 @@ export class LiquidationController {
       return { success: true, data, timestamp: Date.now() };
     } catch (err) {
       this.logger.error(`Liquidation summary 실패: ${err instanceof Error ? err.message : String(err)}`);
-      return { success: false, error: { message: '청산 요약 조회 실패' } };
+      throw new HttpException({ success: false, error: { message: '청산 요약 조회 실패' } }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
