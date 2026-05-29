@@ -30,7 +30,7 @@ export function NormalizedCVDChart({ data }: { data: { data: CVDEntry[] } | null
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={chartData} layout="vertical" margin={{ left: 5 }}>
-        <XAxis type="number" tickFormatter={(v) => Number(v).toFixed(3)} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
+        <XAxis type="number" tickFormatter={(v) => Number(v).toFixed(4)} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
         <YAxis type="category" dataKey="symbol" tick={{ fontSize: 8 }} stroke="var(--muted-foreground)" width={45} />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}

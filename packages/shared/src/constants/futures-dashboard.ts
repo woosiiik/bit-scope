@@ -72,7 +72,7 @@ export const INDICATOR_EXCHANGE_SUPPORT: Record<FuturesDashboardIndicator, Futur
   fundingRate: ['binance', 'bybit', 'okx', 'gate', 'bitget', 'hyperliquid'],
   liquidations: [], // WebSocket 기반 수집 필요 — Phase 2에서 구현 예정
   cvd: ['binance'],
-  basis3m: ['binance', 'okx'],
+  basis3m: ['binance'], // 백엔드는 Binance COIN-M 분기 선물만 수집 (OKX 미구현)
   avgReturnByHour: ['binance'],
   avgReturnByDay: ['binance'],
   cumReturnBySession: ['binance'],
