@@ -54,7 +54,7 @@ export async function fetchMultiExchangeIndicator(
       };
 
       if (isPost) {
-        fetchOptions.body = buildHyperliquidBody(indicator, coin);
+        fetchOptions.body = buildHyperliquidBody(indicator, coin, options?.period ?? '1m');
       }
 
       const response = await fetch(url, fetchOptions);

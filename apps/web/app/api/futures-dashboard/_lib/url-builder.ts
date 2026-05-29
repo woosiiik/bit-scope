@@ -19,6 +19,11 @@ const PERIOD_TO_BINANCE_KLINE: Record<Period, { interval: string; limit: number 
   '1y': { interval: '1d', limit: 365 },
 };
 
+/** 기간별 세션 누적 수익률 kline limit (1h 해상도, Binance max 1500) */
+const PERIOD_TO_SESSION_LIMIT: Record<Period, number> = {
+  '1d': 24, '1w': 168, '1m': 720, '3m': 1500, '6m': 1500, '1y': 1500,
+};
+
 /** 기간별 Binance OI History period 매핑 (허용값: 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d) */
 const PERIOD_TO_BINANCE_OI: Record<Period, { period: string; limit: number }> = {
   '1d': { period: '15m', limit: 96 },
@@ -103,12 +108,23 @@ export function buildIndicatorUrl(
   }
 }
 
+/** 기간별 Hyperliquid candleSnapshot interval/lookback 매핑 */
+const PERIOD_TO_HYPERLIQUID: Record<Period, { interval: string; lookbackMs: number }> = {
+  '1d': { interval: '15m', lookbackMs: 1 * 24 * 3600 * 1000 },
+  '1w': { interval: '1h', lookbackMs: 7 * 24 * 3600 * 1000 },
+  '1m': { interval: '4h', lookbackMs: 30 * 24 * 3600 * 1000 },
+  '3m': { interval: '12h', lookbackMs: 90 * 24 * 3600 * 1000 },
+  '6m': { interval: '1d', lookbackMs: 180 * 24 * 3600 * 1000 },
+  '1y': { interval: '1d', lookbackMs: 365 * 24 * 3600 * 1000 },
+};
+
 /**
  * Hyperliquid POST body를 생성한다.
  */
 export function buildHyperliquidBody(
   indicator: FuturesDashboardIndicator,
   coin: string,
+  period: Period = '1m',
 ): string {
   switch (indicator) {
     case 'volume24h':
@@ -119,11 +135,11 @@ export function buildHyperliquidBody(
     case 'volumeHistory':
     case 'oiHistory':
     case 'cvd': {
-      // period에 따라 interval과 startTime 조정
-      // candleSnapshot은 coin과 interval만 지원 (period 직접 미지원)
+      // candleSnapshot은 coin/interval/startTime을 지원 → 기간별로 동적 설정
+      const { interval, lookbackMs } = PERIOD_TO_HYPERLIQUID[period];
       return JSON.stringify({
         type: 'candleSnapshot',
-        req: { coin, interval: '1h', startTime: Date.now() - 30 * 24 * 3600 * 1000 },
+        req: { coin, interval, startTime: Date.now() - lookbackMs },
       });
     }
     default:
@@ -160,8 +176,13 @@ function buildBinanceUrl(baseUrl: string, indicator: FuturesDashboardIndicator, 
       return `${baseUrl}/fapi/v1/premiumIndex?symbol=${symbol}`;
     case 'avgReturnByHour':
     case 'avgReturnByDay':
-    case 'cumReturnBySession':
+      // 시간대/요일별 통계는 충분한 표본을 위해 30일(720h) 고정
       return `${baseUrl}/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=720`;
+    case 'cumReturnBySession': {
+      // 세션 누적 수익률은 선택 기간을 반영 (1h 해상도 유지, Binance kline 최대 1500)
+      const limit = PERIOD_TO_SESSION_LIMIT[period];
+      return `${baseUrl}/fapi/v1/klines?symbol=${symbol}&interval=1h&limit=${limit}`;
+    }
     default:
       return `${baseUrl}/fapi/v1/ticker/24hr?symbol=${symbol}`;
   }

@@ -30,7 +30,6 @@ export function ChartGrid({ coin }: ChartGridProps) {
   // Funding Rate 토글
   const [fundingMode, setFundingMode] = useState<string>('annual');
   // CVD 토글
-  const [cvdMode, setCvdMode] = useState<string>('dollars');
 
   return (
     <div className="space-y-6">
@@ -109,13 +108,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
             coin={coin}
             period={period}
             onPeriodChange={setPeriod}
-            toggleOptions={[
-              { label: 'Dollars', value: 'dollars' },
-              { label: 'OI Norm.', value: 'oi-norm' },
-            ]}
-            activeToggle={cvdMode}
-            onToggleChange={setCvdMode}
-            renderChart={(data) => <CVDChart data={data} mode={cvdMode as 'dollars' | 'oi-norm'} />}
+            renderChart={(data) => <CVDChart data={data} />}
           />
           {/* 3M Basis: BTC/ETH만 지원, 미지원 코인은 API 호출 안 함 */}
           <BasisPanel coin={coin} period={period} />
