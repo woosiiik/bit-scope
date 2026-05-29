@@ -44,6 +44,8 @@ export interface ExchangeTotal {
 /** 집계된 코인 데이터 */
 export interface AggregatedCoin {
   symbol: string;
+  /** 코인 풀네임 (검색용, 매핑에 있는 경우만) */
+  name?: string;
   price: number;
   change24h: number;
   volume24h: number;

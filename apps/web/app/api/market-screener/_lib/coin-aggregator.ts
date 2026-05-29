@@ -5,7 +5,7 @@
 
 import type { FuturesExchangeType } from '@bitscope/shared';
 import type { NormalizedTicker, AggregatedCoin, ExchangeTotal } from '@bitscope/shared';
-import { COIN_MARKET_CAP_MAP, COIN_SECTOR_MAP, EXCHANGE_COLORS } from '@bitscope/shared';
+import { COIN_MARKET_CAP_MAP, COIN_SECTOR_MAP, COIN_NAMES, EXCHANGE_COLORS } from '@bitscope/shared';
 
 export interface AggregationResult {
   coins: AggregatedCoin[];
@@ -57,6 +57,7 @@ export function aggregateCoins(allTickers: NormalizedTicker[]): AggregationResul
 
     coins.push({
       symbol,
+      name: COIN_NAMES[symbol],
       price,
       change24h,
       volume24h: totalVolume,

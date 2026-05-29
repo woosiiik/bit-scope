@@ -14,10 +14,12 @@ export function useScreenerFilter(coins: AggregatedCoin[], state: FilterState): 
   return useMemo(() => {
     let filtered = [...coins];
 
-    // 1. 검색 필터
+    // 1. 검색 필터 (심볼 또는 코인 이름)
     if (state.searchQuery) {
       const q = state.searchQuery.toUpperCase();
-      filtered = filtered.filter((c) => c.symbol.includes(q));
+      filtered = filtered.filter(
+        (c) => c.symbol.includes(q) || (c.name?.toUpperCase().includes(q) ?? false),
+      );
     }
 
     // 2. 시가총액 필터
