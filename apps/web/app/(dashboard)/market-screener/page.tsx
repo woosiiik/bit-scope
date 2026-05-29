@@ -251,7 +251,7 @@ export default function MarketScreenerPage() {
           description="선택 기간 동안 각 코인의 수익률을 구간별로 분류한 히스토그램입니다. 시장 전체의 수익률 분포를 한눈에 파악하여 과열/공포 상태를 진단할 수 있습니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <ReturnBucketsChart coins={filteredCoins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <ReturnBucketsChart coins={filteredCoins} period={chartPeriod} klineChanges={klineData?.data} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 2. Price Changes */}
@@ -269,8 +269,9 @@ export default function MarketScreenerPage() {
         <ChartCard
           title="Sector Performance"
           description="DeFi, L1, L2, Metaverse, Meme, Dino, AI 7개 크립토 섹터의 평균 수익률을 비교합니다. 시장 로테이션이 어디로 향하는지 파악할 수 있습니다."
+          extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <SectorPerformanceChart coins={filteredCoins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <SectorPerformanceChart coins={filteredCoins} period={chartPeriod} klineChanges={klineData?.data} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 4. Funding Rate */}
