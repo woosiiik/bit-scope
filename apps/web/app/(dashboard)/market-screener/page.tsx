@@ -102,6 +102,7 @@ export default function MarketScreenerPage() {
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeView, setActiveView] = useState<'charts' | 'table'>('charts');
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('1d');
   const [fundingMode, setFundingMode] = useState<'8hrs' | 'annual'>('annual');
   const [dominanceMetric, setDominanceMetric] = useState<DominanceMetric>('marketCap');
@@ -175,24 +176,53 @@ export default function MarketScreenerPage() {
         </div>
       )}
 
-      {/* 필터 탭 */}
-      <TabFilterBar
-        sortTab={sortTab}
-        capFilter={capFilter}
-        sectorFilter={sectorFilter}
-        onSortTabChange={setSortTab}
-        onCapFilterChange={setCapFilter}
-        onSectorFilterChange={setSectorFilter}
-      />
+      {/* Charts / Table 탭 */}
+      <div className="flex items-center border-b border-border">
+        <button
+          type="button"
+          className={`px-4 pb-2 text-sm transition-colors ${
+            activeView === 'charts'
+              ? 'border-b-2 border-primary font-medium text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveView('charts')}
+        >
+          Charts
+        </button>
+        <button
+          type="button"
+          className={`px-4 pb-2 text-sm transition-colors ${
+            activeView === 'table'
+              ? 'border-b-2 border-primary font-medium text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveView('table')}
+        >
+          Table
+        </button>
+      </div>
 
-      {/* 스크리너 테이블 */}
-      <Card>
-        <CardContent className="p-0">
-          <ScreenerTable coins={filteredCoins} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      {/* Table 뷰 */}
+      {activeView === 'table' && (
+        <>
+          <TabFilterBar
+            sortTab={sortTab}
+            capFilter={capFilter}
+            sectorFilter={sectorFilter}
+            onSortTabChange={setSortTab}
+            onCapFilterChange={setCapFilter}
+            onSectorFilterChange={setSectorFilter}
+          />
+          <Card>
+            <CardContent className="p-0">
+              <ScreenerTable coins={filteredCoins} isLoading={isLoading} />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      {/* 차트 위젯 그리드 — 3x3 + 1 (10개) */}
+      {/* Charts 뷰 */}
+      {activeView === 'charts' && (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* 1. Return Buckets */}
         <ChartCard
@@ -283,6 +313,7 @@ export default function MarketScreenerPage() {
           <NormalizedCVDChart data={normalizedCVDData} />
         </ChartCard>
       </div>
+      )}
     </div>
   );
 }
