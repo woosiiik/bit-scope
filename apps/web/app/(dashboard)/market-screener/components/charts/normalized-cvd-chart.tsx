@@ -1,23 +1,39 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from 'recharts';
 
-interface CVDEntry {
-  symbol: string;
-  normalizedCVD: number;
-  rawCVD: number;
-  totalOI: number;
+const LINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#ec4899', '#84cc16'];
+
+type SeriesPoint = Record<string, number>;
+
+interface CVDResult {
+  coins?: string[];
+  series?: SeriesPoint[];
 }
 
-export function NormalizedCVDChart({ data }: { data: { data: CVDEntry[] } | null | undefined }) {
-  const chartData = useMemo(() => {
-    if (!data?.data) return [];
-    const arr = Array.isArray(data.data) ? data.data : [];
-    return arr.slice(0, 20);
+interface NormalizedCVDChartProps {
+  data: CVDResult | null | undefined;
+  period: string;
+}
+
+function fmtTime(ts: number, period: string): string {
+  const d = new Date(ts);
+  if (period === '1d') {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+export function NormalizedCVDChart({ data, period }: NormalizedCVDChartProps) {
+  const { coins, series } = useMemo(() => {
+    const c = Array.isArray(data?.coins) ? data!.coins! : [];
+    const s = Array.isArray(data?.series) ? data!.series! : [];
+    return { coins: c, series: s };
   }, [data]);
 
-  if (chartData.length === 0) {
+  if (series.length === 0 || coins.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-xs text-muted-foreground text-center">
@@ -29,20 +45,43 @@ export function NormalizedCVDChart({ data }: { data: { data: CVDEntry[] } | null
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} layout="vertical" margin={{ left: 5 }}>
-        <XAxis type="number" tickFormatter={(v) => Number(v).toFixed(4)} tick={{ fontSize: 9 }} stroke="var(--muted-foreground)" />
-        <YAxis type="category" dataKey="symbol" tick={{ fontSize: 8 }} stroke="var(--muted-foreground)" width={45} />
+      <LineChart data={series} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+        <XAxis
+          dataKey="timestamp"
+          type="number"
+          domain={['dataMin', 'dataMax']}
+          scale="time"
+          tickFormatter={(v) => fmtTime(Number(v), period)}
+          tick={{ fontSize: 9 }}
+          stroke="var(--muted-foreground)"
+          minTickGap={24}
+        />
+        <YAxis
+          tickFormatter={(v) => Number(v).toFixed(3)}
+          tick={{ fontSize: 9 }}
+          stroke="var(--muted-foreground)"
+          width={44}
+        />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
-          formatter={(v) => [`${Number(v).toFixed(4)}`, 'Normalized CVD']}
+          labelFormatter={(v) => fmtTime(Number(v), period)}
+          formatter={(val, name) => [`${Number(val).toFixed(4)}`, name as string]}
         />
-        <ReferenceLine x={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-        <Bar dataKey="normalizedCVD" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-          {chartData.map((d) => (
-            <Cell key={d.symbol} fill={d.normalizedCVD >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))'} />
-          ))}
-        </Bar>
-      </BarChart>
+        <Legend wrapperStyle={{ fontSize: 9 }} iconSize={8} />
+        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+        {coins.map((sym, i) => (
+          <Line
+            key={sym}
+            type="monotone"
+            dataKey={sym}
+            stroke={LINE_COLORS[i % LINE_COLORS.length]}
+            dot={false}
+            strokeWidth={1.5}
+            isAnimationActive={false}
+            connectNulls
+          />
+        ))}
+      </LineChart>
     </ResponsiveContainer>
   );
 }

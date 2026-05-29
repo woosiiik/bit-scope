@@ -44,8 +44,22 @@ export class TakerVolumeCollectorService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    // FundingOI가 먼저 수집되도록 5초 대기
-    setTimeout(() => this.collect(), 5000);
+    // FundingOI가 심볼 목록을 채울 때까지 폴링 후 첫 수집
+    // (고정 5초 지연은 FundingOI가 늦으면 빈 배열로 사이클 전체 스킵됨)
+    void this.waitForSymbolsThenCollect();
+  }
+
+  /** FundingOI 심볼 목록이 준비될 때까지 대기 후 첫 수집을 실행한다. */
+  private async waitForSymbolsThenCollect(): Promise<void> {
+    const MAX_ATTEMPTS = 12; // 5초 간격 × 12 = 최대 ~60초 대기
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (this.fundingOICollector.getBinanceSymbols().length > 0) {
+        await this.collect();
+        return;
+      }
+      await sleep(5000);
+    }
+    this.logger.warn('FundingOI 심볼 목록 대기 시간 초과 — 다음 주기에 수집');
   }
 
   @Interval('taker-volume-collect', COLLECT_INTERVAL)
@@ -80,8 +94,8 @@ export class TakerVolumeCollectorService implements OnModuleInit {
           if (!symbol) continue;
 
           await this.repo.upsert(
-            { symbol, buyVolume: safeFloat(item.buyVol), sellVolume: safeFloat(item.sellVol), timestamp },
-            ['symbol', 'timestamp'],
+            { symbol, exchange: 'binance', buyVolume: safeFloat(item.buyVol), sellVolume: safeFloat(item.sellVol), timestamp },
+            ['symbol', 'exchange', 'timestamp'],
           );
           count++;
         } catch {

@@ -268,7 +268,7 @@ export default function MarketScreenerPage() {
           description="코인별 미결제약정(OI) 변화율(%)을 보여줍니다. OI 급증 = 새 포지션 대량 진입 → 큰 움직임 예고. OI 감소 = 포지션 정리 중. 서버 데이터 수집 후 변화율이 표시됩니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <OIChangesChart serverData={oiChangesData} coins={filteredCoins} /> : <ChartSkeleton />}
+          {oiChangesData ? <OIChangesChart serverData={oiChangesData} period={chartPeriod} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 6. Dominance */}
@@ -302,7 +302,7 @@ export default function MarketScreenerPage() {
           description="코인 × 시간 축의 히트맵으로 펀딩 비율의 시간별 변화를 시각화합니다. 빨강=양의 펀딩(롱 과열), 파랑=음의 펀딩(숏 과열). OI 가중 평균으로 계산됩니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          <FundingHeatmapChart data={fundingHeatmapData} />
+          {fundingHeatmapData ? <FundingHeatmapChart data={fundingHeatmapData} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 10. OI-Normalized CVD */}
@@ -311,7 +311,7 @@ export default function MarketScreenerPage() {
           description="CVD(Taker Buy - Sell 누적)를 전 거래소 OI로 정규화한 지표입니다. 양수=순매수 우세, 음수=순매도 우세. OI가 다른 코인을 동일 선상에서 비교합니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          <NormalizedCVDChart data={normalizedCVDData} />
+          {normalizedCVDData ? <NormalizedCVDChart data={normalizedCVDData} period={chartPeriod} /> : <ChartSkeleton />}
         </ChartCard>
       </div>
       )}

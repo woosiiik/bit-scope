@@ -199,17 +199,14 @@ export class FundingOICollectorService implements OnModuleInit {
   }
 
   private async fetchOkx(): Promise<TickerData[]> {
-    // OKX: 펀딩 + OI + 가격(OI USD 환산용) 병렬 호출
-    const [fundingRes, oiRes, tickerRes] = await Promise.all([
-      fetch('https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) })
-        .catch(() => null),
+    // OKX: OI + 가격(OI USD 환산용) 병렬 호출
+    const [oiRes, tickerRes] = await Promise.all([
       fetch('https://www.okx.com/api/v5/public/open-interest?instType=SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) }),
       fetch('https://www.okx.com/api/v5/market/tickers?instType=SWAP', { signal: AbortSignal.timeout(FETCH_TIMEOUT) }),
     ]);
 
     // 가격 맵 (OI USD 환산용)
     const priceMap = new Map<string, number>();
-    const fundingFromTicker = new Map<string, number>();
     if (tickerRes?.ok) {
       const tickerData = (await tickerRes.json()) as { code?: string; data?: Array<Record<string, string>> };
       if (tickerData?.code === '0' && Array.isArray(tickerData.data)) {
@@ -238,9 +235,29 @@ export class FundingOICollectorService implements OnModuleInit {
       }
     }
 
-    // 펀딩: OKX funding-rate API는 instId 필수이므로 ticker에서 없으면 개별 호출 불가
-    // 대안: 수집하지 않고 0으로 남김 (OKX 펀딩은 마켓 스크리너 벌크에서 이미 수집 중)
+    // 펀딩: OKX funding-rate API는 instId 필수이므로 벌크 조회 불가.
+    // Binance OI 패턴과 동일하게 OI 상위 50개 심볼만 개별 병렬 호출한다.
     const fundingMap = new Map<string, number>();
+    const topSymbols = Array.from(oiMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 50)
+      .map(([sym]) => sym);
+
+    const fundingResults = await Promise.allSettled(
+      topSymbols.map(async (sym) => {
+        const fr = await fetch(
+          `https://www.okx.com/api/v5/public/funding-rate?instId=${sym}-USDT-SWAP`,
+          { signal: AbortSignal.timeout(5000) },
+        );
+        if (!fr.ok) return null;
+        const fd = (await fr.json()) as { code?: string; data?: Array<{ fundingRate?: string }> };
+        if (fd?.code !== '0' || !Array.isArray(fd.data) || fd.data.length === 0) return null;
+        return { sym, rate: safeFloat(fd.data[0]!.fundingRate) };
+      }),
+    );
+    for (const r of fundingResults) {
+      if (r.status === 'fulfilled' && r.value) fundingMap.set(r.value.sym, r.value.rate);
+    }
 
     const allSymbols = new Set([...oiMap.keys(), ...priceMap.keys()]);
     return Array.from(allSymbols).map((symbol) => ({

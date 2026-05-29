@@ -1,88 +1,89 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
-import type { AggregatedCoin } from '@bitscope/shared';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, Legend } from 'recharts';
 
-interface OIChangeEntry {
-  symbol: string;
-  changePercent: number;
-  currentOI: number;
-  baselineOI: number;
+const LINE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#ec4899', '#84cc16'];
+
+type SeriesPoint = Record<string, number>;
+
+interface OIChangesResult {
+  coins?: string[];
+  series?: SeriesPoint[];
 }
 
 interface OIChangesChartProps {
-  /** Phase 2 서버 집계 데이터 (있으면 우선 사용) */
-  serverData?: { data: OIChangeEntry[] } | null;
-  /** 폴백: 기존 tickers 코인 데이터 */
-  coins: AggregatedCoin[];
+  /** Phase 2 서버 집계 시계열 데이터 */
+  serverData?: OIChangesResult | null;
+  /** 기간 (X축 포맷용) */
+  period: string;
 }
 
-export function OIChangesChart({ serverData, coins }: OIChangesChartProps) {
-  const data = useMemo(() => {
-    // Phase 2 서버 데이터가 있으면 변화율 차트
-    if (serverData?.data && Array.isArray(serverData.data) && serverData.data.length > 0) {
-      return serverData.data.slice(0, 20).map((d) => ({
-        symbol: d.symbol,
-        value: d.changePercent,
-        isPercent: true,
-      }));
-    }
+function fmtTime(ts: number, period: string): string {
+  const d = new Date(ts);
+  if (period === '1d') {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
 
-    // 폴백: 기존 OI 절대값 순위
-    return coins
-      .filter((c) => c.openInterest > 0)
-      .slice(0, 15)
-      .map((c) => ({
-        symbol: c.symbol,
-        value: c.openInterest,
-        isPercent: false,
-      }));
-  }, [serverData, coins]);
+export function OIChangesChart({ serverData, period }: OIChangesChartProps) {
+  const { coins, series } = useMemo(() => {
+    const c = Array.isArray(serverData?.coins) ? serverData!.coins! : [];
+    const s = Array.isArray(serverData?.series) ? serverData!.series! : [];
+    return { coins: c, series: s };
+  }, [serverData]);
 
-  if (data.length === 0) {
+  if (series.length === 0 || coins.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-xs text-muted-foreground">OI 데이터 없음</p>
+        <p className="text-xs text-muted-foreground text-center">
+          데이터 수집 중입니다. 서버 시작 후 1시간 뒤부터 표시됩니다.
+        </p>
       </div>
     );
   }
 
-  const isPercent = data[0]?.isPercent ?? false;
-
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ left: 5 }}>
+      <LineChart data={series} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
         <XAxis
+          dataKey="timestamp"
           type="number"
-          tickFormatter={(v) => {
-            if (isPercent) return `${Number(v).toFixed(1)}%`;
-            const abs = Math.abs(v);
-            if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
-            if (abs >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
-            return `${(v / 1e3).toFixed(0)}K`;
-          }}
+          domain={['dataMin', 'dataMax']}
+          scale="time"
+          tickFormatter={(v) => fmtTime(Number(v), period)}
           tick={{ fontSize: 9 }}
           stroke="var(--muted-foreground)"
+          minTickGap={24}
         />
-        <YAxis type="category" dataKey="symbol" tick={{ fontSize: 8 }} stroke="var(--muted-foreground)" width={45} />
+        <YAxis
+          tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
+          tick={{ fontSize: 9 }}
+          stroke="var(--muted-foreground)"
+          width={36}
+        />
         <Tooltip
           contentStyle={{ fontSize: 11, background: 'var(--popover)', color: 'var(--popover-foreground)', border: '1px solid var(--border)' }}
-          formatter={(v) => {
-            const val = Number(v);
-            if (isPercent) return [`${val.toFixed(2)}%`, 'OI Change'];
-            if (Math.abs(val) >= 1e9) return [`$${(val / 1e9).toFixed(2)}B`, 'OI'];
-            if (Math.abs(val) >= 1e6) return [`$${(val / 1e6).toFixed(1)}M`, 'OI'];
-            return [`$${(val / 1e3).toFixed(0)}K`, 'OI'];
-          }}
+          labelFormatter={(v) => fmtTime(Number(v), period)}
+          formatter={(val, name) => [`${Number(val).toFixed(2)}%`, name as string]}
         />
-        {isPercent && <ReferenceLine x={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />}
-        <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-          {data.map((d) => (
-            <Cell key={d.symbol} fill={isPercent ? (d.value >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))') : '#6366f1'} />
-          ))}
-        </Bar>
-      </BarChart>
+        <Legend wrapperStyle={{ fontSize: 9 }} iconSize={8} />
+        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+        {coins.map((sym, i) => (
+          <Line
+            key={sym}
+            type="monotone"
+            dataKey={sym}
+            stroke={LINE_COLORS[i % LINE_COLORS.length]}
+            dot={false}
+            strokeWidth={1.5}
+            isAnimationActive={false}
+            connectNulls
+          />
+        ))}
+      </LineChart>
     </ResponsiveContainer>
   );
 }
