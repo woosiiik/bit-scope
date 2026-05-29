@@ -1,322 +1,261 @@
-# 선물 마켓 지표 조사 및 구현 가능성 분석
+# 선물 마켓 지표 조사 및 구현 현황
 
-> 조사일: 2026-05-27
-> 참고: [velo.xyz/futures](https://velo.xyz/futures/) 에서 제공하는 선물 지표를 기반으로 조사
+> 최초 조사: 2026-05-27 / 최종 갱신: 2026-05-29
+> 참고: [velo.xyz/futures](https://velo.xyz/futures/) 의 선물 지표
+> 관련: [선물 대시보드 기능 리뷰](./futures-dashboard-functional-review.md) (구현 동작 정합성), [Velo Market 페이지 조사](./velo-market-page-research.md) (마켓 스크리너)
 
 ## 1. 개요
 
-velo.xyz는 크립토 선물 시장 데이터를 집계/시각화하는 서비스로, Binance, Bybit, OKX, Deribit, Hyperliquid 5개 거래소의 데이터를 통합 제공한다.
+velo.xyz는 크립토 선물 시장 데이터를 집계/시각화하는 서비스로, Binance, Bybit, OKX, Deribit, Hyperliquid 거래소 데이터를 통합 제공한다. 본 문서는 Velo가 제공하는 선물 지표를 거래소 무료 공개 API로 직접 구현할 수 있는지 조사하고, BitScope `/futures-dashboard`(멀티 거래소 선물 마켓 데이터) 페이지의 **실제 구현 현황**을 함께 기록한다.
 
-### Velo API 비용
+### Velo API 비용과 비즈니스 모델
 
 | 구분 | 접근 가능 범위 | 비용 |
 |------|-------------|------|
-| 무료 (인증 없음) | `/futures` 상품 목록만 조회 가능 | 무료 |
-| 유료 API | `/rows` 실제 데이터 조회 (1분~ 해상도) | **$199/월** |
+| 무료 (인증 없음) | `/futures` 상품 목록만 조회 | 무료 |
+| 유료 API | `/rows` 실제 데이터 (1분~ 해상도) | **$199/월** |
 
-- API Base: `https://api.velo.xyz/api/v1`
-- 인증: Basic Auth (`api:api_key`)
-- 응답 형식: CSV
-- 제한: 요청당 최대 22,500 values
+- API Base: `https://api.velo.xyz/api/v1`, 인증: Basic Auth, 응답: CSV, 제한: 요청당 최대 22,500 values
 
-**결론: Velo API의 실제 데이터는 유료이므로, 각 거래소 공개 API로 직접 구현하는 것이 합리적이다.**
+Velo는 데이터를 직접 생산하지 않고, 각 거래소의 **무료 공개 API**에서 수집/가공/보관 후 유료로 제공하는 데이터 집계 서비스다. 부가 가치는 ① 히스토리 축적(2021년~ 1분 해상도), ② 정규화(통일 CSV), ③ 파생 지표 계산(CVD, Basis, 세션 수익률), ④ 편의성(API + 웹앱)이다.
 
----
+| 구독 | 히스토리 범위 |
+|------|-------------|
+| 월간 | 최근 **3개월** |
+| 연간 | **전체** (2021년~) |
 
-## 2. 지표별 상세 분석
+**결론: Velo 유료의 핵심 가치는 "이미 쌓아놓은 과거 데이터에 대한 접근권"이다.** 실시간 데이터 자체는 거래소에서 무료로 가져올 수 있으므로, 수년간 장기 히스토리가 필요하지 않다면 각 거래소 공개 API로 직접 구현하는 것이 합리적이다. BitScope는 `apps/api` cron으로 데이터를 주기적으로 수집해 히스토리를 점진적으로 축적한다.
 
-### 2.1 24h Volume (24시간 거래량)
-
-#### 의미
-최근 24시간 동안 해당 코인의 총 선물 거래량 (달러 기준). 거래소별로 분리하여 보여주면 어느 거래소에 유동성이 집중되어 있는지 파악할 수 있다.
-
-#### 활용
-- 거래량 급등 → 큰 가격 변동의 선행 지표
-- 거래소별 거래량 비교 → 유동성 집중도 파악
-- 특정 코인의 거래량 순위 변화 → 관심도/모멘텀 파악
-
-#### 데이터 소스 (거래소 공개 API)
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /fapi/v1/ticker/24hr` | 불필요 | `quoteVolume` 필드 |
-| Bybit | `GET /v5/market/tickers?category=linear` | 불필요 | `turnover24h` 필드 |
-| OKX | `GET /api/v5/market/ticker?instId=BTC-USDT-SWAP` | 불필요 | `volCcy24h` 필드 |
-| Gate.io | `GET /api/v4/futures/usdt/contracts/{contract}` | 불필요 | `trade_size` 필드 |
-| Bitget | `GET /api/v2/mix/market/ticker?productType=USDT-FUTURES` | 불필요 | `usdtVolume` 필드 |
-| Hyperliquid | `POST /info` type: `metaAndAssetCtxs` | 불필요 | `dayNtlVlm` 필드 |
-
-#### 구현 가능 여부: **O (모든 거래소 무료)**
+| 영역 | Velo 의존 | BitScope 자체 구현 |
+|------|----------|------------------|
+| 실시간 데이터 | 불필요 | 동일한 거래소 무료 API |
+| 최근 히스토리 (수일~수주) | 불필요 | 거래소 Kline 히스토리 API |
+| 장기 히스토리 (수개월~수년) | 직접 쌓기 어려우면 필요 | `apps/api` cron → DB 적재 점진 축적 |
+| 파생 지표 (CVD, Basis 등) | 불필요 | 계산 로직 구현 |
+| 멀티 거래소 정규화 | 불필요 | 이미 구현됨 |
 
 ---
 
-### 2.2 Price (가격)
+## 2. 지표별 상세 분석 및 구현 상태
 
-#### 의미
-해당 코인의 현재 선물 가격 (마크 프라이스 또는 최종 체결가). 거래소별로 비교하면 가격 괴리(스프레드)를 파악할 수 있다.
+> 리서치 단계에서는 9개 지표를 분석했고, 실제 구현에서는 12개 지표로 세분화했다(예: 가격→price, OI→oiSnapshot/oiHistory, 거래량→volume24h/volumeHistory, 시간대별 수익률→avgReturnByHour/avgReturnByDay). 각 지표의 실제 거래소 지원 현황은 3장 표 참조.
 
-#### 활용
-- 거래소 간 가격 차이 → 차익거래 기회 포착
-- 마크 프라이스 vs 인덱스 프라이스 괴리 → 시장 과열/공포 판단
+### 2.1 24h Volume — 구현 완료 (6개 거래소)
 
-#### 데이터 소스
-각 거래소의 ticker API에서 `lastPrice` 또는 `markPrice` 사용. 24h Volume과 동일한 엔드포인트에서 함께 제공.
+최근 24시간 총 선물 거래량(달러). 거래소별 분리 시 유동성 집중도 파악 가능. 거래량 급등은 큰 가격 변동의 선행 지표다.
 
-#### 구현 가능 여부: **O (모든 거래소 무료)**
+| 거래소 | 엔드포인트 | 필드 |
+|--------|-----------|------|
+| Binance | `GET /fapi/v1/ticker/24hr` | `quoteVolume` |
+| Bybit | `GET /v5/market/tickers?category=linear` | `turnover24h` |
+| OKX | `GET /api/v5/market/ticker` | `volCcy24h` |
+| Gate.io | `GET /api/v4/futures/usdt/contracts/{contract}` | `trade_size` |
+| Bitget | `GET /api/v2/mix/market/ticker?productType=USDT-FUTURES` | `usdtVolume` |
+| Hyperliquid | `POST /info` `metaAndAssetCtxs` | `dayNtlVlm` |
 
----
+**구현**: 스냅샷 바 차트. `volume24h`(스냅샷) + `volumeHistory`(스택 바, 기간 선택)로 구현. 모두 USDT 단위 정규화.
 
-### 2.3 Open Interest (미결제 약정)
+### 2.2 Price — 구현 완료 (6개 거래소)
 
-#### 의미
-현재 시장에 열려 있는 선물 계약의 총 규모 (달러 기준). 청산되지 않고 유지 중인 포지션의 합계.
+현재 선물 가격(마크/체결가). 거래소 간 비교로 가격 괴리(스프레드) 파악. 24h Volume과 동일 ticker 엔드포인트에서 제공.
 
-#### 활용
-- **OI 증가 + 가격 상승** → 신규 롱 진입, 강한 상승 추세
-- **OI 증가 + 가격 하락** → 신규 숏 진입, 강한 하락 추세
-- **OI 감소 + 가격 변동** → 포지션 청산 중, 추세 약화
-- 거래소별 OI 비교 → 어디서 포지션이 쌓이고 있는지 파악
+**구현**: 라인 차트, 기간 선택(기간별 동적 interval — 1d→15m, 1w→1h, 1m→4h …).
 
-#### 데이터 소스 (거래소 공개 API)
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /fapi/v1/openInterest` | 불필요 | 현재 OI 스냅샷 |
-| Binance | `GET /futures/data/openInterestHist` | 불필요 | OI 히스토리 (5m/1h/1d) |
-| Bybit | `GET /v5/market/open-interest?category=linear` | 불필요 | `openInterest` 필드 |
-| OKX | `GET /api/v5/public/open-interest?instType=SWAP` | 불필요 | `oi`, `oiCcy` 필드 |
-| Gate.io | `GET /api/v4/futures/usdt/contracts/{contract}` | 불필요 | `position_size` 필드 |
-| Bitget | `GET /api/v2/mix/market/open-interest?productType=USDT-FUTURES` | 불필요 | `amount` 필드 |
-| Hyperliquid | `POST /info` type: `metaAndAssetCtxs` | 불필요 | `openInterest` 필드 |
+### 2.3 Open Interest — 구현 완료 (스냅샷 6개 / 히스토리 2개)
 
-#### 구현 가능 여부: **O (모든 거래소 무료)**
+시장에 열려 있는 선물 계약 총 규모. OI 증가+가격 상승=신규 롱, OI 증가+가격 하락=신규 숏.
 
----
+| 거래소 | 스냅샷 | 히스토리 |
+|--------|--------|----------|
+| Binance | `GET /fapi/v1/openInterest` | `GET /futures/data/openInterestHist` (코인) |
+| Bybit | ticker `openInterest` | `GET /v5/market/open-interest` (코인) |
+| OKX | `GET /api/v5/public/open-interest` | rubik 통계 (기간 무시, ~24h 고정) |
+| Gate.io | ticker `total_size` | `contract_stats` (USD/계약 수, 변환 불가) |
+| Bitget | ticker | OI 히스토리 전용 API 없음 |
+| Hyperliquid | metaAndAssetCtxs | OI 히스토리 없음 |
 
-### 2.4 Funding Rate (펀딩 비율)
+**구현**: `oiSnapshot`은 6개 거래소를 **코인 단위로 통일**. `oiHistory`는 단위 통일 가능한 **Binance/Bybit 2개만** 지원(상세는 선물 대시보드 리뷰 6장). 향후 Phase 2 서버 수집으로 6개 거래소 USD 단위 통일 예정.
 
-#### 의미
-무기한 선물(perpetual) 가격을 현물 가격에 수렴시키기 위한 주기적 수수료. 일반적으로 8시간마다 적용.
+### 2.4 Funding Rate — 구현 완료 (6개 거래소)
 
-- **Funding Rate > 0** → 롱이 숏에게 수수료 지불 (롱 과다 = 시장 과열)
-- **Funding Rate < 0** → 숏이 롱에게 수수료 지불 (숏 과다 = 시장 공포)
-- **APR 환산** → `Funding Rate × 3 × 365` (8시간 기준 연환산)
+무기한 선물 가격을 현물에 수렴시키는 주기적 수수료(보통 8시간). 양수=롱 과열, 음수=숏 과열. APR 환산 = `Funding × 3 × 365`.
 
-#### 활용
-- 극단적 양의 펀딩 → 과열, 숏 진입 고려
-- 극단적 음의 펀딩 → 과매도, 롱 진입 고려
-- 거래소별 펀딩 비교 → 차익거래(Funding Arbitrage) 기회
+| 거래소 | 엔드포인트 |
+|--------|-----------|
+| Binance | `GET /fapi/v1/premiumIndex` (현재+예측) |
+| Bybit | ticker / `GET /v5/market/funding/history` |
+| OKX | `GET /api/v5/public/funding-rate` |
+| Gate.io | ticker `funding_rate` |
+| Bitget | `GET /api/v2/mix/market/current-fund-rate` |
+| Hyperliquid | metaAndAssetCtxs `funding` |
 
-#### 데이터 소스 (거래소 공개 API)
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /fapi/v1/fundingRate` | 불필요 | 히스토리 제공 |
-| Binance | `GET /fapi/v1/premiumIndex` | 불필요 | 현재 + 예측 펀딩 |
-| Bybit | `GET /v5/market/funding/history?category=linear` | 불필요 | 히스토리 제공 |
-| OKX | `GET /api/v5/public/funding-rate?instId=BTC-USDT-SWAP` | 불필요 | 현재 + 다음 펀딩 |
-| OKX | `GET /api/v5/public/funding-rate-history` | 불필요 | 히스토리 제공 |
-| Gate.io | `GET /api/v4/futures/usdt/contracts/{contract}` | 불필요 | `funding_rate` 필드 |
-| Bitget | `GET /api/v2/mix/market/current-fund-rate?productType=USDT-FUTURES` | 불필요 | 현재 펀딩 |
-| Hyperliquid | `POST /info` type: `metaAndAssetCtxs` | 불필요 | `funding` 필드 |
+**구현**: Annual/8hrs 토글. **Hyperliquid는 1시간 주기**이므로 8시간 환산(`rate1h × 24 × 365`로 연환산) 처리.
 
-#### 구현 가능 여부: **O (모든 거래소 무료)**
+### 2.5 Liquidations — 구현 완료 (4개 거래소, 백엔드 의존)
 
----
+강제 청산된 포지션 규모(롱/숏 구분). 대규모 청산은 연쇄 청산(Squeeze)의 신호.
 
-### 2.5 Liquidations (청산)
+| 거래소 | 방식 |
+|--------|------|
+| Binance | WebSocket `!forceOrder@arr` (실시간) |
+| Bybit | WebSocket `allLiquidation` (실시간) |
+| OKX | `GET /api/v5/public/liquidation-orders` (REST) |
+| Gate.io | `GET /api/v4/futures/usdt/liq_orders` (REST) |
+| Bitget / Hyperliquid | 공개 API 없음 (미지원) |
 
-#### 의미
-강제 청산(Force Liquidation)된 포지션의 규모. 롱 청산 / 숏 청산을 구분하여 보여준다.
+**구현**: `apps/api`의 `LiquidationModule`이 Binance/Bybit WebSocket 상시 연결 + OKX/Gate REST 5분 폴링 → MySQL `liquidation` 테이블. **NestJS 백엔드 필수**. 데이터 흐름 진단은 선물 대시보드 리뷰 5.1 참조.
 
-#### 활용
-- **대규모 롱 청산** → 가격 급락 시 연쇄 청산 (Long Squeeze)
-- **대규모 숏 청산** → 가격 급등 시 연쇄 청산 (Short Squeeze)
-- 청산 집중 가격대 → 지지/저항선 파악
-- 거래소별 청산 비교 → 레버리지 쏠림도 파악
+### 2.6 CVD (Cumulative Volume Delta) — 구현 완료 (Binance 단독)
 
-#### 데이터 소스
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /futures/data/globalLongShortAccountRatio` 등 | 불필요 | 집계 데이터 |
-| Binance | WebSocket `forceOrder` 스트림 | 불필요 | 실시간 개별 청산 |
-| Bybit | WebSocket `liquidation` 토픽 | 불필요 | 실시간 개별 청산 |
-| OKX | `GET /api/v5/public/liquidation-orders` | 불필요 | 히스토리 제공 |
-| Gate.io | `GET /api/v4/futures/usdt/liq_orders` | 불필요 | 청산 주문 히스토리 |
-| Bitget | 공개 API 없음 | - | 직접 제공하지 않음 |
-| Hyperliquid | 공개 API 없음 | - | 직접 제공하지 않음 |
+시장가 매수량 − 매도량의 누적합. CVD 상승=매수 압력, 하락=매도 압력. 가격과의 다이버전스는 추세 전환 신호. OI 정규화로 코인 간 비교 가능.
 
-#### 구현 가능 여부: **△ (Binance/Bybit/OKX/Gate는 가능, Bitget/Hyperliquid 불가)**
+| 거래소 | 데이터 | 정확도 |
+|--------|--------|:------:|
+| Binance | Kline `takerBuyQuoteVol` / `takerlongshortRatio` | 정확 |
+| 그 외 | Kline 기반 근사 | 근사 |
 
----
+**구현**: Binance Kline `takerBuyQuoteVol` 기반(Phase 2 `taker_volume_snapshot`). 다른 거래소는 정확한 taker 데이터 미제공으로 제외. OI Norm 토글 UI는 있으나 계산 미구현(미완성).
 
-### 2.6 CVD - Cumulative Volume Delta (누적 거래량 델타)
+### 2.7 3 Month Annualized Basis — 구현 완료 (Binance 단독, BTC/ETH, 백엔드 의존)
 
-#### 의미
-**Taker Buy Volume - Taker Sell Volume의 누적 합계** (달러 기준).
+3개월 만기 선물과 현물 가격 차이를 연환산. 선물 시장의 낙관/비관 측정.
 
-시장가 매수(Taker Buy)와 시장가 매도(Taker Sell)의 차이를 시간순으로 누적한 값. 시장의 공격적인 매수/매도 압력을 측정하는 지표.
-
-#### 활용
-- **CVD 상승** → 시장가 매수가 우세 → 매수 압력 강함
-- **CVD 하락** → 시장가 매도가 우세 → 매도 압력 강함
-- **가격 상승 + CVD 하락** → 약세 다이버전스 (상승 모멘텀 약화)
-- **가격 하락 + CVD 상승** → 강세 다이버전스 (하락 모멘텀 약화)
-- OI 대비 정규화(CVD/OI)하면 포지션 규모 대비 실제 매수/매도 강도를 비교 가능
-
-#### 계산 방법
 ```
-CVD = Σ (Taker Buy Volume - Taker Sell Volume)
-
-각 캔들/구간에서:
-- Taker Buy Volume = 매수 체결량 (시장가 매수가 오더북을 소비)
-- Taker Sell Volume = 매도 체결량 (시장가 매도가 오더북을 소비)
+Basis = ((선물 − 현물) / 현물) × (365 / 만기까지 일수) × 100%
 ```
 
-#### 데이터 소스
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /futures/data/takerlongshortRatio` | 불필요 | Buy/Sell 비율 + 볼륨 |
-| Binance | `GET /fapi/v1/klines` | 불필요 | `takerBuyQuoteVol` 필드로 계산 가능 |
-| Bybit | `GET /v5/market/kline?category=linear` | 불필요 | Kline에 taker 정보 포함 |
-| OKX | `GET /api/v5/market/candles` | 불필요 | 캔들 데이터로 근사 계산 |
-| Gate.io | `GET /api/v4/futures/usdt/candlesticks` | 불필요 | 캔들 데이터 |
-| Hyperliquid | `POST /info` type: `candleSnapshot` | 불필요 | 캔들 데이터 |
+정상 5~15% APR, 과열 20%+, 마이너스=극도의 공포(Backwardation).
 
-#### 구현 가능 여부: **O (Binance는 정확한 taker 데이터 제공, 나머지는 Kline 기반 근사)**
+**구현**: `apps/api`의 `Phase2Module`(`BasisCollectorService`)이 **Binance COIN-M(`dapi.binance.com`) 분기 선물** + Spot 가격을 1시간마다 수집 → `basis_snapshot`. **분기 선물은 COIN-M에만 존재**하므로 USD-M(`fapi`)이 아닌 `dapi`를 사용한다(초기 fapi 사용 버그 수정 완료). 심볼 형식 `BTCUSD_YYMMDD`(USD). BTC/ETH만 대상. **NestJS 백엔드 필수**.
 
----
+### 2.8 1m Average Return By Hour (UTC) — 구현 완료 (Binance 단독)
 
-### 2.7 3 Month Annualized Basis (3개월 연환산 베이시스)
+UTC 시간대(0~23시)별 평균 수익률. 미국장(UTC 13~14시)/아시아장(UTC 0~1시) 변동성 패턴 파악.
 
-#### 의미
-**3개월 만기 선물과 현물 가격 차이를 연환산한 수치**. 선물 시장의 전반적인 낙관/비관 정도를 측정하는 핵심 지표.
+**구현**: `avgReturnByHour`. 리서치는 1분봉이었으나 **API 부하로 1시간봉 기반으로 변경**. `avgReturnByDay`(요일별)도 함께 구현. 카테고리 차트라 시계열 X축 문제 없음.
 
-#### 계산 방법
-```
-Basis = ((선물 가격 - 현물 가격) / 현물 가격) × (365 / 만기까지 남은 일수) × 100%
-```
+### 2.9 Cumulative Return By Session — 구현 완료 (Binance 단독)
 
-#### 활용
-- **Basis > 0 (Contango)** → 선물 > 현물, 시장이 상승을 기대
-- **Basis < 0 (Backwardation)** → 선물 < 현물, 시장이 하락을 기대
-- **정상 범위**: 5~15% APR
-- **과열 신호**: 20%+ APR
-- **극도의 공포**: 마이너스
-- BTC/ETH 등 분기 만기 선물이 있는 코인만 계산 가능
+지역 세션별 누적 수익률. 어느 지역이 상승/하락을 주도하는지 파악.
 
-#### 데이터 소스
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | Quarterly 선물 + Spot 가격 조합 | 불필요 | `BTCUSDT_250627` 등 분기 상품 |
-| OKX | `GET /api/v5/market/ticker?instId=BTC-USD-250627` | 불필요 | 만기 선물 가격 |
-| Deribit | 전용 API | 불필요 | 가장 유동성 높은 만기 선물 |
-| Bybit | 분기 선물 미지원 (무기한만) | - | 계산 불가 |
+| 세션 | UTC | 지역 |
+|------|-----|------|
+| APAC | 00:00~08:00 | 아시아/태평양 |
+| EU | 08:00~16:00 | 유럽 |
+| US | 16:00~24:00 | 미국 |
 
-#### 구현 가능 여부: **△ (Binance/OKX 분기 선물로 계산 가능, BTC/ETH만 해당)**
+**구현**: `cumReturnBySession`. 1시간봉 기반. 현재 1h×720 고정(기간 미반영) + 다운샘플링 미적용은 남은 과제.
 
 ---
 
-### 2.8 1m Average Return By Hour (UTC) (시간대별 평균 수익률)
+## 3. 구현 가능성 및 실제 거래소 지원 현황 종합
 
-#### 의미
-**각 UTC 시간대(0~23시)별 1분봉 평균 수익률**. 하루 중 어느 시간대에 가격이 오르고 내리는 경향이 있는지를 통계적으로 보여준다.
+### 거래소 공개 API 구현 가능성 (리서치)
 
-#### 계산 방법
-```
-1. 일정 기간(예: 30일)의 1분봉 데이터 수집
-2. 각 캔들을 UTC 시간(0~23)으로 분류
-3. 각 시간대별 1분 수익률 = (close - open) / open
-4. 시간대별 평균 계산
-```
+| # | 지표 | Binance | Bybit | OKX | Gate | Bitget | Hyperliquid |
+|---|------|:------:|:-----:|:---:|:----:|:-----:|:-----------:|
+| 1 | 24h Volume | O | O | O | O | O | O |
+| 2 | Price | O | O | O | O | O | O |
+| 3 | Open Interest | O | O | O | O | O | O |
+| 4 | Funding Rate | O | O | O | O | O | O |
+| 5 | Liquidations | O | O | O | O | X | X |
+| 6 | CVD | O (정확) | △ | △ | △ | △ | △ |
+| 7 | 3M Basis | O | X | O | X | X | X |
+| 8 | Avg Return/Hour | O | O | O | O | O | O |
+| 9 | Return/Session | O | O | O | O | O | O |
 
-#### 활용
-- **미국장 오픈(UTC 13~14시, 한국 22~23시)** 에 변동성 집중 여부 확인
-- **아시아장 오픈(UTC 0~1시, 한국 09~10시)** 패턴 확인
-- 특정 시간대에 일관된 상승/하락 패턴 → 시간 기반 전략 수립
-- 예: "UTC 15시에 평균적으로 +0.02% → 이 시간대 매수 경향"
+### 실제 구현 시 거래소 지원 현황 (현재 코드)
 
-#### 데이터 소스
-| 거래소 | 엔드포인트 | 인증 | 비고 |
-|--------|-----------|:----:|------|
-| Binance | `GET /fapi/v1/klines?interval=1m` | 불필요 | 최대 1500개 캔들 |
-| Bybit | `GET /v5/market/kline?interval=1&category=linear` | 불필요 | 1분봉 |
-| OKX | `GET /api/v5/market/candles?bar=1m` | 불필요 | 1분봉 |
-| 기타 | 각 거래소 Kline API | 불필요 | 동일 패턴 |
+`packages/shared`의 `INDICATOR_EXCHANGE_SUPPORT` 상수로 단일 관리한다.
 
-#### 구현 가능 여부: **O (모든 거래소 1분봉 Kline API 무료 제공, 서버에서 집계)**
+| # | 지표 | 지원 거래소 | 개수 | 비고 |
+|---|------|-----------|:----:|------|
+| 1 | volume24h | 6개 전체 | 6 | 스냅샷 |
+| 2 | price | 6개 전체 | 6 | 기간별 동적 interval |
+| 3 | volumeHistory | 6개 전체 | 6 | Hyperliquid 30일 고정 |
+| 4 | oiSnapshot | 6개 전체 | 6 | 코인 단위 통일 |
+| 5 | **oiHistory** | **Binance, Bybit** | **2** | OKX/Gate/Bitget/Hyperliquid 제외 |
+| 6 | fundingRate | 6개 전체 | 6 | Hyperliquid 1h→8h |
+| 7 | liquidations | Binance, Bybit, OKX, Gate | 4 | WS+REST, 백엔드 필수 |
+| 8 | cvd | Binance | 1 | taker 데이터 한정 |
+| 9 | basis3m | Binance | 1 | COIN-M, BTC/ETH |
+| 10 | avgReturnByHour | Binance | 1 | 1시간봉 |
+| 11 | avgReturnByDay | Binance | 1 | 1시간봉 |
+| 12 | cumReturnBySession | Binance | 1 | APAC/EU/US |
 
-주의: 30일간 1분봉 = 43,200개 캔들. API 호출 횟수를 고려하여 백엔드에서 주기적으로 집계/캐싱 필요.
-
----
-
-### 2.9 Cumulative Return By Session (세션별 누적 수익률)
-
-#### 의미
-**지역별 거래 세션 동안의 가격 변화를 누적한 수치**. 어느 지역(아시아/유럽/미국)의 트레이더가 상승/하락을 주도하는지 파악.
-
-#### 세션 구분
-| 세션 | UTC 시간 | 해당 지역 |
-|------|---------|----------|
-| **APAC** | 00:00 ~ 08:00 | 아시아/태평양 (한국, 일본, 중국, 호주) |
-| **EU** | 08:00 ~ 16:00 | 유럽 (런던, 프랑크푸르트, 취리히) |
-| **US** | 16:00 ~ 24:00 | 미국 (뉴욕, 시카고) |
-
-#### 계산 방법
-```
-1. 각 세션 시작 시점의 가격을 기준(0%)으로 설정
-2. 세션 동안의 가격 변화를 누적
-3. Cumulative Return = (현재가 - 세션시작가) / 세션시작가 × 100%
-4. 일정 기간(예: 7일, 30일) 동안 세션별 누적 수익률을 합산
-```
-
-#### 활용
-- **"최근 BTC 상승은 미국장에서 주도"** → US 세션 누적 +3%, APAC -1%
-- **지역별 매수/매도 경향 파악** → 기관 자금 흐름 추정
-- **세션 전환 시점의 변동성 예측**
-
-#### 데이터 소스
-1분봉 또는 1시간봉 Kline 데이터를 세션별로 분류하여 계산. 별도 API 불필요.
-
-| 거래소 | 엔드포인트 | 인증 |
-|--------|-----------|:----:|
-| Binance | `GET /fapi/v1/klines?interval=1h` | 불필요 |
-| 기타 | 각 거래소 Kline API | 불필요 |
-
-#### 구현 가능 여부: **O (Kline API로 계산 가능, 서버에서 집계)**
+리서치에서 "전 거래소 가능"으로 본 CVD/Avg Return/Session은 **정확도·API 부하·데이터 가용성** 때문에 현재 Binance 단독으로 구현했다. 다른 거래소 확장은 정확도 검증과 추가 수집기가 필요한 후속 과제다.
 
 ---
 
-## 3. 구현 가능성 종합
+## 4. 구현 중 발견된 주요 차이점
 
-### 거래소 공개 API로 직접 구현 가능한 지표
+리서치 이후 실제 구현하며 확인된, 리서치 시점에 예측하지 못했던 제약들이다.
 
-| # | 지표 | Binance | Bybit | OKX | Gate | Bitget | Hyperliquid | 난이도 |
-|---|------|:------:|:-----:|:---:|:----:|:-----:|:-----------:|:-----:|
-| 1 | **24h Volume** | O | O | O | O | O | O | 낮음 |
-| 2 | **Price** | O | O | O | O | O | O | 낮음 |
-| 3 | **Open Interest** | O | O | O | O | O | O | 낮음 |
-| 4 | **Funding Rate** | O | O | O | O | O | O | 낮음 |
-| 5 | **Liquidations** | O | O | O | O | X | X | 중간 |
-| 6 | **CVD** | O (정확) | △ | △ | △ | △ | △ | 중간 |
-| 7 | **3M Basis** | O | X | O | X | X | X | 중간 |
-| 8 | **Avg Return/Hour** | O | O | O | O | O | O | 중간 |
-| 9 | **Return/Session** | O | O | O | O | O | O | 중간 |
+### OKX API 제약
+- `/api/v5/market/candles` **최대 limit 100개** → interval을 크게 설정해 대응(1w→2H/84개, 1m→8H/90개)
+- 에러 시에도 **HTTP 200 반환** + `{ code: "50014" }` → `code !== '0'` 별도 체크 필수
+- rubik 통계 API(`/api/v5/rubik/stat/`)의 OI 히스토리는 ~24시간만 반환 → 사용 불가
 
-### 구현 우선순위 제안
+### Hyperliquid 제약
+- 펀딩이 **1시간 주기**(다른 거래소 8시간) → 연환산 `rate1h × 24 × 365`
+- `candleSnapshot`이 **항상 30일/1h 고정** 반환 → period 파라미터 미지원. 현재 서버에서 기간 트리밍으로 대응하나, 기간별 동적 interval은 미구현
+- OI 히스토리, taker buy/sell 데이터 없음
 
-**Phase 1 (낮은 난이도 - 즉시 가능):**
-- 24h Volume, Price, OI, Funding Rate → 거래소별 비교 차트
-- 현재 Binance 단일 거래소 기반인 지표를 멀티 거래소로 확장
+### OI 단위 불일치 (가장 까다로운 문제)
+- 코인 단위: Binance `sumOpenInterest`, Bybit `openInterest`
+- USD 단위: Gate `open_interest_usd`, Hyperliquid `openInterest × markPx`
+- 계약 수: Gate `open_interest` (코인 아님, `quanto_multiplier` 필요)
+- **처리**: oiSnapshot/oiHistory는 코인 단위 통일(USD 거래소 제외). 마켓 스크리너 Total OI는 Phase 2 서버 수집으로 USD 통일 계획
 
-**Phase 2 (중간 난이도 - 백엔드 집계 필요):**
-- CVD (Binance taker 데이터 기반)
-- Liquidations (Binance/Bybit/OKX WebSocket)
-- Average Return By Hour / By Session (Kline 히스토리 집계)
+### Gate.io Volume History 단위
+- candlestick `v` = **계약 수**(코인 아님). `v × c`는 비정상적으로 큼($3.3조/캔들)
+- **처리**: `sum` 필드(실제 USDT 거래대금) 사용
 
-**Phase 3 (추가 연구 필요):**
-- 3 Month Annualized Basis (Binance/OKX 분기 선물 조합)
+### Binance 3M Basis 엔드포인트
+- 분기 선물은 **COIN-M(`dapi.binance.com`)에만 존재**. USD-M(`fapi`)에는 없음
+- 초기 `fapi` 사용으로 0건 조회 → `dapi`로 수정. 심볼 `BTCUSD_YYMMDD`(USD), `quoteAsset === 'USD'`
+
+### 1000x 접두사 코인
+- Binance/Bybit가 `1000PEPEUSDT`, `1000SHIBUSDT` 등 밈 코인에 1000x 접두사 사용
+- **처리**: 심볼 정규화 시 접두사 제거 + 가격 ×1000 보정
+
+### 시계열 차트 X축 / 버킷
+- 거래소마다 다른 interval → 타임스탬프 불일치로 같은 시간에 합쳐지지 않음
+- **처리**: `mergeTimeSeries`에서 기간별 동적 버킷 정규화(1d=15분, 1w=1시간, 1m=4시간, 3m=12시간, 6m/1y=1일) + X축 포맷 기간별 분기 + 누락 버킷 `null` 채움(connectNulls). Hyperliquid 30일 고정은 기간 트리밍으로 대응
 
 ---
 
-## 4. 참고 자료
+## 5. NestJS 백엔드 의존 지표
+
+아래 지표들은 거래소 API 직접 호출이 아닌 **NestJS 백엔드(`apps/api`) + MySQL DB**에 의존한다. 백엔드 미실행 시 해당 차트만 빈 상태가 된다.
+
+| 지표 | NestJS 모듈 | 수집 방식 | DB 테이블 |
+|------|------------|----------|----------|
+| Liquidations | `LiquidationModule` | Binance/Bybit WS + OKX/Gate REST 5분 폴링 | `liquidation` |
+| 3M Basis | `Phase2Module` | Binance COIN-M 분기 선물 + Spot 1시간 수집 | `basis_snapshot` |
+| Funding Heatmap | `Phase2Module` | 6개 거래소 펀딩+OI 1시간 수집 | `funding_oi_snapshot` |
+| OI Changes | `Phase2Module` | 위와 동일 | `funding_oi_snapshot` |
+| Normalized CVD | `Phase2Module` | Binance taker buy/sell 1시간 수집 | `taker_volume_snapshot` |
+
+Phase 2 수집기/쿼리 서비스의 코드 리뷰와 잔여 이슈는 [Phase 2 코드 리뷰](./phase2-code-review.md) 참조.
+
+---
+
+## 6. 아키텍처 결정 사항
+
+| 결정 | 내용 |
+|------|------|
+| Route Handler 패턴 | 동적 라우트 `/api/futures-dashboard/[indicator]`로 다수 지표를 단일 핸들러에서 처리 |
+| 백엔드 프록시 | NestJS 의존 지표는 별도 Route Handler에서 `getApiBaseUrl()` 유틸리티로 프록시 |
+| 캐싱 전략 | 3단계 TTL — 스냅샷 30초 / 히스토리 5분 / Kline 집계 10분 |
+| 파생 지표 계산 | 서버에서 Kline 기반 계산 후 결과만 클라이언트 전달(대역폭 절감) |
+| 시계열 병합 | 기간별 동적 버킷 + 기간 트리밍 |
+| Liquidations 수집 | WebSocket 상시 연결 + 배치 인서트(5초 flush) |
+| Binance 도메인 분리 | USD-M `fapi`, COIN-M `dapi`, Spot `api` |
+
+---
+
+## 7. 참고 자료
 
 - [Velo API Docs](https://docs.velo.xyz/api/http)
 - [Velo Futures Page Docs](https://docs.velo.xyz/web-app/futures)
@@ -324,146 +263,3 @@ Basis = ((선물 가격 - 현물 가격) / 현물 가격) × (365 / 만기까지
 - [Binance Futures API](https://binance-docs.github.io/apidocs/futures/en/)
 - [Bybit V5 API](https://bybit-exchange.github.io/docs/v5/intro)
 - [OKX V5 API](https://www.okx.com/docs-v5/en/)
-
----
-
-## Appendix A: Velo의 비즈니스 모델 분석
-
-### 데이터 파이프라인 구조
-
-```
-거래소 공개 API (무료)  →  Velo 서버 (수집/집계/저장)  →  Velo API/웹앱 ($199/월)
-```
-
-Velo는 거래소 데이터를 직접 생산하는 것이 아니라, 각 거래소의 **무료 공개 API**에서 데이터를 수집하여 가공/보관 후 유료로 제공하는 데이터 집계 서비스이다.
-
-### Velo가 제공하는 부가 가치
-
-1. **히스토리 축적**: 2021년부터 6개 거래소의 1분 해상도 데이터를 지속 수집/보관 (수년간의 장기 히스토리가 핵심 자산)
-2. **정규화**: 거래소마다 다른 응답 형식을 통일된 CSV 포맷으로 변환
-3. **파생 지표 계산**: CVD, Basis, 세션별 수익률 등 원본 데이터에서 직접 제공하지 않는 지표를 산출
-4. **편의성**: 깔끔한 API + 시각화 웹앱으로 즉시 사용 가능
-
-### 유료($199/월)의 핵심 가치: 히스토리
-
-| 구독 | 히스토리 범위 |
-|------|-------------|
-| 월간 구독 | 최근 **3개월** |
-| 연간 구독 | **전체** (2021년~) |
-
-- 실시간 데이터 자체는 거래소에서 무료로 가져올 수 있음
-- 수년간 축적된 1분봉 히스토리를 직접 쌓으려면 서버 인프라 + 시간 필요
-- Velo의 과금 포인트는 "이미 쌓아놓은 과거 데이터에 대한 접근권"
-
-### BitScope에서의 대안 전략
-
-| 영역 | Velo 의존 | BitScope 자체 구현 |
-|------|----------|------------------|
-| **실시간 데이터** | 불필요 | 동일한 거래소 무료 API 사용 |
-| **최근 히스토리 (수일~수주)** | 불필요 | 대부분 거래소가 Kline 히스토리 API 제공 |
-| **장기 히스토리 (수개월~수년)** | 직접 쌓기 어려우면 필요 | `apps/api` cron으로 주기적 수집 → DB 적재하여 점진적 축적 |
-| **파생 지표 (CVD, Basis 등)** | 불필요 | 계산 로직만 구현하면 됨 |
-| **멀티 거래소 정규화** | 불필요 | 이미 BitScope에 구현되어 있음 |
-
-### 결론
-
-- **실시간 + 최근 히스토리 기반 차트**는 Velo 없이 충분히 직접 구현 가능
-- 수년간의 장기 히스토리가 필요하지 않다면 Velo에 비용을 낼 이유 없음
-- `apps/api`에서 cron으로 데이터를 주기적으로 수집하면 히스토리도 점진적으로 쌓을 수 있음
-- Velo와 동일한 데이터를 거래소 무료 API로 직접 수집하는 것은 기술적으로 완전히 가능하며, BitScope의 기존 인프라(NestJS cron + MySQL)로 바로 적용 가능
-
----
-
-## Appendix B: 구현 결과 현행화 (최종 업데이트: 2026-05-28)
-
-> 본 리서치 이후 실제 구현을 완료하면서 변경/확인된 사항을 기록한다.
-
-### 구현 완료 현황 및 실제 거래소 지원 상태
-
-| # | 지표 | 구현 상태 | 실제 지원 거래소 | 비고 |
-|---|------|:--------:|----------------|------|
-| 1 | **24h Volume** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 스냅샷 바 차트 |
-| 2 | **Price** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 라인 차트, 기간 선택 |
-| 3 | **Volume History** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | 스택 바 차트, 기간 선택 |
-| 4 | **OI Snapshot** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | **코인 단위** 바 차트 |
-| 5 | **OI History** | **부분** | **Binance, Bybit만 (2개)** | OKX ~24h 고정, Gate USD 단위 불일치, Bitget/Hyperliquid 히스토리 API 없음 |
-| 6 | **Funding Rate** | 구현 완료 | Binance, Bybit, OKX, Gate, Bitget, Hyperliquid (6개) | Annual/8hrs 토글 |
-| 7 | **Liquidations** | 구현 완료 | Binance, Bybit (WebSocket), OKX, Gate (REST 폴링) | **NestJS 백엔드 필수**, Bitget/Hyperliquid 미지원 |
-| 8 | **CVD** | 구현 완료 | **Binance만 (1개)** | Binance Kline `takerBuyQuoteVol` 기반, 다른 거래소는 taker 데이터 미제공 |
-| 9 | **3M Basis** | 구현 완료 | **Binance만 (1개)** | COIN-M(`dapi`) 분기 선물 사용, **NestJS 백엔드 필수**, BTC/ETH만 |
-| 10 | **Avg Return/Hour** | 구현 완료 | **Binance만 (1개)** | 1시간봉 기반 (리서치는 1분봉이었으나 API 부하로 변경) |
-| 11 | **Avg Return/Day** | 구현 완료 | **Binance만 (1개)** | 1시간봉 기반 |
-| 12 | **Return/Session** | 구현 완료 | **Binance만 (1개)** | APAC/EU/US 세션별, 1시간봉 기반 |
-
-### OI History 상세 — 거래소별 제외 사유
-
-| 거래소 | OI 히스토리 API | 지원 | 단위 | 제외 사유 |
-|--------|----------------|:---:|------|----------|
-| **Binance** | `/futures/data/openInterestHist` | O | 코인 (`sumOpenInterest`) | - |
-| **Bybit** | `/v5/market/open-interest` | O | 코인 (`openInterest`) | - |
-| OKX | `/api/v5/rubik/stat/contracts/open-interest-volume` | X | 불명확 | **항상 ~24시간만 반환** (기간 파라미터 무시) |
-| Gate.io | `/api/v4/futures/usdt/contract_stats` | X | USD (`open_interest_usd`) | **다른 거래소와 단위 불일치** (코인 vs USD). Gate OI $4.6B vs Binance 102K BTC → Y축 스케일 차이로 다른 거래소 라인이 바닥에 깔림 |
-| Bitget | - | X | - | OI 히스토리 전용 API 없음 |
-| Hyperliquid | - | X | - | OI 히스토리 전용 API 없음. `candleSnapshot`에 OI 미포함 |
-
-**향후 해결**: Phase 2 서버 수집(`funding_oi_snapshot` 테이블)이 1시간마다 6개 거래소 OI를 USD 단위로 수집 중. 데이터 충분히 축적되면 자체 DB 기반 OI 히스토리로 전환하여 6개 거래소 전부 표시 가능.
-
-### 구현 중 발견된 주요 차이점
-
-#### OKX API 제약
-- `/api/v5/market/candles` **최대 limit 100개** (리서치 시 미확인). interval을 크게 설정하여 대응 (1w→2H/84개, 1m→8H/90개)
-- 에러 시에도 **HTTP 200 반환** + `{ code: "50014" }` 형태 → 별도 `code !== '0'` 체크 필수
-- rubik 통계 API (`/api/v5/rubik/stat/`) → OI 히스토리는 ~24시간만 반환하여 사용 불가
-
-#### Hyperliquid 제약
-- 펀딩은 **1시간 주기** (다른 거래소는 8시간). 연환산: `rate1h × 24 × 365`
-- `candleSnapshot`은 **항상 30일/1h 고정** 반환 → period 파라미터 미지원, 서버에서 기간 트리밍으로 대응
-- OI 히스토리, taker buy/sell 데이터 없음
-
-#### OI 단위 불일치 (가장 까다로운 문제)
-- **코인 단위**: Binance `sumOpenInterest`, Bybit `openInterest`
-- **USD 단위**: Gate `open_interest_usd`, Hyperliquid `openInterest * markPx`
-- **계약 수**: Gate `open_interest` (코인이 아님, `quanto_multiplier` 필요)
-- **현재 해결**: OI Snapshot/History는 코인 단위 통일 (USD 거래소 제외). 마켓 스크리너는 Phase 2 서버 수집으로 USD 통일.
-
-#### Gate.io Volume History 단위
-- candlestick `v` = **계약 수** (코인이 아님). `v × c(close)` = 비정상적 큰 값 ($3.3조/캔들)
-- **수정**: `sum` 필드 사용 (실제 USDT 거래대금)
-
-#### Binance 3M Basis 엔드포인트
-- 분기 선물은 **COIN-M(`dapi.binance.com`)에만 존재**. USD-M(`fapi`)에는 없음.
-- 초기 구현이 `fapi`를 사용하여 0건 조회 → `dapi`로 수정
-- 심볼 형식: `BTCUSD_260626` (USD, USDT 아님), `quoteAsset === 'USD'`
-
-#### 1000x 접두사 코인
-- Binance/Bybit에서 `1000PEPEUSDT`, `1000SHIBUSDT` 등 밈 코인에 1000x 접두사 사용
-- 심볼 정규화 시 접두사 제거 + 가격 보정(×1000) 필요
-
-#### 시계열 차트 X축 문제
-- 거래소마다 다른 interval(5분/15분/30분/1시간/4시간) → 타임스탬프 불일치 → 같은 시간에 합쳐지지 않음
-- **해결**: `mergeTimeSeries`에서 기간별 동적 버킷 정규화 (1d=15분, 1w=1시간, 1m=4시간)
-- Hyperliquid 30일 고정 → 요청 기간 기준 트리밍
-
-### NestJS 백엔드 의존 지표
-
-아래 지표들은 거래소 API 직접 호출이 아닌 **NestJS 백엔드(`apps/api`) + MySQL DB**에 의존한다. 백엔드가 실행 중이지 않으면 데이터가 표시되지 않는다.
-
-| 지표 | NestJS 모듈 | 수집 방식 | DB 테이블 |
-|------|------------|----------|----------|
-| **Liquidations** | `LiquidationModule` | Binance/Bybit WebSocket + OKX/Gate REST 5분 폴링 | `liquidation` |
-| **3M Basis** | `Phase2Module` | Binance COIN-M 분기 선물 + Spot 가격 1시간 수집 | `basis_snapshot` |
-| **Funding Heatmap** | `Phase2Module` | 6개 거래소 펀딩+OI 1시간 수집 | `funding_oi_snapshot` |
-| **OI Changes (Phase 2)** | `Phase2Module` | 위와 동일 | `funding_oi_snapshot` |
-| **Normalized CVD** | `Phase2Module` | Binance taker buy/sell 1시간 수집 | `taker_volume_snapshot` |
-
-### 아키텍처 결정 사항
-
-| 결정 | 내용 |
-|------|------|
-| Route Handler 패턴 | 동적 라우트 `/api/futures-dashboard/[indicator]`로 12개 지표를 단일 핸들러에서 처리 |
-| 백엔드 프록시 | NestJS 의존 지표는 별도 Route Handler에서 `getApiBaseUrl()` 유틸리티로 프록시 |
-| 캐싱 전략 | 3단계 TTL (스냅샷 30초 / 히스토리 5분 / Kline 집계 10분) |
-| 파생 지표 계산 | 서버에서 Kline 기반 계산 후 결과만 클라이언트 전달 (대역폭 절감) |
-| 시계열 병합 | 기간별 동적 버킷 (1d=15분, 1w=1시간, 1m=4시간) + 기간 트리밍 |
-| Liquidations 수집 | WebSocket 상시 연결 + 배치 인서트(5초 flush) |
-| Binance 도메인 분리 | USD-M: `fapi.binance.com`, COIN-M: `dapi.binance.com`, Spot: `api.binance.com` |
