@@ -83,7 +83,7 @@ export function ScreenerTable({ coins, isLoading }: ScreenerTableProps) {
           </tr>
         </thead>
         <tbody>
-          {sorted.slice(0, 200).map((coin, idx) => (
+          {sorted.slice(0, 500).map((coin, idx) => (
             <Link
               key={coin.symbol}
               href={`/futures-dashboard?coin=${coin.symbol}`}

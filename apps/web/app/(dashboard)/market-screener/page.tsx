@@ -15,16 +15,20 @@ import { TabFilterBar } from './components/tab-filter-bar';
 import { SearchInput } from './components/search-input';
 import { ScreenerTable } from './components/screener-table';
 import { ChartCard } from './components/chart-card';
-import { ReturnBucketsChart } from './components/charts/return-buckets-chart';
-import { MarketVolumeChart } from './components/charts/market-volume-chart';
-import { TotalOIChart } from './components/charts/total-oi-chart';
-import { SectorPerformanceChart } from './components/charts/sector-performance-chart';
-import { PriceChangesChart } from './components/charts/price-changes-chart';
-import { FundingRateScreenerChart } from './components/charts/funding-rate-chart';
-import { DominanceChart, type DominanceMetric } from './components/charts/dominance-chart';
-import { OIChangesChart } from './components/charts/oi-changes-chart';
-import { FundingHeatmapChart } from './components/charts/funding-heatmap-chart';
-import { NormalizedCVDChart } from './components/charts/normalized-cvd-chart';
+import dynamic from 'next/dynamic';
+import type { DominanceMetric } from './components/charts/dominance-chart';
+
+// 차트는 lazy loading (Table 뷰만 보는 사용자는 차트 번들을 받지 않음)
+const ReturnBucketsChart = dynamic(() => import('./components/charts/return-buckets-chart').then((m) => m.ReturnBucketsChart), { ssr: false });
+const MarketVolumeChart = dynamic(() => import('./components/charts/market-volume-chart').then((m) => m.MarketVolumeChart), { ssr: false });
+const TotalOIChart = dynamic(() => import('./components/charts/total-oi-chart').then((m) => m.TotalOIChart), { ssr: false });
+const SectorPerformanceChart = dynamic(() => import('./components/charts/sector-performance-chart').then((m) => m.SectorPerformanceChart), { ssr: false });
+const PriceChangesChart = dynamic(() => import('./components/charts/price-changes-chart').then((m) => m.PriceChangesChart), { ssr: false });
+const FundingRateScreenerChart = dynamic(() => import('./components/charts/funding-rate-chart').then((m) => m.FundingRateScreenerChart), { ssr: false });
+const DominanceChart = dynamic(() => import('./components/charts/dominance-chart').then((m) => m.DominanceChart), { ssr: false });
+const OIChangesChart = dynamic(() => import('./components/charts/oi-changes-chart').then((m) => m.OIChangesChart), { ssr: false });
+const FundingHeatmapChart = dynamic(() => import('./components/charts/funding-heatmap-chart').then((m) => m.FundingHeatmapChart), { ssr: false });
+const NormalizedCVDChart = dynamic(() => import('./components/charts/normalized-cvd-chart').then((m) => m.NormalizedCVDChart), { ssr: false });
 import { useFundingHeatmap } from '@/hooks/useFundingHeatmap';
 import { useOIChanges } from '@/hooks/useOIChanges';
 import { useNormalizedCVD } from '@/hooks/useNormalizedCVD';
@@ -208,29 +212,34 @@ export default function MarketScreenerPage() {
       />
 
       {/* Charts / Table 탭 */}
-      <div className="flex items-center border-b border-border">
-        <button
-          type="button"
-          className={`px-4 pb-2 text-sm transition-colors ${
-            activeView === 'charts'
-              ? 'border-b-2 border-primary font-medium text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveView('charts')}
-        >
-          Charts
-        </button>
-        <button
-          type="button"
-          className={`px-4 pb-2 text-sm transition-colors ${
-            activeView === 'table'
-              ? 'border-b-2 border-primary font-medium text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveView('table')}
-        >
-          Table
-        </button>
+      <div
+        className="flex items-center border-b border-border"
+        role="tablist"
+        aria-label="View"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            setActiveView((v) => (v === 'charts' ? 'table' : 'charts'));
+          }
+        }}
+      >
+        {(['charts', 'table'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            role="tab"
+            aria-selected={activeView === view}
+            tabIndex={activeView === view ? 0 : -1}
+            className={`px-4 pb-2 text-sm capitalize transition-colors ${
+              activeView === view
+                ? 'border-b-2 border-primary font-medium text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveView(view)}
+          >
+            {view}
+          </button>
+        ))}
       </div>
 
       {/* Table 뷰 */}
