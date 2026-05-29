@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { SortTab, CapFilter, SectorFilter, ChartPeriod } from '@bitscope/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,25 @@ function PeriodTabs({ selected, onChange }: { selected: ChartPeriod; onChange: (
         </Button>
       ))}
     </div>
+  );
+}
+
+/** 마지막 갱신 시각 표시 + 2분 초과 시 stale 경고 */
+function LastUpdated({ updatedAt }: { updatedAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  if (!updatedAt) return null;
+  const stale = now - updatedAt > 120_000;
+  const d = new Date(updatedAt);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return (
+    <span className={`ml-2 ${stale ? 'text-destructive' : 'text-muted-foreground'}`}>
+      · 갱신 {time}{stale ? ' (2분+ 지연)' : ''}
+    </span>
   );
 }
 
@@ -95,10 +114,10 @@ function DominanceToggle({ metric, onChange }: { metric: DominanceMetric; onChan
 export default function MarketScreenerPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: response, isLoading, error, isFetching } = useMarketScreenerTickers();
+  const { data: response, isLoading, error, isFetching, dataUpdatedAt } = useMarketScreenerTickers();
   const { data: newListingsData } = useNewListings();
 
-  const [sortTab, setSortTab] = useState<SortTab>('topVolume');
+  const [sortTab, setSortTab] = useState<SortTab>('topGainers');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +176,7 @@ export default function MarketScreenerPage() {
                   ({Object.keys(errors).length} exchange errors)
                 </span>
               )}
+              <LastUpdated updatedAt={dataUpdatedAt} />
             </p>
           )}
         </div>

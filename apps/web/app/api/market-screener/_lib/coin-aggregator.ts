@@ -63,7 +63,8 @@ export function aggregateCoins(allTickers: NormalizedTicker[]): AggregationResul
       openInterest: totalOI,
       fundingRate,
       exchangeCount: tickers.length,
-      marketCap: COIN_MARKET_CAP_MAP[symbol] ?? 'small',
+      // 매핑에 없는 코인은 undefined로 두어 시가총액 필터(Large/Mid/Small)에서 제외
+      marketCap: COIN_MARKET_CAP_MAP[symbol],
       sectors: COIN_SECTOR_MAP[symbol] ?? [],
     });
   }
