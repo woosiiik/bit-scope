@@ -104,7 +104,7 @@ export function ChartGrid({ coin }: ChartGridProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           <LiquidationsPanel coin={coin} period={period} />
           <ChartPanel
-            title="CVD (Dollars)"
+            title="CVD — Binance"
             indicator="cvd"
             coin={coin}
             period={period}
@@ -127,19 +127,19 @@ export function ChartGrid({ coin }: ChartGridProps) {
         <h2 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Return Analysis</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           <ChartPanel
-            title="1m Avg Return By Hour (UTC)"
+            title="Avg Return By Hour (UTC) — Binance"
             indicator="avgReturnByHour"
             coin={coin}
             renderChart={(data) => <AvgReturnHourChart data={data} />}
           />
           <ChartPanel
-            title="Avg Return By Day"
+            title="Avg Return By Day — Binance"
             indicator="avgReturnByDay"
             coin={coin}
             renderChart={(data) => <AvgReturnDayChart data={data} />}
           />
           <ChartPanel
-            title="Cumulative Return By Session"
+            title="Cum. Return By Session — Binance"
             indicator="cumReturnBySession"
             coin={coin}
             period={period}
@@ -180,7 +180,10 @@ function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
   return (
     <Card className="overflow-hidden" aria-label="Liquidations">
       <CardContent className="p-3 space-y-2">
-        <h3 className="text-xs font-medium text-foreground">Liquidations</h3>
+        <h3 className="text-xs font-medium text-foreground">
+          Liquidations
+          <span className="text-[10px] text-muted-foreground font-normal ml-1.5">Binance · Bybit · OKX · Gate</span>
+        </h3>
         <div className="h-[180px]">
           {isLoading ? (
             <div className="h-full w-full animate-pulse bg-muted rounded" />
@@ -210,7 +213,10 @@ function BasisPanel({ coin, period }: { coin: string; period: Period }) {
   return (
     <Card className="overflow-hidden" aria-label="3M Annualized Basis">
       <CardContent className="p-3 space-y-2">
-        <h3 className="text-xs font-medium text-foreground">3M Annualized Basis</h3>
+        <h3 className="text-xs font-medium text-foreground">
+          3M Annualized Basis
+          <span className="text-[10px] text-muted-foreground font-normal ml-1.5">Binance COIN-M</span>
+        </h3>
         <div className="h-[180px]">
           <Basis3mChart coin={coin} serverData={basisData} />
         </div>
