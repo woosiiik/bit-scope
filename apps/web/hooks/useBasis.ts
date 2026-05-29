@@ -12,7 +12,9 @@ export function useBasis(symbol: string, period: string) {
         signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
-      return res.json();
+      const json = await res.json();
+      // NestJS TransformInterceptor가 { success, data, timestamp }으로 감쌈 → data만 추출
+      return json?.data ?? json;
     },
     enabled: SUPPORTED_COINS.includes(symbol), // BTC/ETH만 호출
     staleTime: 60_000,

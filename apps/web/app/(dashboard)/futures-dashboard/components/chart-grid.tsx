@@ -164,13 +164,18 @@ function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
         signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
-      return res.json();
+      const json = await res.json();
+      // NestJS TransformInterceptor wrapper 벗기기
+      return json?.data ?? json;
     },
     staleTime: 60_000,
     refetchInterval: 60_000,
     retry: 1,
     placeholderData: (prev: unknown) => prev,
   });
+
+  // TransformInterceptor 벗긴 후: data = { success, data: [...], symbol, period }
+  const liqData = Array.isArray(data?.data) ? data.data : data;
 
   return (
     <Card className="overflow-hidden" aria-label="Liquidations">
@@ -189,7 +194,7 @@ function LiquidationsPanel({ coin, period }: { coin: string; period: Period }) {
               <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => refetch()}>재시도</Button>
             </div>
           ) : (
-            <LiquidationsChart data={data?.data} />
+            <LiquidationsChart data={liqData} />
           )}
         </div>
       </CardContent>
