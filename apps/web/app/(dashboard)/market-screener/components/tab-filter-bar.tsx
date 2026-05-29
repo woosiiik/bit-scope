@@ -37,40 +37,45 @@ interface TabFilterBarProps {
   onSortTabChange: (tab: SortTab) => void;
   onCapFilterChange: (cap: CapFilter) => void;
   onSectorFilterChange: (sector: SectorFilter) => void;
+  /** 정렬 탭 표시 여부 (Table 뷰에서만 필요) */
+  showSortTabs?: boolean;
 }
 
 export function TabFilterBar({
   sortTab, capFilter, sectorFilter,
   onSortTabChange, onCapFilterChange, onSectorFilterChange,
+  showSortTabs = true,
 }: TabFilterBarProps) {
   const [showHelp, setShowHelp] = useState(false);
 
   return (
     <div className="space-y-2">
-      {/* 정렬 탭 + 도움말 버튼 */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {SORT_TABS.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={sortTab === tab.key ? 'default' : 'outline'}
-              size="sm"
-              className="text-xs h-7 shrink-0"
-              onClick={() => onSortTabChange(tab.key)}
-            >
-              {tab.label}
-            </Button>
-          ))}
+      {/* 정렬 탭 + 도움말 버튼 (Table 뷰에서만) */}
+      {showSortTabs && (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {SORT_TABS.map((tab) => (
+              <Button
+                key={tab.key}
+                variant={sortTab === tab.key ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs h-7 shrink-0"
+                onClick={() => onSortTabChange(tab.key)}
+              >
+                {tab.label}
+              </Button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setShowHelp(!showHelp)}
+            aria-label="필터 설명"
+          >
+            <Info className="h-4 w-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setShowHelp(!showHelp)}
-          aria-label="필터 설명"
-        >
-          <Info className="h-4 w-4" />
-        </button>
-      </div>
+      )}
 
       {/* 도움말 패널 */}
       {showHelp && (

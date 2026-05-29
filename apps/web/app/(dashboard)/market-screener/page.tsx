@@ -176,6 +176,17 @@ export default function MarketScreenerPage() {
         </div>
       )}
 
+      {/* 시가총액 + 섹터 필터 (Charts/Table 공용) */}
+      <TabFilterBar
+        sortTab={sortTab}
+        capFilter={capFilter}
+        sectorFilter={sectorFilter}
+        onSortTabChange={setSortTab}
+        onCapFilterChange={setCapFilter}
+        onSectorFilterChange={setSectorFilter}
+        showSortTabs={activeView === 'table'}
+      />
+
       {/* Charts / Table 탭 */}
       <div className="flex items-center border-b border-border">
         <button
@@ -204,21 +215,11 @@ export default function MarketScreenerPage() {
 
       {/* Table 뷰 */}
       {activeView === 'table' && (
-        <>
-          <TabFilterBar
-            sortTab={sortTab}
-            capFilter={capFilter}
-            sectorFilter={sectorFilter}
-            onSortTabChange={setSortTab}
-            onCapFilterChange={setCapFilter}
-            onSectorFilterChange={setSectorFilter}
-          />
-          <Card>
-            <CardContent className="p-0">
-              <ScreenerTable coins={filteredCoins} isLoading={isLoading} />
-            </CardContent>
-          </Card>
-        </>
+        <Card>
+          <CardContent className="p-0">
+            <ScreenerTable coins={filteredCoins} isLoading={isLoading} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Charts 뷰 */}
@@ -230,7 +231,7 @@ export default function MarketScreenerPage() {
           description="선택 기간 동안 각 코인의 수익률을 구간별로 분류한 히스토그램입니다. 시장 전체의 수익률 분포를 한눈에 파악하여 과열/공포 상태를 진단할 수 있습니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <ReturnBucketsChart coins={coins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <ReturnBucketsChart coins={filteredCoins} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 2. Price Changes */}
@@ -239,8 +240,8 @@ export default function MarketScreenerPage() {
           description="주요 코인의 가격 변화율(%)을 비교합니다. 상승/하락 코인을 한눈에 파악하고 모멘텀이 강한 코인을 발견할 수 있습니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? (
-            <PriceChangesChart coins={coins} klineChanges={klineData?.data} period={chartPeriod} />
+          {filteredCoins.length > 0 ? (
+            <PriceChangesChart coins={filteredCoins} klineChanges={klineData?.data} period={chartPeriod} />
           ) : <ChartSkeleton />}
         </ChartCard>
 
@@ -249,7 +250,7 @@ export default function MarketScreenerPage() {
           title="Sector Performance"
           description="DeFi, L1, L2, Metaverse, Meme, Dino, AI 7개 크립토 섹터의 평균 수익률을 비교합니다. 시장 로테이션이 어디로 향하는지 파악할 수 있습니다."
         >
-          {coins.length > 0 ? <SectorPerformanceChart coins={coins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <SectorPerformanceChart coins={filteredCoins} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 4. Funding Rate */}
@@ -258,7 +259,7 @@ export default function MarketScreenerPage() {
           description="각 코인의 펀딩 비율을 비교합니다. 양의 펀딩=롱 과다(과열), 음의 펀딩=숏 과다(공포). APR은 연환산, 8hrs는 8시간 기준입니다."
           extra={<FundingModeToggle mode={fundingMode} onChange={setFundingMode} />}
         >
-          {coins.length > 0 ? <FundingRateScreenerChart coins={coins} mode={fundingMode} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <FundingRateScreenerChart coins={filteredCoins} mode={fundingMode} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 5. OI Changes */}
@@ -267,7 +268,7 @@ export default function MarketScreenerPage() {
           description="코인별 미결제약정(OI) 변화율(%)을 보여줍니다. OI 급증 = 새 포지션 대량 진입 → 큰 움직임 예고. OI 감소 = 포지션 정리 중. 서버 데이터 수집 후 변화율이 표시됩니다."
           extra={<PeriodTabs selected={chartPeriod} onChange={setChartPeriod} />}
         >
-          {coins.length > 0 ? <OIChangesChart serverData={oiChangesData} coins={coins} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <OIChangesChart serverData={oiChangesData} coins={filteredCoins} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 6. Dominance */}
@@ -276,7 +277,7 @@ export default function MarketScreenerPage() {
           description="Market Cap: CoinGecko 시가총액 기준 도미넌스 (BTC ~58%). Futures Vol: 선물 거래량 기준. Futures OI: 미결제약정 기준. 시장 지배력 변화를 추적할 수 있습니다."
           extra={<DominanceToggle metric={dominanceMetric} onChange={setDominanceMetric} />}
         >
-          {coins.length > 0 ? <DominanceChart coins={coins} metric={dominanceMetric} /> : <ChartSkeleton />}
+          {coins.length > 0 ? <DominanceChart coins={filteredCoins} metric={dominanceMetric} /> : <ChartSkeleton />}
         </ChartCard>
 
         {/* 7. Market Volume */}
