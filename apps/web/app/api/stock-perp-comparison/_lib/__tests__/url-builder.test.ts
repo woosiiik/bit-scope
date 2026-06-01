@@ -12,8 +12,7 @@ import {
   buildHyperliquidBody,
   buildHyperliquidUrl,
   buildFrankfurterRateUrl,
-  buildYahooStockUrl,
-  getFallbackInterval,
+  buildNaverStockUrl,
   resolveIntervalPlan,
   resolvePerpWindow,
 } from '../url-builder';
@@ -30,31 +29,21 @@ describe('resolveIntervalPlan — range별 interval 선택 (R8.2/R8.4)', () => {
     }
   });
 
-  it('1d/5d는 1m 분봉을 사용한다 (분봉 기본 정책)', () => {
+  it('1d/5d는 1m 분봉을 사용한다 (네이버 분봉)', () => {
     expect(resolveIntervalPlan('1d').interval).toBe('1m');
     expect(resolveIntervalPlan('5d').interval).toBe('1m');
   });
 
-  it('1mo는 5m, 6mo/1y는 1d로 거칠어진다', () => {
-    expect(resolveIntervalPlan('1mo').interval).toBe('5m');
+  it('1mo/6mo/1y는 일봉을 사용한다 (네이버는 5분봉 없음 → 일봉)', () => {
+    expect(resolveIntervalPlan('1mo').interval).toBe('1d');
     expect(resolveIntervalPlan('6mo').interval).toBe('1d');
     expect(resolveIntervalPlan('1y').interval).toBe('1d');
   });
-});
 
-describe('getFallbackInterval — 폴백 interval 전환 (R2.5/R8.3)', () => {
-  it('1m 분봉 range(1d/5d)는 5m으로 폴백한다', () => {
-    expect(getFallbackInterval('1d')).toBe('5m');
-    expect(getFallbackInterval('5d')).toBe('5m');
-  });
-
-  it('1mo(5m)는 1d로 폴백한다', () => {
-    expect(getFallbackInterval('1mo')).toBe('1d');
-  });
-
-  it('이미 1d인 range(6mo/1y)는 더 이상 폴백하지 않는다(null)', () => {
-    expect(getFallbackInterval('6mo')).toBeNull();
-    expect(getFallbackInterval('1y')).toBeNull();
+  it('네이버는 interval 폴백이 없으므로 fallbackInterval은 모두 null이다', () => {
+    for (const range of ALL_RANGES) {
+      expect(resolveIntervalPlan(range).fallbackInterval).toBeNull();
+    }
   });
 });
 
@@ -91,17 +80,30 @@ describe('resolvePerpWindow — perp lookback(startTime/endTime) 계산', () => 
   });
 });
 
-describe('buildYahooStockUrl — 주식 URL (R2.1)', () => {
-  it('range/interval 쿼리를 포함한 chart/{pair} URL을 만든다', () => {
-    expect(buildYahooStockUrl('005930.KS', '5d', '1m')).toBe(
-      'https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=5d&interval=1m',
+describe('buildNaverStockUrl — 주식 URL (R2.1)', () => {
+  it('1m이면 minute 엔드포인트 + KST startDateTime/endDateTime을 만든다', () => {
+    // FIXED_NOW = 2024-05-29T02:40:00Z = KST 2024-05-29 11:40, 5d 전 = 2024-05-24 11:40 KST
+    expect(buildNaverStockUrl('005930.KS', '1m', '5d', FIXED_NOW)).toBe(
+      'https://api.stock.naver.com/chart/domestic/item/005930/minute?startDateTime=20240524114000&endDateTime=20240529114000',
     );
   });
 
-  it('폴백 interval을 그대로 반영한다', () => {
-    expect(buildYahooStockUrl('000660.KS', '1d', '5m')).toBe(
-      'https://query1.finance.yahoo.com/v8/finance/chart/000660.KS?range=1d&interval=5m',
-    );
+  it("1d이면 day 엔드포인트를 사용하고 '.KS' 접미사를 제거한다", () => {
+    const url = buildNaverStockUrl('000660.KS', '1d', '1mo', FIXED_NOW);
+    expect(url).toContain('/chart/domestic/item/000660/day?');
+    expect(url).toContain('startDateTime=');
+    expect(url).toContain('endDateTime=20240529114000');
+  });
+
+  it('조회 구간은 range의 perpLookbackMs와 동일하다', () => {
+    // 1y → 365일 전. 2024-05-29 - 365일 = 2023-05-30 (KST 09:00)
+    const url = buildNaverStockUrl('005380.KS', '1d', '1y', FIXED_NOW);
+    const expectedStart = new Date(FIXED_NOW - 365 * DAY_MS + 9 * 3600 * 1000);
+    const p = (n: number) => String(n).padStart(2, '0');
+    const stamp =
+      `${expectedStart.getUTCFullYear()}${p(expectedStart.getUTCMonth() + 1)}${p(expectedStart.getUTCDate())}` +
+      `${p(expectedStart.getUTCHours())}${p(expectedStart.getUTCMinutes())}${p(expectedStart.getUTCSeconds())}`;
+    expect(url).toContain(`startDateTime=${stamp}`);
   });
 });
 

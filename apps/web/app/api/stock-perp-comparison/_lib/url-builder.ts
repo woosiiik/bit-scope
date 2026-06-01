@@ -2,18 +2,18 @@
  * 주식-perp 비교 뷰 URL/Body 빌더
  *
  * 세 소스(주식/환율/perp)의 외부 API 요청을 생성한다.
- * - 주식:  GET https://query1.finance.yahoo.com/v8/finance/chart/{pair}?range&interval
+ * - 주식:  GET https://api.stock.naver.com/chart/domestic/item/{code}/{day|minute}?startDateTime&endDateTime
  * - 환율:  GET https://api.frankfurter.dev/v1/{start}..{end}?base=USD&symbols=KRW
  * - perp:  POST https://api.hyperliquid.xyz/info  (candleSnapshot)
  *
- * 환율은 Yahoo(KRW=X) 대신 frankfurter.dev(ECB 공식, 무키)를 사용한다.
- * Yahoo는 데이터센터(OCI) IP에서 429로 throttle되어 환율 조회가 실패했고,
- * frankfurter는 IP throttle이 없고 과거 일별 시계열을 제공한다(R4). FX는 분 단위로
- * 거의 변하지 않으므로 일별 해상도 + step lookup으로 캔들에 매핑한다.
+ * 주식·환율 모두 Yahoo에서 옮겼다 — Yahoo는 데이터센터(OCI) IP에서 429로 상시 차단된다.
+ * - 주식: 네이버 금융 API. 1분봉(`minute`)/일봉(`day`)만 제공하므로 interval은 1m/1d로 한정.
+ *   날짜 파라미터는 KST(Asia/Seoul) 기준 'YYYYMMDDHHMMSS' 문자열이다.
+ * - 환율: frankfurter.dev(ECB 공식, 무키). IP throttle이 없고 과거 일별 시계열을 제공한다(R4).
+ *   FX는 분 단위로 거의 변하지 않으므로 일별 해상도 + step lookup으로 캔들에 매핑한다.
  *
  * interval은 사용자가 직접 보내지 않고 `range`로부터 `RANGE_TO_INTERVAL`로 결정한다
- * (R8.2/R8.4 — 주식·perp interval을 항상 동일하게 정렬). 분봉 한계 초과 시
- * `fallbackInterval`로 한 단계 거친 간격으로 전환한다(R2.5/R8.3).
+ * (R8.2/R8.4 — 주식·perp interval을 항상 동일하게 정렬).
  *
  * 기존 futures-dashboard `buildHyperliquidBody`의 candleSnapshot POST 패턴을 미러링하되,
  * 코인명에는 `xyz:` 접두사만 사용하고 `dex` 파라미터는 추가하지 않는다(R3.4).
@@ -25,8 +25,11 @@ import type {
 } from '@bitscope/shared';
 import { HYPERLIQUID_CONFIG, RANGE_TO_INTERVAL } from '@bitscope/shared';
 
-/** Yahoo Finance chart API base URL */
-const YAHOO_CHART_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
+/** 네이버 금융 국내 주식 차트 API base URL */
+const NAVER_STOCK_BASE = 'https://api.stock.naver.com/chart/domestic/item';
+
+/** KST 오프셋 (UTC+9) ms */
+const KST_OFFSET_MS = 9 * 3600 * 1000;
 
 /** frankfurter.dev(ECB 공식 환율) base URL */
 const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v1';
@@ -76,18 +79,6 @@ export function resolveIntervalPlan(range: ComparisonRange): IntervalPlan {
 }
 
 /**
- * 1차 interval에서 폴백 interval로의 전환을 도출한다.
- *
- * Yahoo 빈/422 응답 등으로 분봉 한계를 초과했을 때 `fetch-comparison`이
- * 한 단계 거친 interval로 1회 재시도하기 위해 사용한다(R8.3).
- *
- * @returns 폴백 interval. 더 이상 폴백할 단계가 없으면 null.
- */
-export function getFallbackInterval(range: ComparisonRange): ComparisonInterval | null {
-  return RANGE_TO_INTERVAL[range].fallbackInterval;
-}
-
-/**
  * perp candleSnapshot의 startTime/endTime(epoch ms UTC)을 계산한다.
  *
  * endTime은 호출 시각(`now`), startTime은 `now - perpLookbackMs`이다.
@@ -104,19 +95,46 @@ export function resolvePerpWindow(
   };
 }
 
+/** UTC epoch ms → KST 'YYYYMMDDHHMMSS' 문자열 (네이버 startDateTime/endDateTime 형식). */
+function formatKstStamp(epochMs: number): string {
+  // KST 벽시계 = UTC instant + 9h. UTC 컴포넌트로 읽으면 KST 표기가 된다.
+  const d = new Date(epochMs + KST_OFFSET_MS);
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  return (
+    `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}` +
+    `${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`
+  );
+}
+
+/** 'NNNNNN.KS' 등 거래소 접미사를 떼고 네이버 종목코드만 남긴다 (예: '005930.KS' → '005930'). */
+function toNaverCode(stockSymbol: string): string {
+  return stockSymbol.replace(/\..*$/, '');
+}
+
 /**
- * Yahoo 주식 캔들 URL을 생성한다(R2.1).
+ * 네이버 금융 국내 주식 캔들 URL을 생성한다(R2.1).
  *
- * @param pair Yahoo 주식 심볼 (예: '005930.KS')
- * @param range Yahoo range 토큰
- * @param interval 캔들 간격 (range로부터 도출 또는 폴백 결과)
+ * interval이 '1d'면 일봉(`day`), 그 외(1m)는 분봉(`minute`) 엔드포인트를 사용한다.
+ * 조회 구간은 `[now - perpLookbackMs, now]`로 perp 윈도우와 동일하게 맞춘다.
+ * startDateTime/endDateTime은 KST 기준 'YYYYMMDDHHMMSS' 문자열이다.
+ *
+ * @param stockSymbol 페어 심볼 (예: '005930.KS')
+ * @param interval 캔들 간격 ('1m' | '1d')
+ * @param range ComparisonRange (perpLookbackMs로 시작 시각 계산)
+ * @param now 호출 시각 (테스트 주입용, 기본 Date.now())
  */
-export function buildYahooStockUrl(
-  pair: string,
-  range: ComparisonRange,
+export function buildNaverStockUrl(
+  stockSymbol: string,
   interval: ComparisonInterval,
+  range: ComparisonRange,
+  now: number = Date.now(),
 ): string {
-  return `${YAHOO_CHART_BASE}/${encodeURIComponent(pair)}?range=${range}&interval=${interval}`;
+  const code = toNaverCode(stockSymbol);
+  const path = interval === '1d' ? 'day' : 'minute';
+  const { perpLookbackMs } = RANGE_TO_INTERVAL[range];
+  const start = formatKstStamp(now - perpLookbackMs);
+  const end = formatKstStamp(now);
+  return `${NAVER_STOCK_BASE}/${code}/${path}?startDateTime=${start}&endDateTime=${end}`;
 }
 
 /**

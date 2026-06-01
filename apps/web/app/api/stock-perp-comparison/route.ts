@@ -16,7 +16,7 @@ import type { ComparisonRange, ComparisonResponse, StockPerpPair } from '@bitsco
 import { DEFAULT_PAIR, DEFAULT_RANGE, PAIR_CONFIGS, RANGE_TO_INTERVAL } from '@bitscope/shared';
 import { buildCacheKey, getGlobalCache } from '../exchange/_lib/cache';
 import { fetchComparison } from './_lib/fetch-comparison';
-import { normalizeHyperliquidCandles, normalizeYahooCandles, normalizeFrankfurterRate } from './_lib/normalizer';
+import { normalizeHyperliquidCandles, normalizeNaverCandles, normalizeFrankfurterRate } from './_lib/normalizer';
 import { intervalToMs, mergeTimeline } from './_lib/merge-timeline';
 
 /** 유효한 range 토큰 집합 (RANGE_TO_INTERVAL 키에서 파생) */
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const fetched = await fetchComparison(pairConfig.stockSymbol, pairConfig.perpCoin, range);
 
     // 정규화.
-    const stockNormalized = normalizeYahooCandles(fetched.stockRaw);
+    const stockNormalized = normalizeNaverCandles(fetched.stockRaw, fetched.appliedInterval);
     const ratePoints = normalizeFrankfurterRate(fetched.rateRaw);
     const perpCandles = normalizeHyperliquidCandles(fetched.perpRaw);
 
@@ -115,8 +115,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 캐시 저장(데이터가 있는 경우만).
-    if (hasData) {
+    // 캐시 저장: 주식이 성공하고 데이터가 있는 경우만.
+    // 주식 실패(예: 일시 장애) 응답을 캐시에 덮어써서 멀쩡한 직전 데이터를 가리지 않도록 한다.
+    if (hasData && fetched.errors.stock === null) {
       cache.set(cacheKey, response, getCacheTtl(range));
     }
 

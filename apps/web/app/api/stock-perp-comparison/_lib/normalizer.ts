@@ -1,16 +1,20 @@
 /**
  * 주식-perp 비교 뷰 응답 정규화 (R2.2, R2.3, R2.4, R3.2, R3.3, R5.1, R5.2)
  *
- * - Yahoo Finance chart API 주식 캔들 → NormalizedCandle[]
+ * - 네이버 금융 주식 캔들(일봉/분봉) → NormalizedCandle[]
  * - frankfurter.dev USD→KRW 환율 → RatePoint[]
  * - Hyperliquid candleSnapshot perp 캔들 → NormalizedCandle[]
  *
  * 통화/타임스탬프 단위:
- * - 주식: KRW, Yahoo timestamp는 UTC epoch seconds → ×1000으로 ms 변환
+ * - 주식: KRW. 네이버 시각은 KST 문자열 — 분봉은 KST→UTC ms 변환, 일봉은 해당 날짜의
+ *   UTC 자정으로 매핑하여 perp 일봉(UTC 자정)과 버킷 정합을 맞춘다.
  * - perp: USD, Hyperliquid `t`는 이미 UTC epoch ms이므로 그대로 사용
  */
 
-import type { NormalizedCandle, RatePoint } from '@bitscope/shared';
+import type { ComparisonInterval, NormalizedCandle, RatePoint } from '@bitscope/shared';
+
+/** KST 오프셋 (UTC+9) ms */
+const KST_OFFSET_MS = 9 * 3600 * 1000;
 
 /**
  * 문자열/숫자 혼재 값을 안전하게 number로 변환한다.
@@ -22,83 +26,124 @@ function safeFloat(v: unknown): number {
   return 0;
 }
 
-// ===== Yahoo 응답 타입 (필요 필드만) =====
-
-interface YahooQuote {
-  open?: Array<number | null>;
-  high?: Array<number | null>;
-  low?: Array<number | null>;
-  close?: Array<number | null>;
+/** number/문자열을 number로, 비유한수/누락이면 null. */
+function numOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
-interface YahooResult {
-  timestamp?: Array<number>;
-  indicators?: {
-    quote?: YahooQuote[];
-  };
-  meta?: {
-    currency?: string;
-    exchangeTimezoneName?: string;
-    gmtoffset?: number;
-    regularMarketPrice?: number;
-  };
+// ===== 네이버 금융 응답 타입 (필요 필드만) =====
+
+/** 일봉: /chart/domestic/item/{code}/day 항목 */
+interface NaverDayItem {
+  localDate?: string; // 'YYYYMMDD' (KST 거래일)
+  openPrice?: number;
+  highPrice?: number;
+  lowPrice?: number;
+  closePrice?: number;
 }
 
-interface YahooChartResponse {
-  chart?: {
-    result?: YahooResult[];
-  };
+/** 분봉: /chart/domestic/item/{code}/minute 항목 */
+interface NaverMinuteItem {
+  localDateTime?: string; // 'YYYYMMDDHHMMSS' (KST)
+  openPrice?: number;
+  highPrice?: number;
+  lowPrice?: number;
+  currentPrice?: number; // 해당 분의 종가
 }
 
-/** Yahoo 주식 정규화 결과 (캔들 + 메타) */
-export interface NormalizedYahooCandles {
+/** 주식 정규화 결과 (캔들 + 메타) */
+export interface NormalizedStockCandles {
   candles: NormalizedCandle[];
   meta: {
-    currency: string; // 'KRW' 전제 (R2.3)
-    exchangeTimezoneName: string; // 'Asia/Seoul' 전제 (R2.3)
-    gmtoffset: number; // 초 단위 (Yahoo meta.gmtoffset)
-    regularMarketPrice: number | null;
+    currency: string; // 'KRW' (R2.3)
+    exchangeTimezoneName: string; // 'Asia/Seoul' (R2.3)
+    gmtoffset: number; // 초 단위 (KST = 32400)
+    regularMarketPrice: number | null; // 최근 종가
   };
+}
+
+/** 'YYYYMMDD'(KST 거래일) → 해당 날짜 UTC 자정 ms (perp 일봉 버킷과 정합). */
+function parseNaverDate(localDate: string): number | null {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(localDate);
+  if (m === null) return null;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/** 'YYYYMMDDHHMMSS'(KST) → UTC epoch ms. */
+function parseNaverDateTime(localDateTime: string): number | null {
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(localDateTime);
+  if (m === null) return null;
+  // KST 벽시계로 구성한 뒤 9h를 빼서 UTC instant로 변환.
+  const kstAsUtc = Date.UTC(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+    Number(m[6]),
+  );
+  return kstAsUtc - KST_OFFSET_MS;
 }
 
 /**
- * Yahoo Finance chart API 주식 응답을 NormalizedCandle[]로 변환한다 (R2.2, R2.3, R2.4, R5.1).
+ * 네이버 금융 주식 응답(일봉/분봉)을 NormalizedCandle[]로 변환한다 (R2.2, R2.4, R5.1).
  *
- * - `chart.result[0].timestamp`(UTC epoch seconds)를 ×1000으로 ms 변환한다.
- * - `chart.result[0].indicators.quote[0]`에서 OHLCV를 추출한다.
- * - 거래 없음/휴장으로 OHLCV가 null이면 forward-fill 하지 않고 null을 그대로 보존한다 (R2.4).
- * - meta.currency('KRW'), meta.exchangeTimezoneName('Asia/Seoul'), meta.gmtoffset,
- *   meta.regularMarketPrice를 기록한다 (R2.3).
+ * - 일봉(interval==='1d'): `localDate`/`closePrice` 등, timestamp는 해당 날짜 UTC 자정.
+ * - 분봉(그 외): `localDateTime`/`currentPrice` 등, timestamp는 KST→UTC ms 변환.
+ * - 가격은 KRW. 유한수가 아닌 값은 null로 보존한다(forward-fill 금지, R2.4).
+ * - 메타는 한국 주식 전제로 고정(KRW/Asia/Seoul/+9h), regularMarketPrice는 최근 종가.
  */
-export function normalizeYahooCandles(raw: unknown): NormalizedYahooCandles {
-  const result = (raw as YahooChartResponse)?.chart?.result?.[0];
+export function normalizeNaverCandles(
+  raw: unknown,
+  interval: ComparisonInterval,
+): NormalizedStockCandles {
+  const arr = Array.isArray(raw) ? raw : [];
+  const isDaily = interval === '1d';
 
-  const timestamps = result?.timestamp ?? [];
-  const quote = result?.indicators?.quote?.[0] ?? {};
-  const opens = quote.open ?? [];
-  const highs = quote.high ?? [];
-  const lows = quote.low ?? [];
-  const closes = quote.close ?? [];
+  const candles: NormalizedCandle[] = [];
+  for (const item of arr) {
+    if (item == null || typeof item !== 'object') continue;
+    let timestamp: number | null;
+    let close: number | null;
+    if (isDaily) {
+      const it = item as NaverDayItem;
+      timestamp = it.localDate != null ? parseNaverDate(it.localDate) : null;
+      close = numOrNull(it.closePrice);
+    } else {
+      const it = item as NaverMinuteItem;
+      timestamp = it.localDateTime != null ? parseNaverDateTime(it.localDateTime) : null;
+      close = numOrNull(it.currentPrice);
+    }
+    if (timestamp === null) continue;
+    const it = item as NaverDayItem & NaverMinuteItem;
+    candles.push({
+      timestamp,
+      open: numOrNull(it.openPrice),
+      high: numOrNull(it.highPrice),
+      low: numOrNull(it.lowPrice),
+      close,
+    });
+  }
 
-  const candles: NormalizedCandle[] = timestamps.map((ts, i) => ({
-    timestamp: ts * 1000, // epoch s → ms (R5.1)
-    // null은 보존한다 — forward-fill 금지 (R2.4)
-    open: opens[i] ?? null,
-    high: highs[i] ?? null,
-    low: lows[i] ?? null,
-    close: closes[i] ?? null,
-  }));
-
-  const meta = result?.meta;
+  // 최근(마지막) 유효 종가를 regularMarketPrice로 사용.
+  let regularMarketPrice: number | null = null;
+  for (let i = candles.length - 1; i >= 0; i--) {
+    const c = candles[i];
+    if (c !== undefined && c.close !== null) {
+      regularMarketPrice = c.close;
+      break;
+    }
+  }
 
   return {
     candles,
     meta: {
-      currency: meta?.currency ?? 'KRW',
-      exchangeTimezoneName: meta?.exchangeTimezoneName ?? 'Asia/Seoul',
-      gmtoffset: typeof meta?.gmtoffset === 'number' ? meta.gmtoffset : 0,
-      regularMarketPrice:
-        typeof meta?.regularMarketPrice === 'number' ? meta.regularMarketPrice : null,
+      currency: 'KRW',
+      exchangeTimezoneName: 'Asia/Seoul',
+      gmtoffset: 32400,
+      regularMarketPrice,
     },
   };
 }
