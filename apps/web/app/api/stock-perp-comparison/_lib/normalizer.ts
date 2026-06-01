@@ -2,7 +2,7 @@
  * 주식-perp 비교 뷰 응답 정규화 (R2.2, R2.3, R2.4, R3.2, R3.3, R5.1, R5.2)
  *
  * - Yahoo Finance chart API 주식 캔들 → NormalizedCandle[]
- * - Yahoo Finance KRW=X 환율 → RatePoint[]
+ * - frankfurter.dev USD→KRW 환율 → RatePoint[]
  * - Hyperliquid candleSnapshot perp 캔들 → NormalizedCandle[]
  *
  * 통화/타임스탬프 단위:
@@ -103,28 +103,34 @@ export function normalizeYahooCandles(raw: unknown): NormalizedYahooCandles {
   };
 }
 
-/**
- * Yahoo Finance KRW=X 환율 응답을 RatePoint[]로 변환한다 (R4.1).
- *
- * - timestamp(UTC epoch seconds)를 ×1000으로 ms 변환한다.
- * - quote[0].close가 null인 포인트는 제거한다.
- * - rate는 USD/KRW (1 USD = rate KRW).
- */
-export function normalizeYahooRate(raw: unknown): RatePoint[] {
-  const result = (raw as YahooChartResponse)?.chart?.result?.[0];
+/** frankfurter.dev 환율 시계열 응답 (필요 필드만) */
+interface FrankfurterResponse {
+  base?: string;
+  rates?: Record<string, { KRW?: number } | undefined>;
+}
 
-  const timestamps = result?.timestamp ?? [];
-  const closes = result?.indicators?.quote?.[0]?.close ?? [];
+/**
+ * frankfurter.dev USD→KRW 환율 응답을 RatePoint[]로 변환한다 (R4.1).
+ *
+ * 응답 형태: `{ rates: { 'YYYY-MM-DD': { KRW: number } } }` (ECB 공식, 일별).
+ * - 날짜 키를 UTC 자정(epoch ms)으로 변환한다. FX는 일별이고 lookup이 step 방식이므로
+ *   해당일 환율이 그날 캔들 전체에 적용된다.
+ * - KRW 값이 없거나 유한수가 아니면 해당 날짜를 건너뛴다.
+ * - rate는 USD/KRW (1 USD = rate KRW).
+ *
+ * 반환 배열의 정렬은 보장하지 않는다(lookup 빌더가 정렬한다).
+ */
+export function normalizeFrankfurterRate(raw: unknown): RatePoint[] {
+  const rates = (raw as FrankfurterResponse | null)?.rates;
+  if (rates == null || typeof rates !== 'object') return [];
 
   const points: RatePoint[] = [];
-  for (let i = 0; i < timestamps.length; i++) {
-    const ts = timestamps[i];
-    const close = closes[i];
-    if (ts == null || close == null) continue; // null timestamp/close 제거
-    points.push({
-      timestamp: ts * 1000, // epoch s → ms
-      rate: close,
-    });
+  for (const [date, value] of Object.entries(rates)) {
+    const krw = value?.KRW;
+    if (krw == null || !Number.isFinite(krw)) continue;
+    const ts = Date.parse(`${date}T00:00:00Z`);
+    if (Number.isNaN(ts)) continue;
+    points.push({ timestamp: ts, rate: krw });
   }
 
   return points;

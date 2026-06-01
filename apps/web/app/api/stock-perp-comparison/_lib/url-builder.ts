@@ -3,8 +3,13 @@
  *
  * 세 소스(주식/환율/perp)의 외부 API 요청을 생성한다.
  * - 주식:  GET https://query1.finance.yahoo.com/v8/finance/chart/{pair}?range&interval
- * - 환율:  GET https://query1.finance.yahoo.com/v8/finance/chart/KRW=X?range&interval=1h
+ * - 환율:  GET https://api.frankfurter.dev/v1/{start}..{end}?base=USD&symbols=KRW
  * - perp:  POST https://api.hyperliquid.xyz/info  (candleSnapshot)
+ *
+ * 환율은 Yahoo(KRW=X) 대신 frankfurter.dev(ECB 공식, 무키)를 사용한다.
+ * Yahoo는 데이터센터(OCI) IP에서 429로 throttle되어 환율 조회가 실패했고,
+ * frankfurter는 IP throttle이 없고 과거 일별 시계열을 제공한다(R4). FX는 분 단위로
+ * 거의 변하지 않으므로 일별 해상도 + step lookup으로 캔들에 매핑한다.
  *
  * interval은 사용자가 직접 보내지 않고 `range`로부터 `RANGE_TO_INTERVAL`로 결정한다
  * (R8.2/R8.4 — 주식·perp interval을 항상 동일하게 정렬). 분봉 한계 초과 시
@@ -23,15 +28,30 @@ import { HYPERLIQUID_CONFIG, RANGE_TO_INTERVAL } from '@bitscope/shared';
 /** Yahoo Finance chart API base URL */
 const YAHOO_CHART_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
-/** USD/KRW 환율 심볼 (Yahoo) */
-const YAHOO_RATE_SYMBOL = 'KRW=X';
+/** frankfurter.dev(ECB 공식 환율) base URL */
+const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v1';
+
+/** 하루(ms) */
+const DAY_MS = 864e5;
 
 /**
- * 환율 조회 interval — candle interval이 1m이어도 1h로 고정한다.
- * 환율은 분 단위로 거의 변하지 않고 Yahoo가 KRW=X 분봉을 잘 주지 않으므로
- * 호출을 경량화한다. 캔들과의 정합은 lookup 단계에서 처리한다.
+ * range별 환율 시계열 조회 일수.
+ *
+ * 캔들 lookback보다 며칠 더 넉넉히 잡아, 주말·공휴일로 ECB 환율이 없는 날에도
+ * 직전 영업일 환율을 step lookup으로 적용할 수 있게 한다.
  */
-const RATE_INTERVAL = '1h' as const;
+const RANGE_TO_RATE_DAYS: Record<ComparisonRange, number> = {
+  '1d': 7,
+  '5d': 10,
+  '1mo': 40,
+  '6mo': 200,
+  '1y': 380,
+};
+
+/** epoch ms → 'YYYY-MM-DD' (UTC) */
+function formatUtcDate(epochMs: number): string {
+  return new Date(epochMs).toISOString().slice(0, 10);
+}
 
 /** range → interval/lookback 결정 결과 */
 export interface IntervalPlan {
@@ -100,12 +120,21 @@ export function buildYahooStockUrl(
 }
 
 /**
- * Yahoo USD/KRW 환율 URL을 생성한다(R4.1).
+ * frankfurter.dev USD/KRW 환율 시계열 URL을 생성한다(R4.1).
  *
- * interval은 candle interval과 무관하게 1h로 고정한다.
+ * `{start}..{end}` 구간의 일별 USD→KRW 환율을 요청한다. start는 range별
+ * `RANGE_TO_RATE_DAYS`만큼 과거, end는 호출 시각(now)이다. 날짜는 UTC 기준.
+ *
+ * @param range ComparisonRange
+ * @param now 호출 시각 (테스트 주입용, 기본 Date.now())
  */
-export function buildYahooRateUrl(range: ComparisonRange): string {
-  return `${YAHOO_CHART_BASE}/${encodeURIComponent(YAHOO_RATE_SYMBOL)}?range=${range}&interval=${RATE_INTERVAL}`;
+export function buildFrankfurterRateUrl(
+  range: ComparisonRange,
+  now: number = Date.now(),
+): string {
+  const start = formatUtcDate(now - RANGE_TO_RATE_DAYS[range] * DAY_MS);
+  const end = formatUtcDate(now);
+  return `${FRANKFURTER_BASE}/${start}..${end}?base=USD&symbols=KRW`;
 }
 
 /** Hyperliquid POST 엔드포인트 URL (R3.1) */

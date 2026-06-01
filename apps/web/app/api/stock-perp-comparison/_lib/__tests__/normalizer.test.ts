@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeHyperliquidCandles,
   normalizeYahooCandles,
-  normalizeYahooRate,
+  normalizeFrankfurterRate,
 } from '../normalizer';
 
 // ===== Yahoo 주식 캔들 =====
@@ -120,34 +120,47 @@ describe('normalizeYahooCandles (R2.2, R2.4, R5.1)', () => {
   });
 });
 
-// ===== Yahoo 환율 =====
+// ===== frankfurter 환율 =====
 
-describe('normalizeYahooRate (R4.1)', () => {
-  it('KRW=X 응답을 RatePoint[]로 변환하고 null close를 제거한다', () => {
+describe('normalizeFrankfurterRate (R4.1)', () => {
+  it('일별 rates를 RatePoint[](UTC 자정 ms)로 변환한다', () => {
     const raw = {
-      chart: {
-        result: [
-          {
-            timestamp: [1716950400, 1716954000, 1716957600],
-            indicators: {
-              quote: [{ close: [1383.2, null, 1384.1] }],
-            },
-            meta: { currency: 'KRW=X' },
-          },
-        ],
+      amount: 1,
+      base: 'USD',
+      start_date: '2024-05-27',
+      end_date: '2024-05-29',
+      rates: {
+        '2024-05-27': { KRW: 1383.2 },
+        '2024-05-28': { KRW: 1384.0 },
+        '2024-05-29': { KRW: 1384.1 },
       },
     };
 
-    const points = normalizeYahooRate(raw);
+    const points = normalizeFrankfurterRate(raw);
 
-    // null close 포인트(가운데)는 제거
-    expect(points).toHaveLength(2);
-    expect(points[0]).toEqual({ timestamp: 1716950400 * 1000, rate: 1383.2 });
-    expect(points[1]).toEqual({ timestamp: 1716957600 * 1000, rate: 1384.1 });
+    expect(points).toHaveLength(3);
+    expect(points).toContainEqual({ timestamp: Date.parse('2024-05-27T00:00:00Z'), rate: 1383.2 });
+    expect(points).toContainEqual({ timestamp: Date.parse('2024-05-29T00:00:00Z'), rate: 1384.1 });
   });
 
-  it('빈 응답에 대해 빈 배열을 반환한다', () => {
-    expect(normalizeYahooRate({})).toEqual([]);
+  it('KRW 값이 없거나 유한수가 아닌 날짜는 건너뛴다', () => {
+    const raw = {
+      base: 'USD',
+      rates: {
+        '2024-05-27': { KRW: 1383.2 },
+        '2024-05-28': {}, // KRW 누락
+        '2024-05-29': { KRW: 1384.1 },
+      },
+    };
+
+    const points = normalizeFrankfurterRate(raw);
+    expect(points).toHaveLength(2);
+  });
+
+  it('빈/누락 응답에 대해 빈 배열을 반환한다', () => {
+    expect(normalizeFrankfurterRate({})).toEqual([]);
+    expect(normalizeFrankfurterRate({ rates: {} })).toEqual([]);
+    expect(normalizeFrankfurterRate(null)).toEqual([]);
   });
 });
 

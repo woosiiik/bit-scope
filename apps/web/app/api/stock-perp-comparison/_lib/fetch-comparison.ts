@@ -22,11 +22,12 @@ import type {
 import {
   buildHyperliquidBody,
   buildHyperliquidUrl,
-  buildYahooRateUrl,
+  buildFrankfurterRateUrl,
   buildYahooStockUrl,
   getFallbackInterval,
   resolveIntervalPlan,
 } from './url-builder';
+import { buildCacheKey, getGlobalCache } from '../../exchange/_lib/cache';
 
 /** 외부 API 타임아웃 (ms) — futures-dashboard와 동일 정책 */
 const FETCH_TIMEOUT = 10_000;
@@ -172,39 +173,54 @@ async function fetchYahooStockWithFallback(
   }
 }
 
+/** 환율 시계열 전역 캐시 TTL (ms) — FX는 일별이라 길게 잡아 외부 호출을 줄인다. */
+const RATE_CACHE_TTL_MS = 3 * 3600 * 1000; // 3시간
+
+/** frankfurter 응답이 환율 데이터를 담고 있는지(비어있지 않은지) 확인한다. */
+function isFrankfurterEmpty(raw: unknown): boolean {
+  const rates = (raw as { rates?: Record<string, unknown> } | null)?.rates;
+  return rates == null || typeof rates !== 'object' || Object.keys(rates).length === 0;
+}
+
 /**
- * Yahoo KRW=X 환율 캔들을 fetch한다.
+ * frankfurter.dev USD→KRW 환율 시계열을 fetch한다(R4.1).
  *
- * 환율은 step 유지 lookup으로 캔들과 정합하므로 폴백 interval이 필요 없다.
- * 단 throttle 시에는 주식과 동일하게 1회 지수 백오프 재시도를 적용한다.
+ * Yahoo(KRW=X)는 OCI 데이터센터 IP에서 429로 throttle되어 환율 조회가 실패했다.
+ * frankfurter는 ECB 공식 환율을 무키·무throttle로 제공한다. FX는 일별이고 거의 변하지
+ * 않으므로 range 단위로 전역 캐시(`RATE_CACHE_TTL_MS`)하여 외부 호출을 최소화한다.
+ *
+ * - 캐시 fresh hit → 캐시된 raw 반환.
+ * - miss/만료 → fetch 후 캐시 저장. fetch 실패 시 스테일 캐시가 있으면 그걸로 폴백.
  */
-async function fetchYahooRate(range: ComparisonRange): Promise<unknown> {
-  const url = buildYahooRateUrl(range);
-  const doFetch = async (): Promise<unknown> => {
+async function fetchFrankfurterRate(range: ComparisonRange): Promise<unknown> {
+  const cache = getGlobalCache();
+  const cacheKey = buildCacheKey('spc-rate', 'USDKRW', { range });
+
+  const cached = cache.getWithStale<unknown>(cacheKey);
+  if (cached.hit && cached.isFresh) {
+    return cached.data;
+  }
+
+  const url = buildFrankfurterRateUrl(range);
+  try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: YAHOO_HEADERS,
+      headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
-    if (response.status === 429 || response.status >= 500) {
-      throw new YahooThrottleError(response.status);
-    }
     if (!response.ok) {
-      throw new Error(`Yahoo rate API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Frankfurter rate API error: ${response.status} ${response.statusText}`);
     }
     const raw = await response.json();
-    if (isYahooEmpty(raw)) {
-      throw new YahooEmptyError('Yahoo empty rate candles');
+    if (isFrankfurterEmpty(raw)) {
+      throw new Error('Frankfurter empty rates');
     }
+    cache.set(cacheKey, raw, RATE_CACHE_TTL_MS);
     return raw;
-  };
-
-  try {
-    return await doFetch();
   } catch (error) {
-    if (error instanceof YahooThrottleError) {
-      await sleep(YAHOO_RETRY_DELAY_MS);
-      return doFetch();
+    // 일시 장애 시 스테일 캐시로 폴백(있으면).
+    if (cached.hit && cached.data != null) {
+      return cached.data;
     }
     throw error;
   }
@@ -253,7 +269,7 @@ export async function fetchComparison(
 
   const [stockSettled, rateSettled, perpSettled] = await Promise.allSettled([
     fetchYahooStockWithFallback(pair, range, requestedInterval),
-    fetchYahooRate(range),
+    fetchFrankfurterRate(range),
     fetchHyperliquidPerp(perpCoin, requestedInterval, range),
   ]);
 

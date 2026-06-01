@@ -16,7 +16,7 @@ import type { ComparisonRange, ComparisonResponse, StockPerpPair } from '@bitsco
 import { DEFAULT_PAIR, DEFAULT_RANGE, PAIR_CONFIGS, RANGE_TO_INTERVAL } from '@bitscope/shared';
 import { buildCacheKey, getGlobalCache } from '../exchange/_lib/cache';
 import { fetchComparison } from './_lib/fetch-comparison';
-import { normalizeHyperliquidCandles, normalizeYahooCandles, normalizeYahooRate } from './_lib/normalizer';
+import { normalizeHyperliquidCandles, normalizeYahooCandles, normalizeFrankfurterRate } from './_lib/normalizer';
 import { intervalToMs, mergeTimeline } from './_lib/merge-timeline';
 
 /** 유효한 range 토큰 집합 (RANGE_TO_INTERVAL 키에서 파생) */
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // 정규화.
     const stockNormalized = normalizeYahooCandles(fetched.stockRaw);
-    const ratePoints = normalizeYahooRate(fetched.rateRaw);
+    const ratePoints = normalizeFrankfurterRate(fetched.rateRaw);
     const perpCandles = normalizeHyperliquidCandles(fetched.perpRaw);
 
     // 타임라인 병합 + 통화 변환(baseCurrency='KRW').

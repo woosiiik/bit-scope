@@ -11,7 +11,7 @@ import type { ComparisonRange } from '@bitscope/shared';
 import {
   buildHyperliquidBody,
   buildHyperliquidUrl,
-  buildYahooRateUrl,
+  buildFrankfurterRateUrl,
   buildYahooStockUrl,
   getFallbackInterval,
   resolveIntervalPlan,
@@ -105,16 +105,36 @@ describe('buildYahooStockUrl — 주식 URL (R2.1)', () => {
   });
 });
 
-describe('buildYahooRateUrl — 환율 URL (R4.1)', () => {
-  it('KRW=X 심볼을 인코딩하고 interval은 1h로 고정한다', () => {
-    expect(buildYahooRateUrl('1mo')).toBe(
-      'https://query1.finance.yahoo.com/v8/finance/chart/KRW%3DX?range=1mo&interval=1h',
+describe('buildFrankfurterRateUrl — 환율 URL (R4.1)', () => {
+  // range별 환율 조회 일수 (url-builder의 RANGE_TO_RATE_DAYS와 동일)
+  const RATE_DAYS: Record<ComparisonRange, number> = {
+    '1d': 7,
+    '5d': 10,
+    '1mo': 40,
+    '6mo': 200,
+    '1y': 380,
+  };
+
+  it('start..end 구간의 USD→KRW 일별 환율 URL을 만든다', () => {
+    // FIXED_NOW = 2024-05-29T00:00:00Z, 1mo → 40일 전 = 2024-04-19
+    expect(buildFrankfurterRateUrl('1mo', FIXED_NOW)).toBe(
+      'https://api.frankfurter.dev/v1/2024-04-19..2024-05-29?base=USD&symbols=KRW',
     );
   });
 
-  it('candle interval과 무관하게 항상 1h를 사용한다', () => {
+  it('항상 base=USD&symbols=KRW를 포함한다', () => {
     for (const range of ALL_RANGES) {
-      expect(buildYahooRateUrl(range)).toContain('interval=1h');
+      expect(buildFrankfurterRateUrl(range, FIXED_NOW)).toContain('base=USD&symbols=KRW');
+    }
+  });
+
+  it('range별 조회 시작일이 RATE_DAYS만큼 과거이다', () => {
+    for (const range of ALL_RANGES) {
+      const url = buildFrankfurterRateUrl(range, FIXED_NOW);
+      const expectedStart = new Date(FIXED_NOW - RATE_DAYS[range] * DAY_MS)
+        .toISOString()
+        .slice(0, 10);
+      expect(url).toContain(`/v1/${expectedStart}..2024-05-29`);
     }
   });
 });
