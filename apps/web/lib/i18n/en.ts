@@ -60,6 +60,7 @@ const en: Messages = {
     cryptoDesk: 'Crypto Desk',
     marketScreener: 'Market Screener',
     futuresDashboard: 'Multi-Exchange Futures Data',
+    stockPerpComparison: 'Stock vs Perp',
     futuresMarketData: 'Futures Data',
     futuresTrading: 'Futures Trading',
     charts: 'Charts',

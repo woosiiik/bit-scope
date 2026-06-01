@@ -144,3 +144,15 @@ export type {
   VerifyPasswordRequest,
   VerifyPasswordResponse,
 } from './signal';
+
+// 주식-perp 비교 뷰 타입
+export type {
+  ComparisonRange,
+  ComparisonInterval,
+  ComparisonBaseCurrency,
+  StockPerpPair,
+  NormalizedCandle,
+  RatePoint,
+  ComparisonPoint,
+  ComparisonResponse,
+} from './stock-perp';

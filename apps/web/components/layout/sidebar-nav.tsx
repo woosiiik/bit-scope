@@ -69,6 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
       { labelKey: 'premium', href: '/premium', icon: BarChart3 },
       { labelKey: 'marketScreener', href: '/market-screener', icon: BarChart3 },
       { labelKey: 'futuresDashboard', href: '/futures-dashboard', icon: BarChart3 },
+      { labelKey: 'stockPerpComparison', href: '/stock-perp-comparison', icon: ChartCandlestick },
       { labelKey: 'futuresMarketData', href: '/futures', icon: Activity },
       { labelKey: 'futuresTrading', href: '/futures-trading', icon: ArrowUpDown },
       { labelKey: 'charts', href: '/charts', icon: ChartCandlestick },

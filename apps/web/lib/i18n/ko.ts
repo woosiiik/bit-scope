@@ -56,6 +56,7 @@ const ko = {
     cryptoDesk: '크립토 데스크',
     marketScreener: '마켓 스크리너',
     futuresDashboard: '멀티 거래소 선물 마켓 데이터',
+    stockPerpComparison: '주식·선물 비교',
     futuresMarketData: '선물 마켓 데이터',
     futuresTrading: '선물 거래',
     charts: '차트',

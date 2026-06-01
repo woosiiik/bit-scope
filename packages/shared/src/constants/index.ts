@@ -93,3 +93,12 @@ export {
   BULK_TICKER_CONFIGS,
   BINANCE_PREMIUM_INDEX_URL,
 } from './market-screener';
+
+// 주식-perp 비교 뷰 상수
+export {
+  PAIR_CONFIGS,
+  DEFAULT_PAIR,
+  DEFAULT_RANGE,
+  RANGE_TO_INTERVAL,
+  KRX_SESSION,
+} from './stock-perp';

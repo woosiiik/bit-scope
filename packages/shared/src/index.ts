@@ -114,6 +114,15 @@ export type {
   SignalListResponse,
   VerifyPasswordRequest,
   VerifyPasswordResponse,
+  // 주식-perp 비교 뷰 타입
+  ComparisonRange,
+  ComparisonInterval,
+  ComparisonBaseCurrency,
+  StockPerpPair,
+  NormalizedCandle,
+  RatePoint,
+  ComparisonPoint,
+  ComparisonResponse,
 } from './types';
 
 // 공유 상수
@@ -196,6 +205,12 @@ export {
   COIN_NAMES,
   BULK_TICKER_CONFIGS,
   BINANCE_PREMIUM_INDEX_URL,
+  // 주식-perp 비교 뷰 상수
+  PAIR_CONFIGS,
+  DEFAULT_PAIR,
+  DEFAULT_RANGE,
+  RANGE_TO_INTERVAL,
+  KRX_SESSION,
 } from './constants';
 
 export type { ExchangeConfig, ExchangeEndpoints, CoinInfo } from './constants';
