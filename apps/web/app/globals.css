@@ -126,15 +126,18 @@
   --profit: 130 74% 39%;
   --loss: 0 75% 54%;
 
-  /* 사이드바: surface-soft 배경 / charcoal 텍스트 / 퍼플 인디케이터 */
-  --sidebar-background: 60 11% 98%;
-  --sidebar-foreground: 40 9% 20%;
-  --sidebar-primary: 247 62% 55%;
+  /*
+   * 사이드바: Notion 시그니처 투톤 — 라이트 모드에서도 좌측 메뉴는 brand-navy(어둡게),
+   * 컨텐츠는 밝게. 텍스트는 흰색, active는 navy-mid 배경 + 밝은 퍼플.
+   */
+  --sidebar-background: 222 70% 8%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 250 85% 76%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 40 8% 94%;
-  --sidebar-accent-foreground: 40 9% 20%;
-  --sidebar-border: 40 11% 88%;
-  --sidebar-ring: 247 62% 55%;
+  --sidebar-accent: 224 52% 21%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 224 52% 21%;
+  --sidebar-ring: 250 85% 76%;
 }
 
 /*
