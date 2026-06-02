@@ -19,21 +19,17 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
-/** 기본 본문 폰트: Geist Sans */
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-  display: 'swap',
-});
-
-/** 코드/숫자 폰트: Geist Mono (고정폭) */
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+/**
+ * Notion Sans = Inter 기반. 전 UI를 Inter로 렌더한다.
+ * 한글 글리프는 globals.css의 --font-sans 폴백(Pretendard/Apple SD Gothic Neo)이 처리한다.
+ */
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
   display: 'swap',
 });
@@ -74,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${inter.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider

@@ -57,6 +57,24 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
+  /*
+   * Notion 디자인 (docs/DESIGN-notion.md)
+   * 폰트: Notion Sans(=Inter 기반). 한글은 Pretendard/Apple SD Gothic Neo 폴백.
+   */
+  --font-sans: var(--font-inter), 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+
+  /* 파스텔 feature-card 틴트 + 브랜드 액센트 */
+  --color-tint-peach: #ffe8d4;
+  --color-tint-rose: #fde0ec;
+  --color-tint-mint: #d9f3e1;
+  --color-tint-lavender: #e6e0f5;
+  --color-tint-sky: #dcecfa;
+  --color-tint-yellow: #fef7d6;
+  --color-tint-cream: #f8f5e8;
+  --color-brand-purple: #7b3ff2;
+  --color-brand-navy: #0a1530;
+  --color-link: #0075de;
+
   /* sidebar 관련 */
   --color-sidebar: hsl(var(--sidebar-background));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
@@ -75,47 +93,48 @@
  * 암호화폐 대시보드에 적합한 색상을 사용한다.
  */
 :root {
+  /* Notion 라이트: 흰 캔버스 / 잉크 #1a1a1a / 퍼플 primary #5645d4 / hairline 보더 */
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 0 0% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 0 0% 10%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 217.2 91.2% 59.8%;
-  --radius: 0.5rem;
+  --popover-foreground: 0 0% 10%;
+  --primary: 247 62% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 8% 96%;
+  --secondary-foreground: 40 9% 20%;
+  --muted: 60 11% 98%;
+  --muted-foreground: 40 4% 46%;
+  --accent: 40 8% 96%;
+  --accent-foreground: 40 9% 20%;
+  --destructive: 0 75% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 11% 88%;
+  --input: 40 11% 88%;
+  --ring: 247 62% 55%;
+  --radius: 0.75rem;
 
-  /* 차트 색상 */
-  --chart-1: 217.2 91.2% 59.8%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  /* 차트 색상: Notion 브랜드 팔레트 */
+  --chart-1: 247 62% 55%; /* purple */
+  --chart-2: 207 100% 44%; /* link blue */
+  --chart-3: 26 100% 43%; /* orange */
+  --chart-4: 322 100% 70%; /* pink */
+  --chart-5: 178 59% 39%; /* teal */
 
-  /* 수익/손실 색상: 수익 녹색(파란 계열), 손실 빨간색 (요구사항 9.8) */
-  --profit: 142.1 76.2% 36.3%;
-  --loss: 0 84.2% 60.2%;
+  /* 수익/손실 색상 (요구사항 9.8) */
+  --profit: 130 74% 39%;
+  --loss: 0 75% 54%;
 
-  /* 사이드바 */
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 217.2 91.2% 59.8%;
+  /* 사이드바: surface-soft 배경 / charcoal 텍스트 / 퍼플 인디케이터 */
+  --sidebar-background: 60 11% 98%;
+  --sidebar-foreground: 40 9% 20%;
+  --sidebar-primary: 247 62% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-accent: 40 8% 94%;
+  --sidebar-accent-foreground: 40 9% 20%;
+  --sidebar-border: 40 11% 88%;
+  --sidebar-ring: 247 62% 55%;
 }
 
 /*
@@ -125,46 +144,47 @@
  * 어두운 배경과 높은 대비의 텍스트를 사용한다.
  */
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  /* Notion 다크: brand-navy 계열 배경 / 흰 텍스트 / 퍼플 primary */
+  --background: 222 70% 8%;
+  --foreground: 0 0% 100%;
+  --card: 222 65% 11%;
+  --card-foreground: 0 0% 100%;
+  --popover: 222 65% 11%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 247 70% 64%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 224 52% 21%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 224 52% 21%;
+  --muted-foreground: 40 7% 62%;
+  --accent: 224 52% 21%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 75% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 224 52% 21%;
+  --input: 224 52% 21%;
+  --ring: 247 70% 64%;
 
   /* 차트 색상 (다크 모드) */
-  --chart-1: 217.2 91.2% 59.8%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --chart-1: 247 70% 70%;
+  --chart-2: 207 100% 60%;
+  --chart-3: 26 100% 58%;
+  --chart-4: 322 100% 75%;
+  --chart-5: 178 55% 50%;
 
   /* 수익/손실 색상: 다크 모드에서도 선명하게 (요구사항 9.8) */
-  --profit: 142.1 70.6% 45.3%;
-  --loss: 0 72.2% 50.6%;
+  --profit: 130 65% 50%;
+  --loss: 0 75% 62%;
 
   /* 사이드바 (다크 모드) */
-  --sidebar-background: 240 5.9% 10%;
-  --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 217.2 91.2% 59.8%;
+  --sidebar-background: 222 72% 6%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: 247 70% 64%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-accent: 224 52% 21%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 224 52% 21%;
+  --sidebar-ring: 247 70% 64%;
 }
 
 /*
