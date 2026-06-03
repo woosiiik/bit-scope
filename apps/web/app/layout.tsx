@@ -19,7 +19,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Providers } from './providers';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
@@ -27,10 +27,16 @@ import './globals.css';
 /**
  * Notion Sans = Inter 기반. 전 UI를 Inter로 렌더한다.
  * 한글 글리프는 globals.css의 --font-sans 폴백(Pretendard/Apple SD Gothic Neo)이 처리한다.
+ *
+ * Inter 가변폰트(woff2)를 레포에 self-host한다. `next/font/google`은 빌드 시점에
+ * Google Fonts에서 폰트를 받아오는데, OCI 데이터센터 IP에서는 외부 폰트 다운로드가
+ * 차단되어 빌드가 실패한다(Yahoo 429와 동일한 데이터센터 IP 이슈). 로컬 파일을 쓰면
+ * 빌드 시 네트워크 의존이 사라진다.
  */
-const inter = Inter({
+const inter = localFont({
+  src: './fonts/Inter-latin-wght.woff2',
   variable: '--font-inter',
-  subsets: ['latin'],
+  weight: '100 900',
   display: 'swap',
 });
 
