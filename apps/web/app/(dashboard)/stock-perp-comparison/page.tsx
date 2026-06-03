@@ -146,6 +146,14 @@ export default function StockPerpComparisonPage() {
             </div>
           ) : null}
 
+          {/* 주식 없음 배너 (R9.3 대칭) — perp 라인만 단독 렌더.
+              휴장일·장 시작 전 등 주식 캔들이 비어도 선물 차트는 그대로 보여준다. */}
+          {hasStockError && points.length > 0 ? (
+            <div className="mb-3 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+              주식 데이터 없음 — 선물(perp)만 표시합니다.
+            </div>
+          ) : null}
+
           {/* 부분 렌더 누락 안내 (R9.5) */}
           {!hasStockError && (hasPerpError || hasRateError) && points.length > 0 ? (
             <div className="mb-3 rounded-md border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
@@ -159,8 +167,9 @@ export default function StockPerpComparisonPage() {
             {isLoading ? (
               /* 로딩 스켈레톤 (R9.1) */
               <div className="h-full w-full animate-pulse rounded bg-muted" />
-            ) : hasStockError || (isError && !data) ? (
-              /* 주식 데이터 조회 실패 + 재시도 (R9.2) */
+            ) : (isError && !data) || (points.length === 0 && hasStockError) ? (
+              /* 표시할 데이터가 전혀 없을 때만 조회 실패 + 재시도 (R9.2).
+                 주식만 실패하고 perp 포인트가 있으면 아래 차트로 perp 단독 렌더한다. */
               <div className="flex h-full flex-col items-center justify-center gap-3">
                 <p className="text-center text-sm text-muted-foreground">
                   주식 데이터 조회 실패
