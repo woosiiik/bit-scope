@@ -17,8 +17,12 @@ export interface CoinInfo {
 /**
  * 주요 코인 목록
  *
- * 3개 거래소(업비트, 빗썸, 코인원)에서 공통으로 거래되는 주요 코인 목록이다.
- * 김치 프리미엄 비교 및 기본 모니터링 대상으로 사용된다.
+ * 국내 거래소(업비트/빗썸/코인원) KRW 마켓과 바이낸스 USDT 마켓에 공통으로
+ * 상장된 코인을 폭넓게 포함한다. 김치 프리미엄 비교 및 기본 모니터링 대상으로 쓰인다.
+ *
+ * 김프 계산은 (국내가 + 바이낸스 USDT가)가 모두 있어야 성립하므로, 특정 거래소에
+ * 없는 코인은 자동으로 결과에서 제외된다(graceful drop). 따라서 일부 거래소에만
+ * 있는 코인이 섞여 있어도 안전하다.
  */
 export const MAJOR_COINS: readonly CoinInfo[] = [
   { symbol: 'BTC', nameKo: '비트코인', nameEn: 'Bitcoin' },
@@ -30,12 +34,78 @@ export const MAJOR_COINS: readonly CoinInfo[] = [
   { symbol: 'AVAX', nameKo: '아발란체', nameEn: 'Avalanche' },
   { symbol: 'DOT', nameKo: '폴카닷', nameEn: 'Polkadot' },
   { symbol: 'MATIC', nameKo: '폴리곤', nameEn: 'Polygon' },
+  { symbol: 'POL', nameKo: '폴리곤에코시스템토큰', nameEn: 'Polygon Ecosystem Token' },
   { symbol: 'LINK', nameKo: '체인링크', nameEn: 'Chainlink' },
   { symbol: 'ATOM', nameKo: '코스모스', nameEn: 'Cosmos' },
   { symbol: 'ETC', nameKo: '이더리움클래식', nameEn: 'Ethereum Classic' },
   { symbol: 'BCH', nameKo: '비트코인캐시', nameEn: 'Bitcoin Cash' },
   { symbol: 'TRX', nameKo: '트론', nameEn: 'TRON' },
   { symbol: 'EOS', nameKo: '이오스', nameEn: 'EOS' },
+  { symbol: 'LTC', nameKo: '라이트코인', nameEn: 'Litecoin' },
+  { symbol: 'SHIB', nameKo: '시바이누', nameEn: 'Shiba Inu' },
+  { symbol: 'NEAR', nameKo: '니어프로토콜', nameEn: 'NEAR Protocol' },
+  { symbol: 'APT', nameKo: '앱토스', nameEn: 'Aptos' },
+  { symbol: 'SUI', nameKo: '수이', nameEn: 'Sui' },
+  { symbol: 'ARB', nameKo: '아비트럼', nameEn: 'Arbitrum' },
+  { symbol: 'OP', nameKo: '옵티미즘', nameEn: 'Optimism' },
+  { symbol: 'SEI', nameKo: '세이', nameEn: 'Sei' },
+  { symbol: 'TIA', nameKo: '셀레스티아', nameEn: 'Celestia' },
+  { symbol: 'INJ', nameKo: '인젝티브', nameEn: 'Injective' },
+  { symbol: 'STX', nameKo: '스택스', nameEn: 'Stacks' },
+  { symbol: 'HBAR', nameKo: '헤데라', nameEn: 'Hedera' },
+  { symbol: 'ALGO', nameKo: '알고랜드', nameEn: 'Algorand' },
+  { symbol: 'VET', nameKo: '비체인', nameEn: 'VeChain' },
+  { symbol: 'SAND', nameKo: '샌드박스', nameEn: 'The Sandbox' },
+  { symbol: 'MANA', nameKo: '디센트럴랜드', nameEn: 'Decentraland' },
+  { symbol: 'AXS', nameKo: '엑시인피니티', nameEn: 'Axie Infinity' },
+  { symbol: 'AAVE', nameKo: '에이브', nameEn: 'Aave' },
+  { symbol: 'UNI', nameKo: '유니스왑', nameEn: 'Uniswap' },
+  { symbol: 'GRT', nameKo: '더그래프', nameEn: 'The Graph' },
+  { symbol: 'IMX', nameKo: '이뮤터블엑스', nameEn: 'Immutable' },
+  { symbol: 'FLOW', nameKo: '플로우', nameEn: 'Flow' },
+  { symbol: 'CHZ', nameKo: '칠리즈', nameEn: 'Chiliz' },
+  { symbol: 'GALA', nameKo: '갈라', nameEn: 'Gala' },
+  { symbol: 'APE', nameKo: '에이프코인', nameEn: 'ApeCoin' },
+  { symbol: 'XLM', nameKo: '스텔라루멘', nameEn: 'Stellar' },
+  { symbol: 'THETA', nameKo: '세타토큰', nameEn: 'Theta Network' },
+  { symbol: 'KAVA', nameKo: '카바', nameEn: 'Kava' },
+  { symbol: 'ZIL', nameKo: '질리카', nameEn: 'Zilliqa' },
+  { symbol: 'ENS', nameKo: '이더리움네임서비스', nameEn: 'Ethereum Name Service' },
+  { symbol: 'CRV', nameKo: '커브', nameEn: 'Curve DAO' },
+  { symbol: 'COMP', nameKo: '컴파운드', nameEn: 'Compound' },
+  { symbol: 'SNX', nameKo: '신세틱스', nameEn: 'Synthetix' },
+  { symbol: 'MKR', nameKo: '메이커', nameEn: 'Maker' },
+  { symbol: 'BLUR', nameKo: '블러', nameEn: 'Blur' },
+  { symbol: 'PENDLE', nameKo: '펜들', nameEn: 'Pendle' },
+  { symbol: 'ONDO', nameKo: '온도파이낸스', nameEn: 'Ondo' },
+  { symbol: 'ENA', nameKo: '에테나', nameEn: 'Ethena' },
+  { symbol: 'JUP', nameKo: '주피터', nameEn: 'Jupiter' },
+  { symbol: 'PYTH', nameKo: '피스네트워크', nameEn: 'Pyth Network' },
+  { symbol: 'WLD', nameKo: '월드코인', nameEn: 'Worldcoin' },
+  { symbol: 'STRK', nameKo: '스타크넷', nameEn: 'Starknet' },
+  { symbol: 'JTO', nameKo: '지토', nameEn: 'Jito' },
+  { symbol: 'BONK', nameKo: '봉크', nameEn: 'Bonk' },
+  { symbol: 'PEPE', nameKo: '페페', nameEn: 'Pepe' },
+  { symbol: 'JASMY', nameKo: '재스미코인', nameEn: 'JasmyCoin' },
+  { symbol: 'MASK', nameKo: '마스크네트워크', nameEn: 'Mask Network' },
+  { symbol: 'GMT', nameKo: '스테픈', nameEn: 'STEPN' },
+  { symbol: 'ANKR', nameKo: '앵커', nameEn: 'Ankr' },
+  { symbol: 'QTUM', nameKo: '퀀텀', nameEn: 'Qtum' },
+  { symbol: 'IOTA', nameKo: '아이오타', nameEn: 'IOTA' },
+  { symbol: 'NEO', nameKo: '네오', nameEn: 'Neo' },
+  { symbol: 'ONT', nameKo: '온톨로지', nameEn: 'Ontology' },
+  { symbol: 'ZEC', nameKo: '지캐시', nameEn: 'Zcash' },
+  { symbol: 'DASH', nameKo: '대시', nameEn: 'Dash' },
+  { symbol: 'BAT', nameKo: '베이직어텐션토큰', nameEn: 'Basic Attention Token' },
+  { symbol: 'ENJ', nameKo: '엔진코인', nameEn: 'Enjin Coin' },
+  { symbol: 'KSM', nameKo: '쿠사마', nameEn: 'Kusama' },
+  { symbol: 'CELO', nameKo: '셀로', nameEn: 'Celo' },
+  { symbol: 'STORJ', nameKo: '스토리지', nameEn: 'Storj' },
+  { symbol: 'BTT', nameKo: '비트토렌트', nameEn: 'BitTorrent' },
+  { symbol: 'HOT', nameKo: '홀로체인', nameEn: 'Holo' },
+  { symbol: 'RENDER', nameKo: '렌더토큰', nameEn: 'Render' },
+  { symbol: 'FET', nameKo: '페치에이아이', nameEn: 'Fetch.ai' },
+  { symbol: 'ARKM', nameKo: '아캄', nameEn: 'Arkham' },
 ] as const;
 
 /** 주요 코인 심볼만 추출한 배열 */

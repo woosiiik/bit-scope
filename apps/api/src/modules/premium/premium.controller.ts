@@ -46,7 +46,7 @@ export class PremiumController {
    * GET /premium?exchange=upbit&limit=20
    *
    * 현재 시점의 주요 코인 프리미엄 목록을 반환한다.
-   * 프리미엄 비율(절대값) 기준 내림차순으로 정렬되어 있다.
+   * 김프 비율(실제값) 기준 내림차순으로 정렬되어 있다.
    *
    * @param exchange 비교 기준 국내 거래소 (upbit | bithumb | coinone, 기본: upbit)
    * @param limit 반환할 최대 코인 수 (기본: 10)

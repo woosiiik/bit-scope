@@ -116,7 +116,8 @@ export default function PremiumPage() {
     isLoading: isPremiumLoading,
     refetch: refetchPremium,
   } = useTopPremiums({
-    limit: 20,
+    // 거래소가 지원하는 코인을 폭넓게 노출 (MAJOR_COINS 전체를 커버하는 상한).
+    limit: 500,
     exchange: selectedExchange,
     enabled: true,
   });
@@ -493,7 +494,7 @@ function PremiumTable({
         case 'symbol':
           return direction * a.symbol.localeCompare(b.symbol);
         case 'premium':
-          return direction * (Math.abs(a.premiumRate) - Math.abs(b.premiumRate));
+          return direction * (a.premiumRate - b.premiumRate);
         default:
           return 0;
       }

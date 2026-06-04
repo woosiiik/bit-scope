@@ -158,10 +158,8 @@ export class PremiumService {
       }
     }
 
-    // 프리미엄 비율의 절대값 기준 내림차순 정렬
-    premiumDataList.sort(
-      (a, b) => Math.abs(b.premiumRate) - Math.abs(a.premiumRate),
-    );
+    // 김프 비율(실제값) 기준 내림차순 정렬 — 김프가 높은 코인이 위로 온다.
+    premiumDataList.sort((a, b) => b.premiumRate - a.premiumRate);
 
     return premiumDataList.slice(0, limit);
   }

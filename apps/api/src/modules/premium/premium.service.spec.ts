@@ -266,7 +266,7 @@ describe('PremiumService', () => {
   });
 
   describe('getTopPremiumCoins', () => {
-    it('프리미엄 비율(절대값) 기준 내림차순으로 정렬해야 한다', () => {
+    it('김프 비율(실제값) 기준 내림차순으로 정렬해야 한다', () => {
       (priceMonitorService.getUsdtKrwRate as jest.Mock).mockReturnValue(1_400);
 
       (priceMonitorService.getCurrentPrice as jest.Mock)
@@ -276,6 +276,7 @@ describe('PremiumService', () => {
             BTC: 134_400_000, // 1% 김프
             ETH: 4_368_000,   // 4% 김프
             XRP: 1_540,       // 2% 김프
+            DOGE: 268_800,    // -4% 역프 (바이낸스 KRW 환산가 280_000 대비 낮음)
           };
           const price = prices[symbol];
           if (price) return createPriceEntry(exchange as 'upbit', symbol, price);
@@ -288,17 +289,20 @@ describe('PremiumService', () => {
             BTC: 95_000,
             ETH: 3_000,
             XRP: 1.0789,
+            DOGE: 200, // 200 * 1400 = 280_000 KRW → DOGE는 -4% 역프
           };
           const usdtPrice = prices[symbol];
           if (usdtPrice) return createBinancePriceEntry(symbol, usdtPrice);
           return null;
         });
 
-      const result = service.getTopPremiumCoins(3);
+      const result = service.getTopPremiumCoins(10);
 
       expect(result.length).toBeGreaterThan(0);
-      // ETH(4%) > XRP(2%) > BTC(1%) 순서
+      // 실제값 내림차순: ETH(+4%) > XRP(+2%) > BTC(+1%) > DOGE(-4%)
+      // 절대값 정렬이었다면 DOGE(-4%)가 맨 앞이지만, 실제값 정렬이므로 맨 뒤여야 한다.
       expect(result[0]!.symbol).toBe('ETH');
+      expect(result[result.length - 1]!.symbol).toBe('DOGE');
     });
 
     it('limit 파라미터가 결과 수를 제한해야 한다', () => {

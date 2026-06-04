@@ -185,12 +185,29 @@ export function formatPercent(
  * formatCoinPrice(3.45, "XRP") // "3.45"
  */
 export function formatCoinPrice(price: number, symbol?: string): string {
-  const decimalPlaces =
-    symbol && symbol in COIN_DECIMAL_PLACES
-      ? COIN_DECIMAL_PLACES[symbol]!
-      : DEFAULT_DECIMAL_PLACES;
+  // 코인별 명시 설정이 있으면 우선 사용.
+  if (symbol && symbol in COIN_DECIMAL_PLACES) {
+    return formatNumber(price, COIN_DECIMAL_PLACES[symbol]!);
+  }
 
-  return formatNumber(price, decimalPlaces);
+  // 명시 설정이 없으면 가격 크기에 따라 소수점 자릿수를 적응적으로 결정한다.
+  // 1원 미만 코인(SHIB·PEPE 등 밈코인)이 "0.00"으로 뭉개지지 않도록 하기 위함이며,
+  // 1 이상 값은 기존과 동일하게 DEFAULT_DECIMAL_PLACES(2)를 유지한다.
+  return formatNumber(price, adaptiveDecimalPlaces(price));
+}
+
+/**
+ * 명시적 소수점 설정이 없는 코인의 가격 크기별 소수점 자릿수를 결정한다.
+ *
+ * 1 이상이면 기본 자릿수(2)를 유지하고, 1 미만일수록 자릿수를 늘려
+ * 작은 단가의 코인이 0으로 반올림되지 않게 한다.
+ */
+function adaptiveDecimalPlaces(price: number): number {
+  const abs = Math.abs(price);
+  if (abs === 0 || abs >= 1) return DEFAULT_DECIMAL_PLACES;
+  if (abs >= 0.01) return 4;
+  if (abs >= 0.0001) return 6;
+  return 8;
 }
 
 /**
