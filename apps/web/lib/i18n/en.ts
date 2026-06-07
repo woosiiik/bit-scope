@@ -652,7 +652,7 @@ const en: Messages = {
     authRequired: {
       title: 'Wallet Connection Required',
       description: 'Please connect your Web3 wallet to access this page.',
-      connectButton: 'Go to Connect Wallet',
+      connectButton: 'Connect Wallet',
     },
   },
 

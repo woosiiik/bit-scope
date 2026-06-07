@@ -648,7 +648,7 @@ const ko = {
     authRequired: {
       title: '지갑 연결이 필요합니다',
       description: '이 페이지를 이용하려면 Web3 지갑을 연결해주세요.',
-      connectButton: '지갑 연결하러 가기',
+      connectButton: '지갑 연결',
     },
   },
 

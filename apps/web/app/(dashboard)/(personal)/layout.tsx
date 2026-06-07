@@ -10,8 +10,8 @@
  * - 관심 목록 (/watchlist)
  *
  * 지갑 미연결 시 리다이렉트하지 않고 현재 위치에서 연결 안내를
- * 표시한다(mode="inline"). 공개 페이지(시세, 김프, 뉴스 등)는 이 그룹
- * 밖에 있으므로 지갑 없이도 자유롭게 탐색할 수 있다.
+ * 표시한다. 공개 페이지(시세, 김프, 뉴스 등)는 이 그룹 밖에 있으므로
+ * 지갑 없이도 자유롭게 탐색할 수 있다.
  *
  * @see 요구사항 8.1 (Web3 지갑 기반 인증)
  * @see 요구사항 8.2 (지갑 주소를 사용자 식별자로 사용)
@@ -20,5 +20,5 @@
 import { WalletGuard } from '@/components/auth/wallet-guard';
 
 export default function PersonalLayout({ children }: { children: React.ReactNode }) {
-  return <WalletGuard mode="inline">{children}</WalletGuard>;
+  return <WalletGuard>{children}</WalletGuard>;
 }

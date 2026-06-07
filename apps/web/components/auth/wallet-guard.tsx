@@ -1,13 +1,12 @@
 /**
  * 지갑 연결 라우트 가드 컴포넌트
  *
- * 지갑이 연결되지 않은 상태에서 보호된 페이지에 접근하면
- * 지갑 연결 페이지(/connect)로 리다이렉트하거나,
- * 인라인 안내 메시지를 표시한다.
+ * 지갑이 연결되지 않은 상태에서 개인화된 페이지(포트폴리오, 알림 등)에
+ * 접근하면 현재 위치에서 연결 안내 메시지를 표시한다.
+ * 안내의 연결 버튼은 헤더 우상단의 지갑 연결 버튼과 동일하게
+ * RainbowKit 연결 모달을 연다(별도 /connect 페이지로 이동하지 않음).
  *
- * 사용 방법:
- * 1. 레이아웃에서 래핑: 대시보드 레이아웃에서 WalletGuard로 children을 감싸기
- * 2. 개별 페이지에서 사용: 특정 페이지에서만 보호가 필요할 때
+ * 사용 방법: 보호할 영역의 레이아웃/페이지에서 WalletGuard로 children을 감싼다.
  *
  * @see 요구사항 8.1 (Web3 지갑 기반 인증)
  * @see 요구사항 8.2 (지갑 주소를 사용자 식별자로 사용)
@@ -16,8 +15,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Wallet } from 'lucide-react';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { Button } from '@/components/ui/button';
@@ -27,39 +26,27 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 interface WalletGuardProps {
   /** 보호할 하위 컴포넌트 */
   children: React.ReactNode;
-  /**
-   * 미인증 시 동작 모드
-   * - 'redirect': /connect 페이지로 리다이렉트 (기본값)
-   * - 'inline': 현재 위치에서 연결 안내 메시지 표시
-   */
-  mode?: 'redirect' | 'inline';
 }
 
 /**
  * 지갑 연결 라우트 가드
  *
  * 지갑이 연결된 경우에만 children을 렌더링한다.
- * 미연결 시에는 mode에 따라 리다이렉트 또는 인라인 안내를 표시한다.
+ * 미연결 시에는 현재 위치에서 연결 안내 메시지를 표시한다.
  *
  * SSR 하이드레이션 불일치를 방지하기 위해
  * 클라이언트 마운트 이후에만 가드 로직을 실행한다.
  *
  * @example
  * ```tsx
- * // 레이아웃에서 리다이렉트 모드로 사용
- * export default function DashboardLayout({ children }) {
- *   return <WalletGuard mode="redirect">{children}</WalletGuard>;
+ * export default function PersonalLayout({ children }) {
+ *   return <WalletGuard>{children}</WalletGuard>;
  * }
- *
- * // 인라인 모드로 사용
- * <WalletGuard mode="inline">
- *   <SensitiveContent />
- * </WalletGuard>
  * ```
  */
-export function WalletGuard({ children, mode = 'redirect' }: WalletGuardProps) {
-  const router = useRouter();
+export function WalletGuard({ children }: WalletGuardProps) {
   const { wallet, isConnecting } = useWalletAuth();
+  const { openConnectModal } = useConnectModal();
   const { t } = useTranslation();
 
   /**
@@ -74,15 +61,6 @@ export function WalletGuard({ children, mode = 'redirect' }: WalletGuardProps) {
     setIsMounted(true);
   }, []);
 
-  /**
-   * 리다이렉트 모드: 지갑 미연결 시 /connect로 이동
-   */
-  useEffect(() => {
-    if (isMounted && !isConnecting && !wallet.isConnected && mode === 'redirect') {
-      router.replace('/connect');
-    }
-  }, [isMounted, isConnecting, wallet.isConnected, mode, router]);
-
   // 클라이언트 마운트 전 또는 연결 진행 중에는 로딩 표시
   if (!isMounted || isConnecting) {
     return (
@@ -96,22 +74,8 @@ export function WalletGuard({ children, mode = 'redirect' }: WalletGuardProps) {
     );
   }
 
-  // 지갑이 연결되지 않은 경우
+  // 지갑이 연결되지 않은 경우: 연결 안내 메시지 표시
   if (!wallet.isConnected) {
-    // 리다이렉트 모드: 리다이렉트 진행 중 로딩 표시
-    if (mode === 'redirect') {
-      return (
-        <div
-          className="flex min-h-[50vh] items-center justify-center"
-          role="status"
-          aria-label={t.common.loading}
-        >
-          <LoadingSpinner size="lg" />
-        </div>
-      );
-    }
-
-    // 인라인 모드: 지갑 연결 안내 메시지 표시
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -126,7 +90,8 @@ export function WalletGuard({ children, mode = 'redirect' }: WalletGuardProps) {
           </p>
         </div>
         <Button
-          onClick={() => router.push('/connect')}
+          onClick={() => openConnectModal?.()}
+          disabled={!openConnectModal}
           aria-label={t.wallet.authRequired.connectButton}
         >
           <Wallet className="h-4 w-4" aria-hidden="true" />
