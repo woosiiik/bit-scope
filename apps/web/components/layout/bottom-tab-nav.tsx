@@ -13,22 +13,29 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  TrendingUp,
+  ChartCandlestick,
   BarChart3,
-  Bell,
+  Newspaper,
+  Zap,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/i18n-context';
 import { isActiveRoute, type NavItem } from './sidebar-nav';
 
-/** 모바일 하단 탭에 표시할 메뉴 항목 (최대 5개, i18n 키 기반) */
+/**
+ * 모바일 하단 탭에 표시할 메뉴 항목 (i18n 키 기반).
+ *
+ * 전체 메뉴는 헤더 햄버거 드로어(MobileNavDrawer)에서 접근 가능하며,
+ * 하단 탭은 자주 쓰는 항목만 노출한다.
+ * TODO: 추후 사용자가 하단 탭 항목을 직접 선택할 수 있도록 한다.
+ */
 const MOBILE_TAB_ITEMS: NavItem[] = [
-  { labelKey: 'dashboard', href: '/', icon: LayoutDashboard },
-  { labelKey: 'market', href: '/market', icon: TrendingUp },
-  { labelKey: 'premium', href: '/premium', icon: BarChart3 },
-  { labelKey: 'alerts', href: '/alerts', icon: Bell },
+  { labelKey: 'stockPerpComparison', href: '/stock-perp-comparison', icon: ChartCandlestick },
+  { labelKey: 'futuresDashboard', href: '/futures-dashboard', icon: BarChart3 },
+  { labelKey: 'marketScreener', href: '/market-screener', icon: BarChart3 },
+  { labelKey: 'news', href: '/news', icon: Newspaper },
+  { labelKey: 'breakingNews', href: '/breaking-news', icon: Zap },
   { labelKey: 'settings', href: '/settings', icon: Settings },
 ];
 
@@ -68,12 +75,12 @@ export function BottomTabNav({ className }: BottomTabNavProps) {
           const label = nav[item.labelKey] ?? item.labelKey;
 
           return (
-            <li key={item.href} className="flex-1">
+            <li key={item.href} className="min-w-0 flex-1">
               <Link
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 py-2 px-1',
-                  'text-xs font-medium transition-colors',
+                  'flex h-full flex-col items-center justify-start gap-1 px-0.5 py-2',
+                  'font-medium transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   isActive
                     ? 'text-primary'
@@ -82,10 +89,12 @@ export function BottomTabNav({ className }: BottomTabNavProps) {
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon
-                  className={cn('h-5 w-5', isActive && 'text-primary')}
+                  className={cn('h-5 w-5 shrink-0', isActive && 'text-primary')}
                   aria-hidden="true"
                 />
-                <span className="truncate">{label}</span>
+                <span className="line-clamp-2 w-full text-center text-[10px] leading-tight break-keep">
+                  {label}
+                </span>
               </Link>
             </li>
           );

@@ -13,9 +13,9 @@ import { render, screen } from '@testing-library/react';
 import { BottomTabNav } from '../bottom-tab-nav';
 import ko from '@/lib/i18n/ko';
 
-// next/navigation 모킹 (현재 경로: /market)
+// next/navigation 모킹 (현재 경로: /news)
 vi.mock('next/navigation', () => ({
-  usePathname: vi.fn(() => '/market'),
+  usePathname: vi.fn(() => '/news'),
 }));
 
 // next/link 모킹
@@ -34,27 +34,27 @@ describe('BottomTabNav', () => {
     expect(navEl).toBeInTheDocument();
   });
 
-  it('5개의 탭 링크를 렌더링한다', () => {
+  it('6개의 탭 링크를 렌더링한다', () => {
     render(<BottomTabNav />);
-    expect(screen.getAllByRole('link')).toHaveLength(5);
+    expect(screen.getAllByRole('link')).toHaveLength(6);
   });
 
-  it('현재 경로(/market)에 해당하는 탭에 aria-current="page"를 설정한다', () => {
+  it('현재 경로(/news)에 해당하는 탭에 aria-current="page"를 설정한다', () => {
     render(<BottomTabNav />);
-    const marketLink = screen.getByRole('link', { name: nav.market });
-    expect(marketLink).toHaveAttribute('aria-current', 'page');
+    const newsLink = screen.getByRole('link', { name: nav.news });
+    expect(newsLink).toHaveAttribute('aria-current', 'page');
   });
 
   it('비활성 탭에는 aria-current가 없다', () => {
     render(<BottomTabNav />);
-    const dashboardLink = screen.getByRole('link', { name: nav.dashboard });
-    expect(dashboardLink).not.toHaveAttribute('aria-current');
+    const settingsLink = screen.getByRole('link', { name: nav.settings });
+    expect(settingsLink).not.toHaveAttribute('aria-current');
   });
 
-  it('주요 탭(마켓/포트폴리오/설정)의 텍스트 레이블을 표시한다', () => {
+  it('주요 탭(주식·선물 비교/마켓 스크리너/설정)의 텍스트 레이블을 표시한다', () => {
     render(<BottomTabNav />);
-    expect(screen.getByText(nav.market)).toBeInTheDocument();
-    expect(screen.getByText(nav.dashboard)).toBeInTheDocument();
+    expect(screen.getByText(nav.stockPerpComparison)).toBeInTheDocument();
+    expect(screen.getByText(nav.marketScreener)).toBeInTheDocument();
     expect(screen.getByText(nav.settings)).toBeInTheDocument();
   });
 });
