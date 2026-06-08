@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { WalletButton } from './wallet-button';
+import { MobileNavDrawer } from './mobile-nav-drawer';
 
 /** Header Props */
 interface HeaderProps {
@@ -42,10 +43,13 @@ export function Header({ className }: HeaderProps) {
       )}
       role="banner"
     >
-      {/* 모바일 로고 (사이드바가 없을 때) */}
-      <div className="flex items-center gap-2 lg:hidden">
-        <BarChart3 className="h-6 w-6 text-primary" aria-hidden="true" />
-        <span className="text-lg font-bold">BitScope</span>
+      {/* 모바일 햄버거 + 로고 (사이드바가 없을 때) */}
+      <div className="flex items-center gap-1 lg:hidden">
+        <MobileNavDrawer />
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-primary" aria-hidden="true" />
+          <span className="text-lg font-bold">BitScope</span>
+        </div>
       </div>
 
       {/* 데스크톱에서 좌측 여백 확보 */}

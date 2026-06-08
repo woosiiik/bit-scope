@@ -59,7 +59,7 @@ export function BottomTabNav({ className }: BottomTabNavProps) {
         'safe-area-inset-bottom',
         className,
       )}
-      aria-label={t.common.appName}
+      aria-label={nav.mobileNavigation ?? t.common.appName}
     >
       <ul className="flex w-full" role="list">
         {MOBILE_TAB_ITEMS.map((item) => {

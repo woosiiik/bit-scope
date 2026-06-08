@@ -136,8 +136,8 @@ export default function NewsPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* 헤더 */}
-      <div className="flex items-center gap-2">
-        <Newspaper className="h-5 w-5 text-primary" aria-hidden="true" />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Newspaper className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
         <h1 className="text-lg font-semibold text-foreground">Crypto News</h1>
         <span className="text-xs text-muted-foreground">
           CoinDesk / CoinTelegraph / The Block / 블록미디어

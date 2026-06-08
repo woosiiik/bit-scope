@@ -78,6 +78,9 @@ const en: Messages = {
     mainNavigation: 'Main navigation',
     sidebarMenu: 'Sidebar menu',
     mobileNavigation: 'Mobile navigation',
+    menuOpen: 'Open menu',
+    menuClose: 'Close menu',
+    menuTitle: 'Main menu',
   },
 
   /** Navigation accessibility labels */

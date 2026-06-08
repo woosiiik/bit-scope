@@ -74,6 +74,9 @@ const ko = {
     mainNavigation: '메인 네비게이션',
     sidebarMenu: '사이드바 메뉴',
     mobileNavigation: '모바일 네비게이션',
+    menuOpen: '메뉴 열기',
+    menuClose: '메뉴 닫기',
+    menuTitle: '주 메뉴',
   },
 
   /** 네비게이션 접근성 레이블 */

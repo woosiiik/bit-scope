@@ -1,7 +1,7 @@
 /**
  * SidebarNav 컴포넌트 단위 테스트
  *
- * 사이드바 네비게이션의 렌더링, 활성 상태 판별,
+ * 데스크톱 사이드바 네비게이션의 렌더링, 활성 상태 판별,
  * 접근성(ARIA) 속성을 검증한다.
  *
  * @see 요구사항 9.2 (데스크톱 사이드바 네비게이션)
@@ -10,7 +10,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { SidebarNav, navigationItems, isActiveRoute } from '../sidebar-nav';
+import { SidebarNav, NAV_ITEMS, NAV_SECTIONS, isActiveRoute } from '../sidebar-nav';
+import ko from '@/lib/i18n/ko';
 
 // next/navigation 모킹
 vi.mock('next/navigation', () => ({
@@ -23,6 +24,8 @@ vi.mock('next/link', () => ({
     <a href={href} {...props}>{children}</a>
   ),
 }));
+
+const nav = ko.nav as Record<string, string>;
 
 describe('isActiveRoute', () => {
   it('루트 경로는 정확히 "/" 일 때만 활성화된다', () => {
@@ -43,29 +46,39 @@ describe('isActiveRoute', () => {
   });
 });
 
-describe('navigationItems', () => {
-  it('8개의 네비게이션 항목을 포함한다', () => {
-    expect(navigationItems).toHaveLength(8);
+describe('NAV_SECTIONS / NAV_ITEMS', () => {
+  it('3개의 섹션(개인/마켓/뉴스&인텔)으로 구성된다', () => {
+    expect(NAV_SECTIONS).toHaveLength(3);
+    expect(NAV_SECTIONS.map((s) => s.labelKey)).toEqual([
+      'sectionPersonal',
+      'sectionMarket',
+      'sectionIntel',
+    ]);
   });
 
-  it('모든 항목에 label, href, icon이 있다', () => {
-    navigationItems.forEach((item) => {
-      expect(item.label).toBeTruthy();
+  it('NAV_ITEMS는 모든 섹션 항목을 평탄화한 목록이다', () => {
+    const total = NAV_SECTIONS.reduce((acc, s) => acc + s.items.length, 0);
+    expect(NAV_ITEMS).toHaveLength(total);
+  });
+
+  it('모든 항목에 labelKey, href, icon이 있다', () => {
+    NAV_ITEMS.forEach((item) => {
+      expect(item.labelKey).toBeTruthy();
       expect(item.href).toBeTruthy();
       expect(item.icon).toBeTruthy();
     });
   });
 
   it('대시보드가 첫 번째 항목이다', () => {
-    expect(navigationItems[0].label).toBe('대시보드');
-    expect(navigationItems[0].href).toBe('/');
+    expect(NAV_ITEMS[0].labelKey).toBe('dashboard');
+    expect(NAV_ITEMS[0].href).toBe('/');
   });
 });
 
 describe('SidebarNav', () => {
-  it('사이드바를 렌더링한다', () => {
+  it('사이드바(complementary 랜드마크)를 렌더링한다', () => {
     render(<SidebarNav />);
-    const sidebar = screen.getByRole('complementary', { name: '메인 네비게이션' });
+    const sidebar = screen.getByRole('complementary', { name: nav.mainNavigation });
     expect(sidebar).toBeInTheDocument();
   });
 
@@ -76,28 +89,28 @@ describe('SidebarNav', () => {
 
   it('모든 네비게이션 링크를 렌더링한다', () => {
     render(<SidebarNav />);
-    navigationItems.forEach((item) => {
-      const link = screen.getByRole('link', { name: item.ariaLabel || item.label });
+    NAV_ITEMS.forEach((item) => {
+      const link = screen.getByRole('link', { name: nav[item.labelKey] });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', item.href);
     });
   });
 
-  it('현재 경로에 해당하는 링크에 aria-current="page"를 설정한다', () => {
+  it('현재 경로(/)에 해당하는 링크에 aria-current="page"를 설정한다', () => {
     render(<SidebarNav />);
-    const dashboardLink = screen.getByRole('link', { name: '포트폴리오 대시보드' });
+    const dashboardLink = screen.getByRole('link', { name: nav.dashboard });
     expect(dashboardLink).toHaveAttribute('aria-current', 'page');
   });
 
   it('비활성 링크에는 aria-current가 없다', () => {
     render(<SidebarNav />);
-    const marketLink = screen.getByRole('link', { name: '실시간 마켓 시세' });
+    const marketLink = screen.getByRole('link', { name: nav.market });
     expect(marketLink).not.toHaveAttribute('aria-current');
   });
 
-  it('nav 요소에 aria-label이 있다', () => {
+  it('nav 요소에 고유한 aria-label이 있다', () => {
     render(<SidebarNav />);
-    const nav = screen.getByRole('navigation', { name: '사이드바 메뉴' });
-    expect(nav).toBeInTheDocument();
+    const navEl = screen.getByRole('navigation', { name: nav.sidebarMenu });
+    expect(navEl).toBeInTheDocument();
   });
 });

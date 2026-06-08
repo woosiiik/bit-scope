@@ -43,13 +43,13 @@ export interface NavItem {
 }
 
 /** 네비게이션 섹션 */
-interface NavSection {
+export interface NavSection {
   labelKey: string;
   items: NavItem[];
 }
 
 /** 섹션별 메뉴 구성 */
-const NAV_SECTIONS: NavSection[] = [
+export const NAV_SECTIONS: NavSection[] = [
   {
     labelKey: 'sectionPersonal',
     items: [
@@ -110,7 +110,7 @@ export function SidebarNav({ className }: { className?: string }) {
         'border-r border-sidebar-border bg-sidebar',
         className,
       )}
-      aria-label={t.common.appName}
+      aria-label={nav.mainNavigation ?? t.common.appName}
     >
       {/* 로고 */}
       <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
@@ -119,7 +119,7 @@ export function SidebarNav({ className }: { className?: string }) {
       </div>
 
       {/* 섹션별 메뉴 */}
-      <nav className="flex-1 overflow-y-auto py-3" aria-label={t.common.appName}>
+      <nav className="flex-1 overflow-y-auto py-3" aria-label={nav.sidebarMenu ?? t.common.appName}>
         {NAV_SECTIONS.map((section, si) => (
           <div key={section.labelKey} className={cn(si > 0 && 'mt-3 pt-3 border-t border-sidebar-border mx-3')}>
             <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
